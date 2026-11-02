@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>H2 PRO v5.0 — Пошаговая инструкция по сборке и распайке</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d1117; color: #e0e0e0; font-family: Arial, sans-serif;
+         padding: 20px; font-size: 13px; line-height: 1.45; }
+  h1 { text-align: center; color: #58a6ff; font-size: 1.5em; margin-bottom: 4px; }
+  .subtitle { text-align: center; color: #666; margin-bottom: 22px; font-size: 0.85em; }
+
+  h2.stage { margin: 26px 0 12px; padding: 10px 16px; font-size: 1.05em; letter-spacing: 1px;
+             border-radius: 8px; background: #0c2033; color: #58a6ff; border: 1px solid #1c4a7a; }
+  h2.stage.remote { background: #1a0c2e; color: #bc8cff; border-color: #4a1c7a; }
+  h2.stage.check  { background: #07251a; color: #56d364; border-color: #1c4a2a; }
+  h2.stage.prep   { background: #1a1500; color: #e8c84a; border-color: #4a3a00; }
+
+  .step { border: 1px solid #30363d; border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
+  .step-head { display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+               background: #161b22; border-bottom: 1px solid #30363d; }
+  .step-num { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%;
+              background: #1f6feb; color: #fff; font-weight: bold; font-size: 15px;
+              display: flex; align-items: center; justify-content: center; }
+  .step.remote .step-num { background: #8957e5; }
+  .step.check  .step-num { background: #238636; }
+  .step.prep   .step-num { background: #9e6a00; }
+  .step-title { font-size: 1.02em; font-weight: bold; color: #e6edf3; }
+  .step-sub   { color: #8b949e; font-size: 11px; margin-left: 4px; }
+  .step-body { padding: 10px 14px; }
+  .step-body p { margin-bottom: 6px; }
+  .step-body ul { margin: 4px 0 8px 20px; }
+  .step-body li { margin-bottom: 3px; }
+  code { background: #1f242c; padding: 1px 5px; border-radius: 4px; font-size: 12px; color: #79c0ff; }
+
+  table { width: 100%; border-collapse: collapse; margin: 6px 0; }
+  th { background: #11151b; color: #8b949e; padding: 6px 10px; font-size: 11px; text-align: left;
+       border-bottom: 1px solid #30363d; }
+  td { padding: 5px 10px; font-size: 12px; border-bottom: 1px solid #21262d; vertical-align: middle; }
+  td.from, td.to { font-family: monospace; color: #e0e0e0; }
+  td.from b { color: #7ee787; }
+  td.color { width: 16%; }
+  td.note { color: #8b949e; font-size: 11px; }
+  td.side { font-weight: bold; white-space: nowrap; }
+  .Lr { color:#f0a000; } .Rr { color:#58a6ff; }   /* левый / правый ряд */
+  tr:last-child td { border-bottom: none; }
+
+  .color-swatch { display: inline-block; width: 13px; height: 13px; border-radius: 3px;
+                  vertical-align: middle; margin-right: 6px; border: 1px solid #444; }
+  .c-red{background:#d04444;} .c-black{background:#1a1a1a;border-color:#666;}
+  .c-yellow{background:#d4c044;} .c-orange{background:#ff9933;}
+  .c-blue{background:#4488dd;} .c-green{background:#44aa44;}
+  .c-white{background:#e0e0e0;border-color:#888;} .c-purple{background:#aa44aa;}
+  .c-gray{background:#888;} .c-brown{background:#885522;} .c-pink{background:#ee99cc;}
+
+  .badge { display: inline-block; font-size: 9px; padding: 1px 6px; border-radius: 8px;
+           font-weight: bold; vertical-align: middle; margin-left: 6px; }
+  .b-new{background:#1a4a1a;color:#3fb950;} .b-warn{background:#4a3000;color:#f0a000;}
+  .b-crit{background:#4a1a1a;color:#ff6b6b;}
+
+  .caution { margin: 8px 0; padding: 8px 12px; background: #2a0a0a; border-left: 3px solid #ff4444;
+             border-radius: 4px; font-size: 12px; color: #ffb3b3; }
+  .tip { margin: 8px 0; padding: 8px 12px; background: #07251a; border-left: 3px solid #2ea043;
+         border-radius: 4px; font-size: 12px; color: #9be0b4; }
+  .loc { margin: 8px 0; padding: 8px 12px; background: #0a1830; border-left: 3px solid #1f6feb;
+         border-radius: 4px; font-size: 12px; color: #aaccff; }
+  .caution strong, .tip strong, .loc strong { color: #fff; }
+  .loc b.Lr { color:#ffcc66; } .loc b.Rr { color:#88c0ff; }
+
+  .legend { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; margin:14px 0 14px; font-size:11px; }
+  .desbox { max-width:880px; margin:0 auto 14px; border:1px solid #30363d; border-radius:8px; padding:8px 14px;
+            font-size:11px; color:#8b949e; }
+  .desbox b { color:#7ee787; } .desbox span { display:inline-block; margin-right:14px; white-space:nowrap; }
+
+  /* Блок с фото платы */
+  .boardref { border:1px solid #1c4a7a; border-radius:10px; overflow:hidden; margin-bottom:18px; }
+  .boardref h3 { padding:10px 16px; background:#0c2033; color:#58a6ff; font-size:1em; }
+  .boardref .inner { padding:12px 16px; }
+  .boardref p { margin-bottom:10px; font-size:12px; color:#c9d1d9; }
+  .boardref img { width:100%; max-width:1100px; display:block; margin:0 auto;
+                  border:1px solid #30363d; border-radius:8px; background:#0d1117; }
+  .key-green{color:#5feb7d;font-weight:bold;} .key-orange{color:#f8bc3c;font-weight:bold;} .key-red{color:#ee6262;font-weight:bold;}
+
+  .pinmap { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:10px; }
+  .pinmap .card { border:1px solid #30363d; border-radius:8px; overflow:hidden; }
+  .pinmap .card h4 { padding:7px 12px; font-size:12px; background:#161b22; color:#79c0ff; }
+  .pinmap .card.remote h4 { color:#bc8cff; }
+
+  @media print {
+    body { background:#fff; color:#111; font-size:11px; }
+    .step,.pinmap .card,.desbox,.boardref { border:1px solid #888; }
+    .step-head,th,.boardref h3 { background:#eee !important; color:#000 !important; }
+    h2.stage { background:#ddd !important; color:#000 !important; border:1px solid #888; }
+    .step-num { background:#444 !important; }
+    code { background:#eee; color:#06c; }
+    td.from b, .desbox b { color:#070 !important; }
+    .caution { background:#fff0f0; color:#900; } .tip { background:#f0fff4; color:#060; } .loc { background:#eef4ff; color:#024; }
+    td.note { color:#555; } .Lr{color:#a60!important;} .Rr{color:#036!important;}
+  }
+</style>
+</head>
+<body>
+
+<h1>🔧 H2 PRO v5.0 — Пошаговая инструкция по сборке и распайке</h1>
+<div class="subtitle">2 × ESP32 DevKit (38-pin, micro-USB) · собирается строго по порядку шагов · соответствует прошивкам H2_Brain_v5 / H2_Remote_v5</div>
+
+<!-- ░░░ ФОТО ВАШЕЙ ПЛАТЫ ░░░ -->
+<div class="boardref">
+  <h3>📍 ВАША ПЛАТА — посмотрите сюда ПЕРЕД пайкой</h3>
+  <div class="inner">
+    <p><strong>Как пользоваться инструкцией:</strong> держите плату <strong>micro-USB вниз, модулем ESP-32D вверх</strong> — ровно как на фото. У платы два ряда контактов: <b class="Lr">ЛЕВЫЙ ряд</b> и <b class="Rr">ПРАВЫЙ ряд</b>. На каждом контакте напечатан его номер (25, 13, 21, 4…). В шагах ниже сказано, к какому номеру и на каком ряду паять каждый провод. На фото показано то же самое цветом:
+    <span class="key-green">зелёный — паять</span>, <span class="key-orange">оранжевый — паять (strapping-пин)</span>, <span class="key-red">красный — НЕ паять</span>.</p>
+    <img src="H2_board_pinout.png" alt="Распиновка платы H2 — куда что паять">
+    <p style="margin-top:10px;color:#ffb3b3;">⛔ Никогда не паяйте к красным: <code>EN, TX, RX, 0/Boot, 39, 35</code> и flash-пинам <code>D0 D1 D2 D3 CMD CLK</code> (GPIO 6–11 — внутренняя память, провод сюда «убьёт» загрузку платы).</p>
+  </div>
+</div>
+
+<!-- Расшифровка позиционных обозначений (ЕСКД) -->
+<div class="desbox">
+  Обозначения приборов (ЕСКД, как в принципиальной схеме):
+  <span><b>DD1/DD2</b> — ESP32 (мозг/пульт)</span>
+  <span><b>A1/A2</b> — nRF24L01+</span>
+  <span><b>B1</b> — MPU-6050</span>
+  <span><b>BP1</b> — датчик давления</span>
+  <span><b>BK1</b> — DS18B20</span>
+  <span><b>K1</b> — реле</span>
+  <span><b>M1</b> — вентилятор</span>
+  <span><b>HG1/HG2</b> — OLED</span>
+  <span><b>HL1…HL5</b> — светодиоды</span>
+  <span><b>SB1…SB10</b> — кнопки</span>
+</div>
+
+<!-- Карта выводов с рядами -->
+<div class="pinmap">
+  <div class="card">
+    <h4>🧠 МОЗГ (DD1) — пин · ряд · прибор</h4>
+    <table>
+      <tr><th>Пин</th><th>Ряд</th><th>Прибор</th></tr>
+      <tr><td class="from">25 / 26 / 27</td><td class="side"><span class="Lr">левый</span></td><td class="note"><b>K1</b> реле: электролизёр / клапан / поджиг</td></tr>
+      <tr><td class="from">13 / 14</td><td class="side"><span class="Lr">левый</span></td><td class="note"><b>SB1/SB2</b> кнопки POWER / LOCK</td></tr>
+      <tr><td class="from">33</td><td class="side"><span class="Lr">левый</span></td><td class="note"><b>SB3</b> кнопка PURGE</td></tr>
+      <tr><td class="from">36 / VP</td><td class="side"><span class="Lr">левый</span></td><td class="note"><b>BP1</b> датчик давления (через делитель)</td></tr>
+      <tr><td class="from">32</td><td class="side"><span class="Lr">левый</span></td><td class="note"><b>M1</b> ШИМ вентилятора</td></tr>
+      <tr><td class="from">34</td><td class="side"><span class="Lr">левый</span></td><td class="note"><b>RK1</b> NTC-термистор — <i>только если в прошивке включён</i> <code>TEMP_SENSOR_NTC</code> (по умолчанию DS18B20 на 15, тогда 34 не паяется)</td></tr>
+      <tr><td class="from">12</td><td class="side"><span class="Lr">левый</span></td><td class="note"><b>HL2</b> LED LOCK ⚠strap</td></tr>
+      <tr><td class="from">16</td><td class="side"><span class="Rr">правый</span></td><td class="note"><b>M1</b> тахометр вентилятора</td></tr>
+      <tr><td class="from">15</td><td class="side"><span class="Rr">правый</span></td><td class="note"><b>BK1</b> DS18B20 ⚠strap</td></tr>
+      <tr><td class="from">17</td><td class="side"><span class="Rr">правый</span></td><td class="note"><b>HL1</b> LED POWER</td></tr>
+      <tr><td class="from">2</td><td class="side"><span class="Rr">правый</span></td><td class="note"><b>HL3</b> LED MODE ⚠strap</td></tr>
+      <tr><td class="from">4 / 5 / 18 / 19 / 23</td><td class="side"><span class="Rr">правый</span></td><td class="note"><b>A1</b> nRF24: CE/CSN/SCK/MISO/MOSI</td></tr>
+      <tr><td class="from">21 / 22</td><td class="side"><span class="Rr">правый</span></td><td class="note"><b>HG1 + B1</b> I²C SDA/SCL (OLED+MPU)</td></tr>
+    </table>
+  </div>
+  <div class="card remote">
+    <h4>🎮 ПУЛЬТ (DD2) — пин · ряд · прибор</h4>
+    <table>
+      <tr><th>Пин</th><th>Ряд</th><th>Прибор</th></tr>
+      <tr><td class="from">25 / 26 / 27</td><td class="side"><span class="Lr">левый</span></td><td class="note"><b>SB6/SB7/SB8</b> Репульсор / Ручная / Поджиг</td></tr>
+      <tr><td class="from">32 / 33</td><td class="side"><span class="Lr">левый</span></td><td class="note"><b>SB9/SB10</b> Цель +0.5 / −0.5 (33 — будит из сна)</td></tr>
+      <tr><td class="from">13 / 14</td><td class="side"><span class="Lr">левый</span></td><td class="note"><b>HL4/HL5</b> LED POWER / TX</td></tr>
+      <tr><td class="from">16 / 17</td><td class="side"><span class="Rr">правый</span></td><td class="note"><b>SB4/SB5</b> кнопки POWER / LOCK</td></tr>
+      <tr><td class="from">4 / 5 / 18 / 19 / 23</td><td class="side"><span class="Rr">правый</span></td><td class="note"><b>A2</b> nRF24: CE/CSN/SCK/MISO/MOSI</td></tr>
+      <tr><td class="from">21 / 22</td><td class="side"><span class="Rr">правый</span></td><td class="note"><b>HG2</b> I²C SDA/SCL (OLED)</td></tr>
+    </table>
+  </div>
+</div>
+<div class="caution">Питание: <strong>3V3</strong> — левый ряд, самый <strong>верх</strong> (у модуля). <strong>5V/Vin</strong> — левый ряд, самый <strong>низ</strong> (у USB). <strong>GND</strong> — один на левом ряду и два на правом, берите ближайший.</div>
+
+
+<!-- ═══════════════ ЭТАП 0 — ПОДГОТОВКА ═══════════════ -->
+<h2 class="stage prep">ЭТАП 0 · ПОДГОТОВКА: инструмент, материалы, безопасность</h2>
+
+<div class="step prep">
+  <div class="step-head"><div class="step-num">0.1</div><div class="step-title">Инструмент и расходники</div></div>
+  <div class="step-body">
+    <ul>
+      <li>Паяльник 25–40 Вт с тонким жалом (или станция 300–340 °C), припой Sn60Pb40/Sn63 с канифолью, флюс (нейтральный, не кислотный!).</li>
+      <li>Монтажная плата (perfboard) под каждый блок. ESP32 уже впаян/вставлен в макетку (как на вашем фото).</li>
+      <li>Провод МГТФ/силиконовый 24–26 AWG разных цветов (см. легенду), термоусадка.</li>
+      <li>Мультиметр (прозвонка + напряжение), бокорезы, пинцет.</li>
+    </ul>
+    <div class="loc">📍 <strong>Сориентируйте плату:</strong> micro-USB к себе вниз, модуль вверх. Дальше «левый ряд» и «правый ряд» — именно в этом положении.</div>
+  </div>
+</div>
+
+<div class="step prep">
+  <div class="step-head"><div class="step-num">0.2</div><div class="step-title">Перечень компонентов (что распаиваем)</div></div>
+  <div class="step-body">
+    <table>
+      <tr><th>Поз.</th><th>Компонент</th><th>Кол.</th><th>Блок</th></tr>
+      <tr><td class="from"><b>DD1, DD2</b></td><td>ESP32 DevKit (38-pin, WROOM-32)</td><td>2</td><td class="note">мозг + пульт</td></tr>
+      <tr><td class="from"><b>A1, A2</b></td><td>Радиомодуль nRF24L01+ (адаптер 3.3 В)</td><td>2</td><td class="note">оба</td></tr>
+      <tr><td class="from"><b>C1, C2</b></td><td>Конденсатор 470 мкФ × 10 В (электролит)</td><td>2</td><td class="note">по 1 на nRF24</td></tr>
+      <tr><td class="from"><b>HG1, HG2</b></td><td>OLED SSD1306 0,96″ I²C (0x3C)</td><td>2</td><td class="note">оба</td></tr>
+      <tr><td class="from"><b>B1</b></td><td>MPU-6050 (GY-521)</td><td>1</td><td class="note">мозг</td></tr>
+      <tr><td class="from"><b>K1</b></td><td>Модуль реле 3-кан. 5 В (HIGH-active)</td><td>1</td><td class="note">мозг</td></tr>
+      <tr><td class="from"><b>BP1</b></td><td>Датчик давления 0…10 бар, 0,5…4,5 В</td><td>1</td><td class="note">мозг</td></tr>
+      <tr><td class="from"><b>BK1</b></td><td>DS18B20 (в гильзе)</td><td>1</td><td class="note">мозг</td></tr>
+      <tr><td class="from"><b>M1</b></td><td>Вентилятор 12 В 4-pin (PWM + тахометр)</td><td>1</td><td class="note">мозг</td></tr>
+      <tr><td class="from"><b>HL1…HL5</b></td><td>Светодиоды (3 — мозг, 2 — пульт)</td><td>5</td><td class="note">оба</td></tr>
+      <tr><td class="from"><b>SB1…SB10</b></td><td>Кнопки тактовые (3 — мозг, 7 — пульт)</td><td>10</td><td class="note">оба</td></tr>
+      <tr><td class="from"><b>R1, R2</b></td><td>Резисторы делителя 10 кОм, 20 кОм</td><td>2</td><td class="note">мозг</td></tr>
+      <tr><td class="from"><b>R3…R7</b></td><td>Резисторы 220 Ом (LED)</td><td>5</td><td class="note">оба</td></tr>
+      <tr><td class="from"><b>R8</b></td><td>Резистор 4,7 кОм (подтяжка DS18B20)</td><td>1</td><td class="note">мозг</td></tr>
+      <tr><td class="from"><b>G1</b></td><td>Адаптер 12 В (вентилятор) + 5 В для логики</td><td>1</td><td class="note">мозг</td></tr>
+      <tr><td class="from"><b>G2</b></td><td>Аккумулятор Li-ion 18650 / PowerBank</td><td>1</td><td class="note">пульт</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="step prep">
+  <div class="step-head"><div class="step-num">0.3</div><div class="step-title">Безопасность <span class="badge b-crit">ВАЖНО</span></div></div>
+  <div class="step-body">
+    <div class="caution"><strong>Установка работает с водородом.</strong> Электролизёр, клапан и поджиг при сборке и первых проверках держите ОТКЛЮЧЁННЫМИ от газовой части — подключаете в самом конце (Этап C–D).</div>
+    <div class="caution"><strong>Делитель давления обязателен.</strong> BP1 выдаёт до 4,5 В, вход ADC терпит 3,3 В. Без делителя 10к/20к вывод 36 сгорит.</div>
+    <div class="tip">Паяйте при выключенном питании. Электролит (C1/C2) и LED имеют полярность «+/−». Не грейте nRF24 и датчики дольше 2–3 с на вывод.</div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ ЭТАП A — МОЗГ ═══════════════ -->
+<h2 class="stage">ЭТАП A · БЛОК УПРАВЛЕНИЯ («МОЗГ», DD1)</h2>
+
+<div class="step">
+  <div class="step-head"><div class="step-num">A1</div><div class="step-title">Развести шины питания и землю</div><span class="step-sub">фундамент</span></div>
+  <div class="step-body">
+    <p>От платы заведите 4 шины-«рельсы» по краю макетки. К ним будут подключаться все компоненты:</p>
+    <table>
+      <tr><th>Шина</th><th>Откуда взять</th><th>Ряд/где</th><th>Цвет</th></tr>
+      <tr><td class="to">+3.3 В</td><td class="from">пин <b>3V3</b></td><td class="side"><span class="Lr">левый</span>, верх</td><td class="color"><span class="color-swatch c-orange"></span>оранж.</td></tr>
+      <tr><td class="to">+5 В (Vin)</td><td class="from">пин <b>5V</b></td><td class="side"><span class="Lr">левый</span>, низ</td><td class="color"><span class="color-swatch c-red"></span>красн.</td></tr>
+      <tr><td class="to">+12 В</td><td class="from">адаптер <b>G1</b> (не от платы!)</td><td class="side">внешний</td><td class="color"><span class="color-swatch c-yellow"></span>жёлт.</td></tr>
+      <tr><td class="to">GND</td><td class="from">пин <b>GND</b></td><td class="side">любой</td><td class="color"><span class="color-swatch c-black"></span>чёрн.</td></tr>
+    </table>
+    <div class="loc">📍 <strong>На плате:</strong> <b class="Lr">3V3</b> — левый ряд, самый верх. <b class="Lr">5V</b> — левый ряд, самый низ (у USB). <b>GND</b> — есть 1 на левом ряду и 2 на правом. Все «минусы» (плата, реле, датчики, источники) свести в одну точку — это «общая земля».</div>
+    <div class="caution"><strong>Без общей земли</strong> логика и радио работать не будут.</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-head"><div class="step-num">A2</div><div class="step-title">Радиомодуль nRF24 (A1) + конденсатор C1</div><span class="step-sub">правый ряд</span></div>
+  <div class="step-body">
+    <p>Сначала припаяйте <strong>C1 470 мкФ прямо к VCC–GND модуля A1</strong> (плюс к VCC). Затем 5 сигналов SPI:</p>
+    <table>
+      <tr><th>Пин платы</th><th>Ряд</th><th>К (A1)</th><th>Цвет</th></tr>
+      <tr><td class="from">3V3</td><td class="side"><span class="Lr">лев. верх</span></td><td class="to">VCC <span class="note">(только 3,3 В!)</span></td><td class="color"><span class="color-swatch c-orange"></span>оранж.</td></tr>
+      <tr><td class="from">GND</td><td class="side">любой</td><td class="to">GND</td><td class="color"><span class="color-swatch c-black"></span>чёрн.</td></tr>
+      <tr><td class="from"><b>4</b></td><td class="side"><span class="Rr">правый</span></td><td class="to">CE</td><td class="color"><span class="color-swatch c-pink"></span>розов.</td></tr>
+      <tr><td class="from"><b>5</b></td><td class="side"><span class="Rr">правый</span></td><td class="to">CSN</td><td class="color"><span class="color-swatch c-pink"></span>розов.</td></tr>
+      <tr><td class="from"><b>18</b></td><td class="side"><span class="Rr">правый</span></td><td class="to">SCK</td><td class="color"><span class="color-swatch c-yellow"></span>жёлт.</td></tr>
+      <tr><td class="from"><b>19</b></td><td class="side"><span class="Rr">правый</span></td><td class="to">MISO</td><td class="color"><span class="color-swatch c-yellow"></span>жёлт.</td></tr>
+      <tr><td class="from"><b>23</b></td><td class="side"><span class="Rr">правый</span></td><td class="to">MOSI</td><td class="color"><span class="color-swatch c-yellow"></span>жёлт.</td></tr>
+    </table>
+    <div class="loc">📍 <strong>На плате:</strong> все 5 сигналов nRF24 — на <b class="Rr">ПРАВОМ ряду</b> (23 и 22 — у верха; 4 и 5 — ближе к низу). 3V3 берёте с <b class="Lr">левого верха</b>.</div>
+    <div class="caution"><strong>Без C1</strong> модуль сбоит на 2 Мбит/с. Конденсатор ставится на обоих блоках.</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-head"><div class="step-num">A3</div><div class="step-title">OLED (HG1) + MPU-6050 (B1) — шина I²C</div><span class="step-sub">правый ряд</span></div>
+  <div class="step-body">
+    <p>Два модуля на одной шине — SDA и SCL идут параллельно к обоим.</p>
+    <table>
+      <tr><th>Пин платы</th><th>Ряд</th><th>К</th><th>Цвет</th></tr>
+      <tr><td class="from"><b>21</b></td><td class="side"><span class="Rr">правый</span></td><td class="to">HG1·SDA + B1·SDA</td><td class="color"><span class="color-swatch c-blue"></span>син.</td></tr>
+      <tr><td class="from"><b>22</b></td><td class="side"><span class="Rr">правый</span></td><td class="to">HG1·SCL + B1·SCL</td><td class="color"><span class="color-swatch c-green"></span>зел.</td></tr>
+      <tr><td class="from">3V3</td><td class="side"><span class="Lr">лев. верх</span></td><td class="to">HG1·VCC + B1·VCC</td><td class="color"><span class="color-swatch c-orange"></span>оранж.</td></tr>
+      <tr><td class="from">GND</td><td class="side">любой</td><td class="to">HG1·GND + B1·GND + B1·AD0</td><td class="color"><span class="color-swatch c-black"></span>чёрн.</td></tr>
+    </table>
+    <div class="loc">📍 <strong>На плате:</strong> 21 и 22 — на <b class="Rr">ПРАВОМ ряду</b> (22 ближе к верху, 21 чуть ниже). <strong>B1·AD0 → GND</strong> (задаёт адрес 0x68).</div>
+    <div class="caution"><strong>Подпись на вашем дисплее: GND · VDD · SCK · SDA.</strong> «SCK» — это и есть SCL (тактовая). Значит: <b>VDD → 3.3 В</b>, <b>SCK → пин 22</b>, <b>SDA → пин 21</b>, <b>GND → GND</b>. У MPU-6050 (B1) пины подписаны SCL/SDA — их к тем же 22/21.</div>
+    <img src="H2_OLED_connect.png" alt="Подключение OLED" style="width:100%;max-width:760px;display:block;margin:8px auto;border:1px solid #30363d;border-radius:8px;">
+
+    <div class="tip">B1 закрепите <strong>жёстко к корпусу</strong> — он мерит наклон. При старте мозг 0,5 с калибрует «ноль» — не двигать.</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-head"><div class="step-num">A4</div><div class="step-title">Модуль реле K1 (3 канала)</div><span class="step-sub">левый ряд</span></div>
+  <div class="step-body">
+    <table>
+      <tr><th>Пин платы</th><th>Ряд</th><th>К (K1)</th><th>Цвет</th></tr>
+      <tr><td class="from">5V</td><td class="side"><span class="Lr">лев. низ</span></td><td class="to">VCC</td><td class="color"><span class="color-swatch c-red"></span>красн.</td></tr>
+      <tr><td class="from">GND</td><td class="side">любой</td><td class="to">GND</td><td class="color"><span class="color-swatch c-black"></span>чёрн.</td></tr>
+      <tr><td class="from"><b>25</b></td><td class="side"><span class="Lr">левый</span></td><td class="to">IN1 — электролизёр</td><td class="color"><span class="color-swatch c-purple"></span>фиол.</td></tr>
+      <tr><td class="from"><b>26</b></td><td class="side"><span class="Lr">левый</span></td><td class="to">IN2 — клапан</td><td class="color"><span class="color-swatch c-purple"></span>фиол.</td></tr>
+      <tr><td class="from"><b>27</b></td><td class="side"><span class="Lr">левый</span></td><td class="to">IN3 — поджиг</td><td class="color"><span class="color-swatch c-purple"></span>фиол.</td></tr>
+    </table>
+    <div class="loc">📍 <strong>На плате:</strong> 25, 26, 27 идут подряд на <b class="Lr">ЛЕВОМ ряду</b> (примерно середина платы). 5V — левый низ.</div>
+    <div class="tip">Перемычку <strong>JD-VCC ↔ VCC</strong> на модуле снимите и питайте катушки от отдельного 5 В (меньше помех).</div>
+    <div class="caution">Силовые контакты K1 к электролизёру/клапану/поджигу — подключаете в самом конце (после Этапа C).</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-head"><div class="step-num">A5</div><div class="step-title">Датчик давления BP1 + делитель R1/R2</div><span class="step-sub">левый ряд</span></div>
+  <div class="step-body">
+    <div class="caution"><strong>Зачем делитель.</strong> BP1 выдаёт 0,5…4,5 В, а вход ADC терпит максимум 3,3 В. Два резистора уменьшают напряжение ровно в 1,5 раза, и на вывод приходит безопасные 0,33…3,0 В. Без делителя вывод 36 выгорит.</div>
+
+    <p><b>Главное, что путают:</b> «точка А» — это не отдельная деталь и не отдельное место на плате. Это <b>один-единственный узел</b>, и <b>это и есть вывод 36</b>. В нём сходятся ТРИ провода: от R1, на вывод 36 и на R2. Если у вас там сходятся только два — делитель не собран.</p>
+
+    <div class="tip"><strong>Схема одной строкой:</strong>
+<pre style="margin:6px 0;font-family:ui-monospace,Consolas,'Courier New',monospace;line-height:1.35;overflow-x:auto">BP1·сигнал ──[ R1 10 кОм ]──┬── вывод 36
+                            └──[ R2 20 кОм ]── GND</pre>
+      Вертикальная черта — та самая общая точка. R1 идёт «вдоль» сигнала, R2 «вниз» на землю от того же места.</div>
+
+    <table>
+      <tr><th>Откуда</th><th>Куда</th><th>Ряд</th><th>Цвет</th></tr>
+      <tr><td class="from">5V</td><td class="to">BP1·VCC — питание датчика <b>именно 5 В</b>, не 3,3</td><td class="side"><span class="Lr">лев. низ</span></td><td class="color"><span class="color-swatch c-red"></span>красн.</td></tr>
+      <tr><td class="from">GND</td><td class="to">BP1·GND</td><td class="side">любой</td><td class="color"><span class="color-swatch c-black"></span>чёрн.</td></tr>
+      <tr><td class="from">BP1·сигнал</td><td class="to">первая ножка <b>R1 10 кОм</b></td><td class="side">—</td><td class="color"><span class="color-swatch c-white"></span>бел.</td></tr>
+      <tr><td class="from">вторая ножка <b>R1</b></td><td class="to">вывод <b>36 / VP</b></td><td class="side"><span class="Lr">левый</span></td><td class="color"><span class="color-swatch c-white"></span>бел.</td></tr>
+      <tr><td class="from">тот же вывод <b>36</b></td><td class="to">первая ножка <b>R2 20 кОм</b> ← <b>шаг, который чаще всего пропускают</b></td><td class="side"><span class="Lr">левый</span></td><td class="color"><span class="color-swatch c-white"></span>бел.</td></tr>
+      <tr><td class="from">вторая ножка <b>R2</b></td><td class="to">GND</td><td class="side">любой</td><td class="color"><span class="color-swatch c-black"></span>чёрн.</td></tr>
+    </table>
+
+    <div class="loc">📍 <strong>На плате:</strong> вывод <b class="Lr">36 (он же VP)</b> — на ЛЕВОМ ряду, 3-й сверху (после 3V3 и EN). Это вход-только, идеален для датчика.</div>
+
+    <p><b>Проверка мультиметром (питание подано, давления в баке нет).</b> Меряйте между выводом 36 и GND:</p>
+    <table>
+      <tr><th>Показание</th><th>Что это значит</th></tr>
+      <tr><td class="from"><b>0,33 В</b></td><td class="to">Норма для 0 бар. Делитель собран правильно.</td></tr>
+      <tr><td class="from">около <b>0 В</b></td><td class="to">Обрыв: сигнал не доходит или BP1 без питания.</td></tr>
+      <tr><td class="from"><b>0,5 В</b> и выше без давления</td><td class="to">R2 не впаян — вывод «висит» и ловит наводки. Именно так и выглядит «отключил датчик, а прибор показывает давление».</td></tr>
+      <tr><td class="from"><b>4,5 В</b></td><td class="to">⛔ Делителя нет вообще, сигнал идёт напрямую. Немедленно обесточьте — вывод под перегрузкой.</td></tr>
+    </table>
+
+    <div class="tip"><strong>Тест «на отключение» — делайте обязательно.</strong> Отсоедините сигнальный провод BP1 от R1 (R2 оставьте на месте). Давление в вебе должно упасть до <b>0,00 бар</b>, а вкладка «Диагн.» — показать <b>ОБРЫВ / НЕТ ПИТАНИЯ</b> и напряжение около 0 В. Если после отсоединения прибор продолжает показывать какое-то давление — <b>R2 отсутствует или не доходит до земли</b>. Прозвоните: между выводом 36 и GND должно быть 20 кОм, а не обрыв.</div>
+
+    <div class="tip">Масштаб давления задаётся в веб-интерфейсе (offset/scale) в <b>паспортных вольтах датчика</b> (0,5…4,5 В). Делитель прошивка снимает сама, подгонять под него калибровку не нужно. При номиналах 10к/20к штатные значения offset = 0,5 и scale = 2,5 подходят как есть.</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-head"><div class="step-num">A6</div><div class="step-title">Датчик температуры BK1 (DS18B20)</div><span class="step-sub">правый ряд</span></div>
+  <div class="step-body">
+    <table>
+      <tr><th>Пин платы</th><th>Ряд</th><th>К (BK1)</th><th>Цвет</th></tr>
+      <tr><td class="from"><b>15</b></td><td class="side"><span class="Rr">правый</span></td><td class="to">DATA <span class="note">(+R8 4,7к на 3,3В)</span></td><td class="color"><span class="color-swatch c-yellow"></span>жёлт.</td></tr>
+      <tr><td class="from">3V3</td><td class="side"><span class="Lr">лев. верх</span></td><td class="to">VCC</td><td class="color"><span class="color-swatch c-orange"></span>оранж.</td></tr>
+      <tr><td class="from">GND</td><td class="side">любой</td><td class="to">GND</td><td class="color"><span class="color-swatch c-black"></span>чёрн.</td></tr>
+    </table>
+    <div class="loc">📍 <strong>На плате:</strong> вывод <b class="Rr">15</b> — на ПРАВОМ ряду, ближе к низу (перед красными flash-пинами D1/D0/CLK — их не трогать). Не перепутайте с 15-м… ориентируйтесь на печатный номер «15».</div>
+    <div class="tip"><strong>Альтернатива — NTC:</strong> вывод <b class="Lr">34</b> (левый ряд) + делитель 10 кОм; тогда DS18B20 не нужен.</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-head"><div class="step-num">A7</div><div class="step-title">Вентилятор M1 (4-pin)</div><span class="step-sub">32 левый · 16 правый</span></div>
+  <div class="step-body">
+    <table>
+      <tr><th>Откуда</th><th>Ряд</th><th>К (M1)</th><th>Цвет</th></tr>
+      <tr><td class="from">GND</td><td class="side">любой</td><td class="to">Pin 1 · GND</td><td class="color"><span class="color-swatch c-black"></span>чёрн.</td></tr>
+      <tr><td class="from">+12 В (G1)</td><td class="side">внешний</td><td class="to">Pin 2 · +12V</td><td class="color"><span class="color-swatch c-yellow"></span>жёлт.</td></tr>
+      <tr><td class="from">пин <b>16</b></td><td class="side"><span class="Rr">правый</span></td><td class="to">Pin 3 · TACH</td><td class="color"><span class="color-swatch c-green"></span>зел.</td></tr>
+      <tr><td class="from">пин <b>32</b></td><td class="side"><span class="Lr">левый</span></td><td class="to">Pin 4 · PWM</td><td class="color"><span class="color-swatch c-blue"></span>син.</td></tr>
+    </table>
+    <div class="loc">📍 <strong>На плате:</strong> ШИМ → <b class="Lr">32 (левый ряд)</b>; тахометр → <b class="Rr">16 (правый ряд)</b>. Питание +12 В — от адаптера G1, НЕ с платы.</div>
+    <div class="tip">MOSFET не нужен. Если обороты не регулируются — level shifter 3,3→5 В на линию PWM.</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-head"><div class="step-num">A8</div><div class="step-title">Кнопки SB1…SB3</div><span class="step-sub">левый ряд → GND</span></div>
+  <div class="step-body">
+    <p>Каждая кнопка: один контакт → пин, второй → GND.</p>
+    <table>
+      <tr><th>Пин платы</th><th>Ряд</th><th>Кнопка</th><th>Цвет</th></tr>
+      <tr><td class="from"><b>13</b></td><td class="side"><span class="Lr">левый</span></td><td class="to">SB1 · POWER <span class="note">(1×вкл/выкл, 2×продувка)</span></td><td class="color"><span class="color-swatch c-gray"></span>сер.</td></tr>
+      <tr><td class="from"><b>14</b></td><td class="side"><span class="Lr">левый</span></td><td class="to">SB2 · LOCK/RESET</td><td class="color"><span class="color-swatch c-gray"></span>сер.</td></tr>
+      <tr><td class="from"><b>33</b></td><td class="side"><span class="Lr">левый</span></td><td class="to">SB3 · PURGE</td><td class="color"><span class="color-swatch c-gray"></span>сер.</td></tr>
+      <tr><td class="from">GND</td><td class="side">любой</td><td class="to">вторые контакты всех 3 кнопок</td><td class="color"><span class="color-swatch c-black"></span>чёрн.</td></tr>
+    </table>
+    <div class="loc">📍 <strong>На плате:</strong> 13 и 14 — на <b class="Lr">ЛЕВОМ ряду</b> (13 сразу под GND), 33 — тоже <b class="Lr">левый</b>, ближе к верху (8-й сверху).</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-head"><div class="step-num">A9</div><div class="step-title">Светодиоды HL1…HL3</div><span class="step-sub">через 220 Ом → GND</span></div>
+  <div class="step-body">
+    <p>Каждый LED: пин → R 220 Ом → анод(+) → катод(−) → GND.</p>
+    <table>
+      <tr><th>Пин платы</th><th>Ряд</th><th>LED</th><th>Цвет</th></tr>
+      <tr><td class="from"><b>17</b></td><td class="side"><span class="Rr">правый</span></td><td class="to">HL1 · POWER (зел.)</td><td class="color"><span class="color-swatch c-brown"></span>корич.</td></tr>
+      <tr><td class="from"><b>12</b></td><td class="side"><span class="Lr">левый</span></td><td class="to">HL2 · LOCK (крас.) <span class="badge b-warn">strap</span></td><td class="color"><span class="color-swatch c-brown"></span>корич.</td></tr>
+      <tr><td class="from"><b>2</b></td><td class="side"><span class="Rr">правый</span></td><td class="to">HL3 · MODE (син.) <span class="badge b-warn">strap</span></td><td class="color"><span class="color-swatch c-brown"></span>корич.</td></tr>
+    </table>
+    <div class="loc">📍 <strong>На плате:</strong> 17 — <b class="Rr">правый ряд</b>; 12 — <b class="Lr">левый ряд</b>; 2 — <b class="Rr">правый ряд</b> (рядом с кнопкой Boot).</div>
+    <div class="caution"><strong>12 и 2 — strapping-пины.</strong> Паяйте их LED последними. Если плата перестанет стартовать (нет заставки на OLED) — временно отсоедините эти два LED.</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-head"><div class="step-num">A10</div><div class="step-title">Ввод питания мозга (G1)</div><span class="step-sub">5 В + 12 В</span></div>
+  <div class="step-body">
+    <table>
+      <tr><th>Источник</th><th>Куда</th><th>Ряд/где</th><th>Цвет</th></tr>
+      <tr><td class="from">5 В / 2 А</td><td class="to">пин <b>5V</b> (питает плату, K1, BP1)</td><td class="side"><span class="Lr">лев. низ</span></td><td class="color"><span class="color-swatch c-red"></span>красн.</td></tr>
+      <tr><td class="from">12 В (G1)</td><td class="to">M1 · Pin 2</td><td class="side">внешний</td><td class="color"><span class="color-swatch c-yellow"></span>жёлт.</td></tr>
+      <tr><td class="from">GND (5 В и 12 В)</td><td class="to">общая «звезда» земли</td><td class="side">любой GND</td><td class="color"><span class="color-swatch c-black"></span>чёрн.</td></tr>
+    </table>
+    <div class="loc">📍 <strong>На плате:</strong> внешние +5 В подаются на пин <b class="Lr">5V</b> (левый ряд, самый низ). Можно питать и от USB при наладке.</div>
+    <div class="tip">Можно один адаптер 12 В + buck-модуль на 5 В (≥2 А). Главное — общая земля.</div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ ЭТАП B — ПУЛЬТ ═══════════════ -->
+<h2 class="stage remote">ЭТАП B · ПУЛЬТ (DD2)</h2>
+
+<div class="step remote">
+  <div class="step-head"><div class="step-num">B1</div><div class="step-title">Шины 3.3 В / GND пульта</div></div>
+  <div class="step-body">
+    <p>У пульта силовых 5/12 В нет — всё на 3,3 В от платы.</p>
+    <div class="loc">📍 <strong>На плате:</strong> <b class="Lr">3V3</b> — левый верх, <b>GND</b> — любой. От них питаются A2 и HG2.</div>
+  </div>
+</div>
+
+<div class="step remote">
+  <div class="step-head"><div class="step-num">B2</div><div class="step-title">Радиомодуль nRF24 (A2) + конденсатор C2</div><span class="step-sub">правый ряд</span></div>
+  <div class="step-body">
+    <p>Один в один как на мозге (шаг A2): C2 470 мкФ у модуля, затем SPI.</p>
+    <table>
+      <tr><th>Пин платы</th><th>Ряд</th><th>К (A2)</th></tr>
+      <tr><td class="from">3V3 / GND</td><td class="side"><span class="Lr">лев.верх</span> / любой</td><td class="to">VCC / GND (+C2)</td></tr>
+      <tr><td class="from"><b>4 / 5</b></td><td class="side"><span class="Rr">правый</span></td><td class="to">CE / CSN</td></tr>
+      <tr><td class="from"><b>18 / 19 / 23</b></td><td class="side"><span class="Rr">правый</span></td><td class="to">SCK / MISO / MOSI</td></tr>
+    </table>
+    <div class="loc">📍 <strong>На плате:</strong> все сигналы nRF24 — на <b class="Rr">ПРАВОМ ряду</b>, те же номера, что и у мозга.</div>
+  </div>
+</div>
+
+<div class="step remote">
+  <div class="step-head"><div class="step-num">B3</div><div class="step-title">OLED (HG2)</div><span class="step-sub">правый ряд</span></div>
+  <div class="step-body">
+    <table>
+      <tr><th>Пин платы</th><th>Ряд</th><th>К (HG2)</th></tr>
+      <tr><td class="from"><b>21 / 22</b></td><td class="side"><span class="Rr">правый</span></td><td class="to">SDA / SCL</td></tr>
+      <tr><td class="from">3V3 / GND</td><td class="side"><span class="Lr">лев.верх</span> / любой</td><td class="to">VCC / GND</td></tr>
+    </table>
+    <div class="loc">📍 <strong>На плате:</strong> 21 и 22 — <b class="Rr">ПРАВЫЙ ряд</b> (22 у верха, 21 чуть ниже).</div>
+    <div class="caution"><strong>Подпись на дисплее: GND · VDD · SCK · SDA.</strong> «SCK» = SCL. Значит: <b>VDD → 3.3 В</b>, <b>SCK → пин 22</b>, <b>SDA → пин 21</b>, <b>GND → GND</b>.</div>
+  </div>
+</div>
+
+<div class="step remote">
+  <div class="step-head"><div class="step-num">B4</div><div class="step-title">Кнопки SB4…SB10 (× 7)</div><span class="step-sub">контакт → пин, второй → GND</span></div>
+  <div class="step-body">
+    <table>
+      <tr><th>Пин платы</th><th>Ряд</th><th>Кнопка → команда</th></tr>
+      <tr><td class="from"><b>16</b></td><td class="side"><span class="Rr">правый</span></td><td class="to">SB4 · POWER (1×/2×)</td></tr>
+      <tr><td class="from"><b>17</b></td><td class="side"><span class="Rr">правый</span></td><td class="to">SB5 · LOCK</td></tr>
+      <tr><td class="from"><b>25</b></td><td class="side"><span class="Lr">левый</span></td><td class="to">SB6 · РЕПУЛЬСОР</td></tr>
+      <tr><td class="from"><b>26</b></td><td class="side"><span class="Lr">левый</span></td><td class="to">SB7 · РУЧНАЯ ПОДАЧА</td></tr>
+      <tr><td class="from"><b>27</b></td><td class="side"><span class="Lr">левый</span></td><td class="to">SB8 · ПОДЖИГ</td></tr>
+      <tr><td class="from"><b>32</b></td><td class="side"><span class="Lr">левый</span></td><td class="to">SB9 · ЦЕЛЬ +0.5</td></tr>
+      <tr><td class="from"><b>33</b></td><td class="side"><span class="Lr">левый</span></td><td class="to">SB10 · ЦЕЛЬ −0.5 <span class="note">(будит из сна)</span></td></tr>
+      <tr><td class="from">GND</td><td class="side">любой</td><td class="to">вторые контакты всех 7 кнопок</td></tr>
+    </table>
+    <div class="loc">📍 <strong>На плате:</strong> две кнопки (16, 17) — на <b class="Rr">ПРАВОМ ряду</b>; остальные пять (25, 26, 27, 32, 33) — на <b class="Lr">ЛЕВОМ ряду</b>.</div>
+  </div>
+</div>
+
+<div class="step remote">
+  <div class="step-head"><div class="step-num">B5</div><div class="step-title">Светодиоды HL4, HL5</div><span class="step-sub">через 220 Ом → GND</span></div>
+  <div class="step-body">
+    <table>
+      <tr><th>Пин платы</th><th>Ряд</th><th>LED</th></tr>
+      <tr><td class="from"><b>13</b></td><td class="side"><span class="Lr">левый</span></td><td class="to">HL4 · POWER (син.) — пульт включён</td></tr>
+      <tr><td class="from"><b>14</b></td><td class="side"><span class="Lr">левый</span></td><td class="to">HL5 · TX (зел.) — мигает при отправке</td></tr>
+    </table>
+    <div class="loc">📍 <strong>На плате:</strong> 13 и 14 — рядом на <b class="Lr">ЛЕВОМ ряду</b> (13 под GND, 14 над ним). На пульте strapping-пины не задеты.</div>
+  </div>
+</div>
+
+<div class="step remote">
+  <div class="step-head"><div class="step-num">B6</div><div class="step-title">Питание пульта (G2)</div></div>
+  <div class="step-body">
+    <p>Li-ion 18650 (через повышающий до 5 В на Vin) или PowerBank в Micro-USB. Сон при простое 2 мин → ток ~10 мкА.</p>
+    <div class="tip">Если пульт всегда на USB и сон не нужен — в прошивке <code>DEEP_SLEEP_ENABLE = false</code>.</div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ ЭТАП C — ПРОВЕРКА ═══════════════ -->
+<h2 class="stage check">ЭТАП C · ПРОВЕРКА ПЕРЕД ПОДАЧЕЙ ПИТАНИЯ</h2>
+
+<div class="step check">
+  <div class="step-head"><div class="step-num">C1</div><div class="step-title">Прозвонка мультиметром (без питания)</div></div>
+  <div class="step-body">
+    <ul>
+      <li><strong>КЗ питание↔земля:</strong> прозвоните 3,3 В↔GND, 5 В↔GND, 12 В↔GND — звонка быть НЕ должно.</li>
+      <li><strong>Земля:</strong> все GND соединены между собой (звонок есть).</li>
+      <li><strong>nRF24:</strong> VCC = 3,3 В (не 5 В!). Полярность C1/C2 верная.</li>
+      <li><strong>Делитель BP1:</strong> между пином 36 и сигналом — R1 10к; между 36 и GND — R2 20к.</li>
+      <li><strong>Полярность</strong> LED и электролитов соблюдена.</li>
+      <li><strong>Красные пины</strong> (TX, RX, 0, EN, D0/D1/D2/D3/CMD/CLK) — к ним ничего не припаяно.</li>
+      <li>Силовые контакты K1 и газовая часть — пока отключены.</li>
+    </ul>
+  </div>
+</div>
+
+
+<!-- ═══════════════ ЭТАП D — ПЕРВЫЙ ЗАПУСК ═══════════════ -->
+<h2 class="stage check">ЭТАП D · ПРОШИВКА И ПЕРВЫЙ ЗАПУСК</h2>
+
+<div class="step check">
+  <div class="step-head"><div class="step-num">D1</div><div class="step-title">Прошить оба ESP32</div></div>
+  <div class="step-body">
+    <p>Залейте <code>H2_Brain_v5.ino</code> в DD1 и <code>H2_Remote_v5.ino</code> в DD2 (Arduino IDE, плата «ESP32 Dev Module», библиотеки RF24, Adafruit SSD1306/GFX, DS18B20/OneWire, ESPAsyncWebServer). Прошивать <strong>оба</strong> вместе.</p>
+  </div>
+</div>
+
+<div class="step check">
+  <div class="step-head"><div class="step-num">D2</div><div class="step-title">Включить мозг (DD1)</div></div>
+  <div class="step-body">
+    <ul>
+      <li>K1 ещё отключено от нагрузки. Подайте 5 В (и 12 В на M1).</li>
+      <li>На HG1 — «H2 PRO Brain v5.0» и «MPU6050 calibrating». <strong>Не двигать ~1 с.</strong></li>
+      <li>Появился главный экран. «MPU6050: NOT FOUND» → проверьте шаг A3.</li>
+      <li>Wi-Fi точка <code>H2_PRO</code>, веб <code>http://192.168.4.1</code>.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step check">
+  <div class="step-head"><div class="step-num">D3</div><div class="step-title">Включить пульт (DD2)</div></div>
+  <div class="step-body">
+    <ul>
+      <li>На HG2 — «H2 REMOTE», связь за 2–3 с («RF:OK»).</li>
+      <li>Нажатие кнопки → мигает HL5 (TX), мозг принимает команду.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step check">
+  <div class="step-head"><div class="step-num">D4</div><div class="step-title">Реле «вхолостую» и подключение нагрузки</div></div>
+  <div class="step-body">
+    <ul>
+      <li>Проверьте щелчки K1 командами, без дребезга.</li>
+      <li>Откалибруйте BP1 в вебе (offset/scale).</li>
+      <li>Настройте кривую M1 и порог перегрева; тахометр должен показывать обороты.</li>
+      <li><strong>Только теперь</strong> подключайте силовые контакты K1 к электролизёру/клапану/поджигу и газовую часть.</li>
+    </ul>
+    <div class="caution"><strong>Перед газом</strong> проверьте защиты: превышение давления, наклон (TILT &gt; 30°), продувку (2× POWER). Они работают автономно в мозге.</div>
+  </div>
+</div>
+
+<!-- ═══════════════ ЭТАП E — ДИАГНОСТИКА ═══════════════ -->
+<h2 class="stage check">ЭТАП E · ДИАГНОСТИКА И РЕШЕНИЕ ПРОБЛЕМ</h2>
+
+<div class="tip" style="font-size:13px;">
+  <strong>Два главных инструмента диагностики:</strong><br>
+  1. <strong>Веб → вкладка «Диагн.»</strong> (http://192.168.4.1) — показывает в реальном времени, какие модули НАЙДЕНЫ/НЕ НАЙДЕНЫ и что проверить.<br>
+  2. <strong>Serial Monitor</strong> в Arduino IDE (скорость <strong>115200</strong>) — при старте мозг печатает: <code>OLED: найден на 0x3C</code> либо <code>OLED: нет</code>, <code>MPU6050: OK/НЕТ</code>, <code>NRF24: OK/FAIL</code>, <code>WiFi AP</code>, загруженные настройки. Нажмите EN (сброс) и читайте лог.
+</div>
+
+<div class="step check">
+  <div class="step-head"><div class="step-num">E1</div><div class="step-title">Плата не прошивается — «no upload port provided»</div></div>
+  <div class="step-body">
+    <p><strong>Симптом:</strong> код компилируется (проценты флеша показаны), но загрузка падает с «no upload port provided»; в Arduino → Порт пусто.</p>
+    <p><strong>Причина:</strong> не установлен/слетел драйвер USB-чипа платы (на вашей плате — <strong>CP2102</strong>). Windows не создаёт COM-порт.</p>
+    <p><strong>Решение:</strong></p>
+    <ul>
+      <li>Установить драйвер <strong>Silicon Labs CP210x VCP</strong> (поиск «CP210x Universal Windows Driver»). После установки в Диспетчере устройств в «Порты (COM и LPT)» появится <code>Silicon Labs CP210x (COMx)</code>.</li>
+      <li>В Arduino IDE: <strong>Инструменты → Порт → COMx</strong>, плата <strong>ESP32 Dev Module</strong>.</li>
+      <li>Кабель должен быть <strong>с данными</strong>, не «только зарядка».</li>
+    </ul>
+    <div class="tip">Если CP2102 виден в Диспетчере с жёлтым «!» — ПКМ → Обновить драйвер / Удалить устройство → переткнуть USB.</div>
+  </div>
+</div>
+
+<div class="step check">
+  <div class="step-head"><div class="step-num">E2</div><div class="step-title">Зависает на «Connecting….___….» при загрузке</div></div>
+  <div class="step-body">
+    <p><strong>Симптом:</strong> порт выбран, но прошивка не стартует, точки «Connecting……».</p>
+    <p><strong>Причина:</strong> загрузчик ESP32 не вошёл в режим прошивки.</p>
+    <p><strong>Решение:</strong> в момент появления «Connecting» <strong>зажмите кнопку BOOT</strong> (нижняя справа) на 1–2 с и отпустите. Если не помогает — на время «Connecting» зажать BOOT, коротко нажать EN, отпустить BOOT. Также снизьте Upload Speed до 115200.</p>
+  </div>
+</div>
+
+<div class="step check">
+  <div class="step-head"><div class="step-num">E3</div><div class="step-title">Экран (OLED) не включается / пустой</div></div>
+  <div class="step-body">
+    <p><strong>Симптом:</strong> дисплей чёрный, заставки нет. В Serial — <code>OLED: нет</code>. В вебе «Диагн.» — <span class="key-red">OLED: НЕ НАЙДЕН</span>.</p>
+    <p><strong>Причина:</strong> дисплей не отвечает на шине I²C — почти всегда проводка/питание/адрес.</p>
+    <p><strong>Решение (по порядку):</strong></p>
+    <ul>
+      <li><strong>SDA → пин 21</strong>, <strong>SCK → пин 22</strong>. На модуле OLED контакт тактовой подписан «<strong>SCK</strong>» — это и есть SCL. Не перепутайте с соседними <span class="key-red">TX/RX</span> (они стоят между 22 и 21).</li>
+      <li><strong>VCC → 3.3 В</strong> (проверьте мультиметром, что 3,3 В реально есть), <strong>GND → GND</strong>.</li>
+      <li>Прозвоните оба провода тестером от ножки дисплея до ножки платы.</li>
+      <li><strong>Адрес дисплея менять не нужно</strong> — прошивка сама опрашивает шину и находит дисплей и на 0x3C, и на 0x3D. В Serial при успехе будет <code>OLED: найден на 0x3C</code> (или 0x3D). Если написано <code>OLED: нет</code> — дисплей на шине не отвечает вообще, дело в проводке или питании, а не в адресе.</li>
+    </ul>
+    <div class="caution">OLED и MPU на одной шине — если вместе с экраном «молчит» и наклон, см. <strong>E5</strong>.</div>
+  </div>
+</div>
+
+<div class="step check">
+  <div class="step-head"><div class="step-num">E4</div><div class="step-title">Наклон не срабатывает / в вебе нет аварии TILT</div></div>
+  <div class="step-body">
+    <p><strong>Симптом:</strong> переворачиваете установку — аварии нет. В вебе вместо угла красная строка <code>ДАТЧИК НАКЛОНА НЕ НАЙДЕН — ЗАЩИТА ОТКЛЮЧЕНА</code> и плашка <code>MPU6050 НЕ НАЙДЕН</code>.</p>
+    <p><strong>Причина:</strong> датчик MPU-6050 <strong>не найден</strong> при старте, и тогда TILT-защита автоматически отключается (это заложено в прошивке: нет датчика → нет защиты, чтобы не блокировать работу). Поэтому ошибка и не появляется. В Serial — <code>MPU6050: НЕТ — TILT-защита отключена!</code>, в вебе «Диагн.» — <span class="key-red">MPU-6050: НЕ НАЙДЕН</span>.</p>
+    <p><strong>Решение:</strong></p>
+    <ul>
+      <li><strong>AD0 → GND</strong> — обязательно (задаёт адрес 0x68, который ждёт прошивка; без этого адрес 0x69 и датчик «невидим»).</li>
+      <li>SDA → 21, SCL → 22 (те же, что у дисплея — параллельно), VCC → 3.3 В, GND → GND.</li>
+      <li>Проверьте по вкладке «Диагн.»: после исправления должно стать <span class="key-green">MPU-6050: OK</span>. Тогда наклон &gt; 30° даст аварию.</li>
+    </ul>
+    <div class="tip">Если MPU нашёлся, но «не реагирует» — наклоняйте сильнее (порог 30° от исходного положения; при старте 0,5 с идёт калибровка «нуля» — в это время не двигать).</div>
+  </div>
+</div>
+
+<div class="step check">
+  <div class="step-head"><div class="step-num">E5</div><div class="step-title">Не работают СРАЗУ и экран, и наклон (MPU)</div></div>
+  <div class="step-body">
+    <p><strong>Симптом:</strong> мёртвы оба — OLED и MPU одновременно.</p>
+    <p><strong>Причина:</strong> оба прибора висят на <strong>одной шине I²C (пины 21/22)</strong>. Один отказ на двоих = проблема самой шины.</p>
+    <p><strong>Решение — ищите общую причину:</strong></p>
+    <ul>
+      <li><strong>SDA и SCL не перепутаны:</strong> SDA → 21, SCL/SCK → 22. Если перепутать местами — не работает ничего.</li>
+      <li><strong>Не задели TX/RX:</strong> между пинами 22 и 21 на правом ряду стоят TX и RX — провод, попавший на них, убивает шину.</li>
+      <li><strong>Мостик припоя на землю — проверяйте В ПЕРВУЮ ОЧЕРЕДЬ.</strong> На правом ряду пины GND стоят вплотную к сигнальным, и капля припоя легко замыкает соседей. Обесточьте плату и прозвоните на КЗ пары <code>GND↔22</code> и <code>GND↔21</code>. Пищит — снимайте перемычку оплёткой. Тот же дефект рядом убивает и радио: прозвоните заодно <code>GND↔23</code>, <code>GND↔19</code>, <code>GND↔18</code>.</li>
+      <li><strong>Общая земля:</strong> GND модулей и платы соединены в одну точку.</li>
+      <li><strong>Питание 3,3 В</strong> приходит на VCC обоих модулей.</li>
+      <li>Самый быстрый тест — Serial Monitor: увидите сразу обе строки (OLED и MPU) со статусом.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step check">
+  <div class="step-head"><div class="step-num">E6</div><div class="step-title">Нет связи мозг ↔ пульт (RF: ОФФЛАЙН / «МОЗГ НЕ ОТВЕЧАЕТ»)</div></div>
+  <div class="step-body">
+    <p><strong>Симптом:</strong> на пульте «BRAIN OFFLINE», в вебе «Диагн.» — <span class="key-red">Связь с пультом: ОФФЛАЙН</span>; команды не доходят.</p>
+    <p><strong>Причина:</strong> радиоканал nRF24 не поднялся на одной/обеих сторонах.</p>
+    <p><strong>Решение:</strong></p>
+    <ul>
+      <li>В вебе «Диагн.» проверьте <strong>Радио NRF24</strong>: если <span class="key-red">НЕ НАЙДЕН</span> — проблема на стороне мозга (SPI: SCK→18, MISO→19, MOSI→23, CE→4, CSN→5; VCC→<strong>3.3 В</strong>, не 5 В!).</li>
+      <li><strong>Конденсатор 470 мкФ</strong> между VCC и GND модуля nRF24 — обязателен на ОБОИХ блоках, иначе сбои на 2 Мбит/с.</li>
+      <li>Модули и прошивки должны совпадать по параметрам (2 Мбит/с, каналы {76,100,120}) — они одинаковы в обеих прошивках, просто прошейте оба заново.</li>
+      <li>Питание пульта достаточное (садящаяся батарея → сбои передачи).</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step check">
+  <div class="step-head"><div class="step-num">E7</div><div class="step-title">Реле срабатывают «наоборот» или невпопад</div></div>
+  <div class="step-body">
+    <p><strong>Симптом:</strong> при включении нагрузка выключается и наоборот; реле включены, когда должны быть выключены.</p>
+    <p><strong>Причина:</strong> тип модуля реле (HIGH-active / LOW-active) не совпадает с настройкой в коде.</p>
+    <p><strong>Решение:</strong> в прошивке параметр <code>RELAY_ACTIVE_LOW</code>. Сейчас <code>true</code> — под «китайские» модули с оптопарой, где вход активен НИЗКИМ уровнем (GND на входе = реле включено). Если у вас модуль наоборот, HIGH-active, поставьте <code>false</code> и перепрошейте. Проверяйте на «холостом ходу», без газа.</p>
+    <div class="caution"><strong>Щелчок реле при включении платы — это нормально?</strong> Нет. Раньше все три реле кратко срабатывали на каждом сбросе, включая поджиг: вывод ESP32 при переводе в режим выхода сначала отдаёт низкий уровень. В текущей прошивке уровень записывается ДО включения драйвера вывода, и импульса больше нет. Если реле всё же щёлкают при старте — вы прошиты старой версией, возьмите прошивку из папки <code>Финал</code>.</div>
+  </div>
+</div>
+
+<div class="step check">
+  <div class="step-head"><div class="step-num">E8</div><div class="step-title">Давление неверное: 0, зашкаливает или скачет</div></div>
+  <div class="step-body">
+    <p><strong>Симптом:</strong> давление всегда 0 / максимум / сильно шумит — <b>либо прибор показывает давление, когда датчик вообще отсоединён</b>.</p>
+    <p><strong>Сначала посмотрите напряжение.</strong> Вкладка «Диагн.» показывает строку <b>«Напряжение на BP1»</b> — по ней диагноз ставится сразу, без мультиметра:</p>
+    <table>
+      <tr><th>Напряжение</th><th>Диагноз</th></tr>
+      <tr><td class="from"><b>0,5…4,5 В</b>, растёт с давлением</td><td class="to">Датчик исправен. Если цифра в барах не та — дело в калибровке.</td></tr>
+      <tr><td class="from">около <b>0 В</b></td><td class="to">Обрыв сигнала или нет питания BP1. В диагностике будет <b>ОБРЫВ / НЕТ ПИТАНИЯ</b>.</td></tr>
+      <tr><td class="from"><b>1…2,5 В</b> и почти не меняется, когда датчик отсоединяешь</td><td class="to"><b>Не впаян R2</b> — резистор 20 кОм с вывода 36 на GND. Вывод «висит в воздухе» и ловит наводки. Прозвоните: 36↔GND должно быть 20 кОм.</td></tr>
+      <tr><td class="from">выше <b>4,7 В</b></td><td class="to">⛔ Делителя нет, сигнал идёт на вывод 36 напрямую. Обесточьте немедленно.</td></tr>
+    </table>
+    <p><strong>Решение:</strong></p>
+    <ul>
+      <li><strong>Делитель обязателен, и в нём ДВА резистора:</strong> сигнал → R1 10к → вывод 36, и от того же вывода 36 → R2 20к → GND. Пропущенный R2 — самая частая ошибка; подробно разобрано в шаге A5.</li>
+      <li>Питание датчика <strong>5 В</strong> (Vin), GND общий с платой.</li>
+      <li>Калибровка в вебе → «Настройки → Калибровка»: <strong>offset</strong> — напряжение датчика при 0 бар (обычно 0,5), <strong>scale</strong> — бар на вольт (обычно 2,5). <b>Делитель учитывать НЕ нужно</b> — прошивка снимает его сама и работает в паспортных вольтах датчика.</li>
+      <li>Шум ±0,05 бар — норма (усредняется), сильные скачки → проверьте земля/контакт.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step check">
+  <div class="step-head"><div class="step-num">E9</div><div class="step-title">Вентилятор не крутится / «НЕТ ОБОРОТОВ»</div></div>
+  <div class="step-body">
+    <p><strong>Симптом:</strong> в вебе «Диагн.» — <span class="key-red">Вентилятор: НЕТ ОБОРОТОВ</span> при заданной скорости, либо не вращается.</p>
+    <p><strong>Причина:</strong> нет питания +12 В, не подключён тахометр, или ШИМ не доходит.</p>
+    <p><strong>Решение:</strong></p>
+    <ul>
+      <li><strong>+12 В</strong> на Pin 2 вентилятора от адаптера G1 (НЕ с платы), GND общий с ESP32.</li>
+      <li>ШИМ: пин <strong>32</strong> → Pin 4; тахометр: пин <strong>16</strong> → Pin 3.</li>
+      <li>Если 12 В есть, а оборотов 0 при ШИМ&gt;0 — большинство вентиляторов не принимают ШИМ 3,3 В: поставьте <strong>level shifter 3,3→5 В</strong> на линию PWM.</li>
+      <li>Проверьте режим в «Настройки → Вентилятор» (Авто/Ручной/Выкл).</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step check">
+  <div class="step-head"><div class="step-num">E10</div><div class="step-title">Плата перезагружается / не стартует после пайки</div></div>
+  <div class="step-body">
+    <p><strong>Симптом:</strong> циклические перезагрузки, «Brownout detector», или плата не стартует (нет заставки/Wi-Fi).</p>
+    <p><strong>Причина 1 — питание:</strong> просадка по 5 В (слабый адаптер/кабель) при срабатывании реле/радио.</p>
+    <p><strong>Решение:</strong> блок питания <strong>5 В ≥ 2 А</strong>, реле питать отдельно (снять перемычку JD-VCC), толще провода питания.</p>
+    <p><strong>Причина 2 — strapping-пины:</strong> LED/провода на <strong>GPIO 12, 2, 15</strong> мешают загрузке.</p>
+    <p><strong>Решение:</strong> временно отсоедините LED с пинов 12 и 2 и провод с 15 — если плата стартует, дело в них (в норме светодиод через 220 Ом и подтяжка 4,7к на 15 безопасны; проверьте номиналы и что нет КЗ).</p>
+  </div>
+</div>
+
+<div class="step check">
+  <div class="step-head"><div class="step-num">E11</div><div class="step-title">Температура «t--» / нет данных</div></div>
+  <div class="step-body">
+    <p><strong>Симптом:</strong> на экране «t--», в вебе «Диагн.» — <span class="key-red">Датчик температуры: НЕТ ДАННЫХ</span>; вентилятор в авто уходит на 100 %.</p>
+    <p><strong>Причина:</strong> датчик не читается (обрыв/не та подтяжка/не тот тип в коде).</p>
+    <p><strong>Решение:</strong></p>
+    <ul>
+      <li>DS18B20: <strong>DATA → 15</strong> + резистор <strong>4,7 кОм между DATA и 3,3 В</strong> (без подтяжки 1-Wire не работает), VCC→3,3 В, GND→GND.</li>
+      <li>Тип датчика в коде задаётся <code>#define TEMP_SENSOR_DS18B20</code> (по умолч.) либо <code>TEMP_SENSOR_NTC</code> (тогда NTC→34 + делитель 10к).</li>
+      <li>Значения −127 °C и 85 °C прошивка считает недостоверными (обрыв / до первого замера).</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step check">
+  <div class="step-head"><div class="step-num">E12</div><div class="step-title">Не открывается веб-интерфейс (192.168.4.1)</div></div>
+  <div class="step-body">
+    <p><strong>Симптом:</strong> сеть «H2_PRO» не видна или страница не грузится.</p>
+    <p><strong>Решение:</strong></p>
+    <ul>
+      <li>Подключитесь к Wi-Fi <strong>H2_PRO</strong>, пароль <strong>hydrogen_2024</strong>. В Serial при старте есть строка <code>WiFi AP: H2_PRO  IP: 192.168.4.1</code>.</li>
+      <li>В браузере откройте ровно <code>http://192.168.4.1</code> (без https).</li>
+      <li>На телефоне <strong>отключите мобильные данные</strong> — иначе телефон уводит трафик в интернет, а у точки H2_PRO интернета нет.</li>
+      <li>Если сети нет вообще — мозг не стартовал (см. E10) или конфликт пинов.</li>
+    </ul>
+  </div>
+</div>
+
+<div style="text-align:center; color:#444; font-size:11px; margin-top:18px;">
+  Собирайте по шагам, прозванивайте каждое соединение. Сверяйтесь с фото платы вверху. H2 PRO v5.0 · ESP32 DevKit 38-pin · 2026
+</div>
+
+</body>
+</html>

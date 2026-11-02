@@ -1,0 +1,12 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- v1.3.0: isLightTheme по системной теме → prefers-color-scheme в WebView («Как на телефоне») -->
+    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
+        <item name="android:statusBarColor">#171A18</item>
+        <item name="android:navigationBarColor">#171A18</item>
+        <item name="android:windowBackground">#171A18</item>
+        <item name="android:colorAccent">#E95C26</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+</resources>

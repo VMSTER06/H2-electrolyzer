@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>H2 PRO — Схема подключения</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d1117; color: #e0e0e0; font-family: Arial, sans-serif;
+         padding: 20px; font-size: 13px; }
+  h1 { text-align: center; color: #58a6ff; font-size: 1.5em; margin-bottom: 4px; }
+  .subtitle { text-align: center; color: #666; margin-bottom: 20px; font-size: 0.85em; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  .device { border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
+  .device-header { padding: 12px 16px; font-weight: bold; font-size: 1.1em;
+                   text-align: center; letter-spacing: 1px; }
+  .brain-hdr  { background: #0c2033; color: #58a6ff; border-bottom: 1px solid #1c4a7a; }
+  .remote-hdr { background: #1a0c2e; color: #bc8cff; border-bottom: 1px solid #4a1c7a; }
+
+  .section { padding: 0; }
+  .section-title { padding: 5px 12px; font-weight: bold; font-size: 0.75em;
+                   letter-spacing: 1px; text-transform: uppercase; }
+
+  /* Цвета секций */
+  .s-nrf    { background: #1a1a00; color: #e8c84a; }
+  .s-relay  { background: #200a0a; color: #ff6b6b; }
+  .s-i2c    { background: #0a0a20; color: #79b8ff; }
+  .s-adc    { background: #0a1a0a; color: #56d364; }
+  .s-btn    { background: #1a0e00; color: #f0a000; }
+  .s-led    { background: #1a001a; color: #d85cff; }
+  .s-pwr    { background: #0a1a10; color: #3fb950; }
+  .s-note   { background: #200000; color: #ff8888; }
+
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 4px 12px; border-bottom: 1px solid #21262d; vertical-align: middle; }
+  td:first-child { color: #8b949e; width: 42%; }
+  td:nth-child(2){ font-weight: bold; color: #e0e0e0; width: 26%; font-family: monospace; font-size: 12px; }
+  td:last-child  { color: #8b949e; font-size: 11px; }
+  tr:last-child td { border-bottom: none; }
+
+  .pin-new   { color: #3fb950 !important; }
+  .pin-warn  { color: #f0a000 !important; }
+  .pin-fixed { color: #58a6ff !important; }
+
+  .badge { display: inline-block; font-size: 9px; padding: 1px 5px;
+           border-radius: 8px; font-weight: bold; vertical-align: middle;
+           margin-left: 3px; }
+  .new  { background: #1a4a1a; color: #3fb950; }
+  .warn { background: #4a3000; color: #f0a000; }
+
+  .notes-box { margin-top: 20px; border: 1px solid #30363d; border-radius: 10px;
+               overflow: hidden; }
+  .notes-box .section-title { font-size: 0.8em; }
+  .note-item { padding: 6px 16px; border-bottom: 1px solid #21262d;
+               font-size: 12px; display: flex; gap: 8px; }
+  .note-item:last-child { border-bottom: none; }
+  .note-icon { min-width: 20px; }
+  .note-text { color: #c9d1d9; }
+  .note-text strong { color: #ff8888; }
+
+  .radio-link { margin-top: 16px; text-align: center; padding: 10px;
+                border: 1px dashed #1c4a2a; border-radius: 8px;
+                color: #3fb950; font-size: 12px; }
+  .radio-link span { color: #56d364; font-weight: bold; }
+
+  @media print {
+    body { background: white; color: #111; padding: 10px; }
+    .device { border: 1px solid #888; }
+    .device-header { color: #000 !important; background: #ddd !important; }
+    td:first-child, td:last-child { color: #555; }
+    td:nth-child(2) { color: #000; }
+    .section-title { color: #000 !important; background: #eee !important; }
+    .notes-box { border: 1px solid #888; }
+  }
+</style>
+</head>
+<body>
+
+<h1>⚡ H2 PRO — Схема подключения</h1>
+<div class="subtitle">v3.0 TILT · ESP32 DevKit v1 (WROOM-32D) × 2</div>
+
+<div class="grid">
+
+  <!-- ════════════════════════════════════════════════════════
+       МОЗГ
+  ════════════════════════════════════════════════════════ -->
+  <div class="device">
+    <div class="device-header brain-hdr">🧠 МОЗГ</div>
+
+    <!-- NRF24 -->
+    <div class="section">
+      <div class="section-title s-nrf">📡 NRF24L01 (VSPI) — адаптер 3.3V</div>
+      <table>
+        <tr><td>VCC (адаптера)</td><td class="pin-fixed">3.3V</td><td>Строго 3.3В!</td></tr>
+        <tr><td>GND</td><td>GND</td><td>Общая земля</td></tr>
+        <tr><td>CE</td><td>GPIO 4</td><td></td></tr>
+        <tr><td>CSN</td><td>GPIO 5</td><td></td></tr>
+        <tr><td>SCK</td><td>GPIO 18</td><td>VSPI Clock</td></tr>
+        <tr><td>MISO</td><td>GPIO 19</td><td>VSPI MISO</td></tr>
+        <tr><td>MOSI</td><td>GPIO 23</td><td>VSPI MOSI</td></tr>
+      </table>
+    </div>
+
+    <!-- Реле -->
+    <div class="section">
+      <div class="section-title s-relay">⚡ Реле (4-канальный модуль 5V)</div>
+      <table>
+        <tr><td>VCC модуля</td><td class="pin-fixed">Vin (5V)</td><td>Не от 3.3V!</td></tr>
+        <tr><td>GND</td><td>GND</td><td></td></tr>
+        <tr><td>IN1 → Электролизер</td><td>GPIO 25</td><td>Реле 1</td></tr>
+        <tr><td>IN2 → Клапан</td><td>GPIO 26</td><td>Реле 2</td></tr>
+        <tr><td>IN3 → Пьезоподжиг</td><td>GPIO 27</td><td>Реле 3</td></tr>
+      </table>
+    </div>
+
+    <!-- I2C -->
+    <div class="section">
+      <div class="section-title s-i2c">🖥 I2C шина — OLED (0x3C) + MPU6050 (0x68)</div>
+      <table>
+        <tr><td>SDA (оба модуля)</td><td>GPIO 21</td><td>Параллельно</td></tr>
+        <tr><td>SCL (оба модуля)</td><td>GPIO 22</td><td>Параллельно</td></tr>
+        <tr><td>OLED VCC</td><td class="pin-fixed">3.3V</td><td>Адрес 0x3C</td></tr>
+        <tr><td>MPU6050 VCC <span class="badge new">НОВОЕ</span></td><td class="pin-new pin-fixed">3.3V</td><td>Адрес 0x68</td></tr>
+        <tr><td>MPU6050 AD0 <span class="badge new">НОВОЕ</span></td><td class="pin-new">GND</td><td>Фиксация адреса</td></tr>
+      </table>
+    </div>
+
+    <!-- Датчик давления -->
+    <div class="section">
+      <div class="section-title s-adc">📊 Датчик давления 0–10 бар (0.5–4.5V)</div>
+      <table>
+        <tr><td>Сигнал → R10кОм →</td><td>GPIO 36</td><td>Input-only</td></tr>
+        <tr><td>GPIO 36 → R20кОм →</td><td>GND</td><td>Делитель!</td></tr>
+      </table>
+    </div>
+
+    <!-- Кнопки -->
+    <div class="section">
+      <div class="section-title s-btn">🔘 Кнопки (INPUT_PULLUP → GND)</div>
+      <table>
+        <tr><td>BTN Power</td><td>GPIO 13</td><td>1×=вкл/выкл, 2×=продувка</td></tr>
+        <tr><td>BTN Lock <span class="badge new">НОВОЕ</span></td><td class="pin-new">GPIO 14</td><td>Lock / разблок. TILT</td></tr>
+      </table>
+    </div>
+
+    <!-- LED -->
+    <div class="section">
+      <div class="section-title s-led">💡 Светодиоды (220Ом → LED → GND)</div>
+      <table>
+        <tr><td>LED Power (зелёный)</td><td>GPIO 17</td><td>Система вкл</td></tr>
+        <tr><td>LED Lock (красный) <span class="badge warn">⚠</span></td><td class="pin-warn">GPIO 12</td><td>Блок / TILT мигает</td></tr>
+        <tr><td>LED Mode (синий) <span class="badge warn">⚠</span></td><td class="pin-warn">GPIO 2</td><td>Режим 4 бар</td></tr>
+      </table>
+    </div>
+
+    <!-- Питание -->
+    <div class="section">
+      <div class="section-title s-pwr">🔋 Питание мозга</div>
+      <table>
+        <tr><td>Блок питания</td><td>5V / 2A</td><td>Micro-USB или DC jack</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       ПУЛЬТ
+  ════════════════════════════════════════════════════════ -->
+  <div class="device">
+    <div class="device-header remote-hdr">🎮 ПУЛЬТ</div>
+
+    <!-- NRF24 -->
+    <div class="section">
+      <div class="section-title s-nrf">📡 NRF24L01 (VSPI) — адаптер 3.3V</div>
+      <table>
+        <tr><td>VCC (адаптера)</td><td class="pin-fixed">3.3V</td><td>Строго 3.3В!</td></tr>
+        <tr><td>GND</td><td>GND</td><td></td></tr>
+        <tr><td>CE</td><td>GPIO 4</td><td>Те же пины,</td></tr>
+        <tr><td>CSN</td><td>GPIO 5</td><td>что на мозге</td></tr>
+        <tr><td>SCK</td><td>GPIO 18</td><td>VSPI Clock</td></tr>
+        <tr><td>MISO</td><td>GPIO 19</td><td>VSPI MISO</td></tr>
+        <tr><td>MOSI</td><td>GPIO 23</td><td>VSPI MOSI</td></tr>
+      </table>
+    </div>
+
+    <!-- I2C OLED -->
+    <div class="section">
+      <div class="section-title s-i2c">🖥 OLED 0.96″ SSD1306 I2C (0x3C)</div>
+      <table>
+        <tr><td>SDA</td><td>GPIO 21</td><td></td></tr>
+        <tr><td>SCL</td><td>GPIO 22</td><td></td></tr>
+        <tr><td>VCC</td><td class="pin-fixed">3.3V</td><td></td></tr>
+        <tr><td>GND</td><td>GND</td><td></td></tr>
+      </table>
+    </div>
+
+    <!-- Кнопки -->
+    <div class="section">
+      <div class="section-title s-btn">🔘 Кнопки (INPUT_PULLUP → GND)</div>
+      <table>
+        <tr><td>BTN Power</td><td>GPIO 13</td><td>Команда 0x01</td></tr>
+        <tr><td>BTN Lock</td><td>GPIO 14</td><td>Команда 0x02</td></tr>
+        <tr><td>BTN Const Gas</td><td>GPIO 32</td><td>Команда 0x03</td></tr>
+        <tr><td>BTN Piezo</td><td>GPIO 33</td><td>Команда 0x04</td></tr>
+        <tr><td>BTN Repulsor</td><td>GPIO 25</td><td>Команда 0x05</td></tr>
+        <tr><td>BTN Mode</td><td>GPIO 26</td><td>Команда 0x06 <span style="color:#ff6b6b;font-size:10px">↑ перенесён с GPIO22</span></td></tr>
+        <tr><td>BTN Manual Gas</td><td>GPIO 16</td><td>Команда 0x07</td></tr>
+        <tr><td>BTN Safe Off</td><td>GPIO 27</td><td>Команда 0x99 <span style="color:#ff6b6b;font-size:10px">↑ перенесён с GPIO21</span></td></tr>
+      </table>
+    </div>
+
+    <!-- LED -->
+    <div class="section">
+      <div class="section-title s-led">💡 Светодиоды (220Ом → LED → GND)</div>
+      <table>
+        <tr><td>LED Power (синий)</td><td>GPIO 17</td><td>Питание вкл</td></tr>
+        <tr><td>LED TX (зелёный)</td><td>GPIO 15</td><td>Мигает при отправке</td></tr>
+      </table>
+    </div>
+
+    <!-- Питание -->
+    <div class="section">
+      <div class="section-title s-pwr">🔋 Питание пульта</div>
+      <table>
+        <tr><td>PowerBank / 3×AA</td><td>5V</td><td>Через Micro-USB</td></tr>
+      </table>
+    </div>
+
+    <!-- Пины карта -->
+    <div class="section">
+      <div class="section-title s-adc">📋 Свободные GPIO пульта</div>
+      <table>
+        <tr><td colspan="3" style="color:#555; font-size:11px; padding:6px 12px;">
+          0, 2*, 3, 34, 35, 36, 39 (34–39 input-only)<br>
+          * GPIO 2 — strapping, лучше не использовать
+        </td></tr>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /grid -->
+
+<!-- Радиосвязь -->
+<div class="radio-link">
+  📡 Радиосвязь NRF24L01 · адрес <span>"HYDRO"</span> · двусторонняя (пульт → мозг команды, мозг → пульт статус) · PA_MAX · канал по умолчанию
+</div>
+
+<!-- Примечания -->
+<div class="notes-box">
+  <div class="section-title s-note">⚠ Важные замечания</div>
+
+  <div class="note-item">
+    <span class="note-icon">1</span>
+    <span class="note-text"><strong>Конденсатор на NRF24!</strong> Припаять 470 мкФ (электролит) прямо между VCC и GND адаптера модуля NRF24. На обоих устройствах. Без него — вечные зависания из-за помех Wi-Fi.</span>
+  </div>
+  <div class="note-item">
+    <span class="note-icon">2</span>
+    <span class="note-text"><strong>GPIO 12 и GPIO 2 — strapping-пины.</strong> LED на этих пинах работает, но если ESP32 не стартует — временно отключи эти два LED для диагностики.</span>
+  </div>
+  <div class="note-item">
+    <span class="note-icon">3</span>
+    <span class="note-text"><strong>Делитель напряжения для датчика давления — обязательно!</strong> Датчик даёт до 4.5V, ESP32 выдерживает максимум 3.3V на ADC. Без делителя сгорит АЦП. Схема: Сигнал → 10кОм → GPIO36 → 20кОм → GND.</span>
+  </div>
+  <div class="note-item">
+    <span class="note-icon">4</span>
+    <span class="note-text"><strong>Общая земля.</strong> Все GND (ESP32 мозга, реле, датчик, блок питания) должны быть соединены в одной точке.</span>
+  </div>
+  <div class="note-item">
+    <span class="note-icon">5</span>
+    <span class="note-text"><strong>Реле — раздельное питание катушек.</strong> Если на модуле реле есть перемычка JD-VCC, лучше убрать её и питать катушки от отдельного источника 5V. Это изолирует помехи от ESP32.</span>
+  </div>
+  <div class="note-item">
+    <span class="note-icon">6</span>
+    <span class="note-text"><strong>MPU6050 — строго 3.3V.</strong> AD0 → GND для адреса 0x68. Модуль GY-521 висит на той же I2C шине что и OLED, конфликта нет (разные адреса).</span>
+  </div>
+  <div class="note-item">
+    <span class="note-icon">7</span>
+    <span class="note-text"><strong>Изменения v3 на пульте:</strong> BTN Mode перенесён GPIO22→GPIO26, BTN Safe Off (продувка) перенесён GPIO21→GPIO27. Причина: GPIO 21/22 заняты I2C для OLED.</span>
+  </div>
+</div>
+
+<div style="text-align:center; color:#444; font-size:11px; margin-top:14px;">
+  H2 PRO v3.0 TILT · ESP32 DevKit v1 (WROOM-32D) · 2025
+</div>
+
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     СТРАНИЦА 2 — ГРАФИЧЕСКИЕ СХЕМЫ
+═══════════════════════════════════════════════════════════════ -->
+<div style="page-break-before:always; padding-top:20px;">
+
+<h1 style="color:#58a6ff;text-align:center;font-size:1.4em;margin-bottom:4px;">Графические схемы подключения</h1>
+<p style="text-align:center;color:#555;font-size:0.8em;margin-bottom:22px;">H2 PRO v3.0 TILT · ESP32 DevKit v1 (WROOM-32D)</p>
+
+<!-- ──────────────────── ЛЕГЕНДА ──────────────────── -->
+<div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-bottom:22px;">
+  <span style="display:flex;align-items:center;gap:5px;font-size:11px;">
+    <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#e8c84a" stroke-width="3"/></svg>SPI (NRF24)</span>
+  <span style="display:flex;align-items:center;gap:5px;font-size:11px;">
+    <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#8a7bff" stroke-width="3"/></svg>I²C</span>
+  <span style="display:flex;align-items:center;gap:5px;font-size:11px;">
+    <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#ff5555" stroke-width="3"/></svg>Реле</span>
+  <span style="display:flex;align-items:center;gap:5px;font-size:11px;">
+    <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#56d364" stroke-width="3"/></svg>ADC / аналог</span>
+  <span style="display:flex;align-items:center;gap:5px;font-size:11px;">
+    <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#ffa500" stroke-width="3"/></svg>GPIO кнопки</span>
+  <span style="display:flex;align-items:center;gap:5px;font-size:11px;">
+    <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#d85cff" stroke-width="3"/></svg>GPIO LED</span>
+  <span style="display:flex;align-items:center;gap:5px;font-size:11px;">
+    <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#ff6666" stroke-width="3" stroke-dasharray="4,2"/></svg>Питание 5V</span>
+  <span style="display:flex;align-items:center;gap:5px;font-size:11px;">
+    <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#888" stroke-width="2" stroke-dasharray="3,2"/></svg>GND</span>
+</div>
+
+<!-- ═══════ МОЗГ ═══════ -->
+<p style="text-align:center;color:#58a6ff;font-weight:bold;font-size:1.1em;margin-bottom:10px;">🧠 МОЗГ</p>
+<div style="overflow-x:auto;">
+<svg viewBox="0 0 1060 660" style="width:100%;max-width:1060px;display:block;margin:0 auto;background:#0d1117;border-radius:10px;border:1px solid #21262d;" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <marker id="arrowL" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+    <path d="M6,0 L0,3 L6,6 Z" fill="#555"/>
+  </marker>
+  <filter id="glow">
+    <feGaussianBlur stdDeviation="1.5" result="blur"/>
+    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</defs>
+
+<!-- ───── ESP32 chip body ───── -->
+<g>
+  <rect x="410" y="30" width="160" height="600" rx="8" fill="#0c1a10" stroke="#2ea043" stroke-width="2"/>
+  <!-- Chip label -->
+  <text x="490" y="58" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold" font-family="monospace">ESP32</text>
+  <text x="490" y="73" text-anchor="middle" fill="#3fb950" font-size="9" font-family="monospace">DEVKIT V1</text>
+  <text x="490" y="88" text-anchor="middle" fill="#3fb950" font-size="9" font-family="monospace">WROOM-32D</text>
+  <!-- Antenna symbol -->
+  <rect x="460" y="588" width="60" height="30" rx="3" fill="#0a2a14" stroke="#2ea043" stroke-width="1"/>
+  <text x="490" y="608" text-anchor="middle" fill="#56d364" font-size="9" font-family="monospace">WiFi</text>
+
+  <!-- Left pin labels (inside chip, right-aligned) -->
+  <!-- SPI group -->
+  <text x="565" y="178" text-anchor="end" fill="#e8c84a" font-size="9" font-family="monospace">GPIO 4</text>
+  <text x="565" y="198" text-anchor="end" fill="#e8c84a" font-size="9" font-family="monospace">GPIO 5</text>
+  <text x="565" y="218" text-anchor="end" fill="#e8c84a" font-size="9" font-family="monospace">GPIO 18</text>
+  <text x="565" y="238" text-anchor="end" fill="#e8c84a" font-size="9" font-family="monospace">GPIO 19</text>
+  <text x="565" y="258" text-anchor="end" fill="#e8c84a" font-size="9" font-family="monospace">GPIO 23</text>
+  <!-- Power group left -->
+  <text x="565" y="118" text-anchor="end" fill="#ff6666" font-size="9" font-family="monospace">Vin 5V</text>
+  <text x="565" y="138" text-anchor="end" fill="#ffaa66" font-size="9" font-family="monospace">3.3V</text>
+  <text x="565" y="158" text-anchor="end" fill="#888" font-size="9" font-family="monospace">GND</text>
+  <!-- Relay group -->
+  <text x="565" y="378" text-anchor="end" fill="#ff5555" font-size="9" font-family="monospace">GPIO 25</text>
+  <text x="565" y="398" text-anchor="end" fill="#ff5555" font-size="9" font-family="monospace">GPIO 26</text>
+  <text x="565" y="418" text-anchor="end" fill="#ff5555" font-size="9" font-family="monospace">GPIO 27</text>
+
+  <!-- Right pin labels (inside chip, left-aligned) -->
+  <!-- I2C group -->
+  <text x="415" y="158" text-anchor="start" fill="#8a7bff" font-size="9" font-family="monospace">GPIO 21</text>
+  <text x="415" y="178" text-anchor="start" fill="#8a7bff" font-size="9" font-family="monospace">GPIO 22</text>
+  <!-- Power right -->
+  <text x="415" y="118" text-anchor="start" fill="#ffaa66" font-size="9" font-family="monospace">3.3V</text>
+  <text x="415" y="138" text-anchor="start" fill="#888" font-size="9" font-family="monospace">GND</text>
+  <!-- ADC -->
+  <text x="415" y="278" text-anchor="start" fill="#56d364" font-size="9" font-family="monospace">GPIO 36</text>
+  <!-- LEDs -->
+  <text x="415" y="378" text-anchor="start" fill="#d85cff" font-size="9" font-family="monospace">GPIO 17</text>
+  <text x="415" y="398" text-anchor="start" fill="#f0a000" font-size="9" font-family="monospace">GPIO 12⚠</text>
+  <text x="415" y="418" text-anchor="start" fill="#f0a000" font-size="9" font-family="monospace">GPIO 2⚠</text>
+  <!-- Buttons -->
+  <text x="415" y="478" text-anchor="start" fill="#ffa500" font-size="9" font-family="monospace">GPIO 13</text>
+  <text x="415" y="498" text-anchor="start" fill="#56d364" font-size="9" font-family="monospace">GPIO 14</text>
+
+  <!-- Pin stubs LEFT (going right to connect to left peripherals) -->
+  <!-- Power -->
+  <line x1="570" y1="115" x2="590" y2="115" stroke="#ff6666" stroke-width="2"/>
+  <line x1="570" y1="135" x2="590" y2="135" stroke="#ffaa66" stroke-width="2"/>
+  <line x1="570" y1="155" x2="590" y2="155" stroke="#888" stroke-width="2"/>
+  <!-- SPI -->
+  <line x1="570" y1="175" x2="590" y2="175" stroke="#e8c84a" stroke-width="2"/>
+  <line x1="570" y1="195" x2="590" y2="195" stroke="#e8c84a" stroke-width="2"/>
+  <line x1="570" y1="215" x2="590" y2="215" stroke="#e8c84a" stroke-width="2"/>
+  <line x1="570" y1="235" x2="590" y2="235" stroke="#e8c84a" stroke-width="2"/>
+  <line x1="570" y1="255" x2="590" y2="255" stroke="#e8c84a" stroke-width="2"/>
+  <!-- Relay -->
+  <line x1="570" y1="375" x2="590" y2="375" stroke="#ff5555" stroke-width="2"/>
+  <line x1="570" y1="395" x2="590" y2="395" stroke="#ff5555" stroke-width="2"/>
+  <line x1="570" y1="415" x2="590" y2="415" stroke="#ff5555" stroke-width="2"/>
+
+  <!-- Pin stubs RIGHT (going left) -->
+  <!-- Power -->
+  <line x1="410" y1="115" x2="390" y2="115" stroke="#ffaa66" stroke-width="2"/>
+  <line x1="410" y1="135" x2="390" y2="135" stroke="#888" stroke-width="2"/>
+  <!-- I2C -->
+  <line x1="410" y1="155" x2="390" y2="155" stroke="#8a7bff" stroke-width="2"/>
+  <line x1="410" y1="175" x2="390" y2="175" stroke="#8a7bff" stroke-width="2"/>
+  <!-- ADC -->
+  <line x1="410" y1="275" x2="390" y2="275" stroke="#56d364" stroke-width="2"/>
+  <!-- LEDs -->
+  <line x1="410" y1="375" x2="390" y2="375" stroke="#d85cff" stroke-width="2"/>
+  <line x1="410" y1="395" x2="390" y2="395" stroke="#f0a000" stroke-width="2"/>
+  <line x1="410" y1="415" x2="390" y2="415" stroke="#f0a000" stroke-width="2"/>
+  <!-- Buttons -->
+  <line x1="410" y1="475" x2="390" y2="475" stroke="#ffa500" stroke-width="2"/>
+  <line x1="410" y1="495" x2="390" y2="495" stroke="#56d364" stroke-width="2"/>
+</g>
+
+<!-- ───── LEFT: NRF24L01 ───── -->
+<rect x="600" y="100" width="175" height="175" rx="6" fill="#1a1500" stroke="#e8c84a" stroke-width="1.5"/>
+<text x="687" y="122" text-anchor="middle" fill="#e8c84a" font-size="11" font-weight="bold">NRF24L01+</text>
+<text x="687" y="137" text-anchor="middle" fill="#888" font-size="9">+ адаптер 3.3V</text>
+<line x1="617" y1="148" x2="657" y2="148" stroke="#888" stroke-width="1"/>
+<text x="617" y="162" fill="#888" font-size="9">VCC</text><text x="660" y="162" fill="#888" font-size="9">→ 3.3V</text>
+<text x="617" y="177" fill="#888" font-size="9">GND</text><text x="660" y="177" fill="#888" font-size="9">→ GND</text>
+<text x="617" y="192" fill="#e8c84a" font-size="9">CE</text><text x="660" y="192" fill="#e8c84a" font-size="9">→ GPIO 4</text>
+<text x="617" y="207" fill="#e8c84a" font-size="9">CSN</text><text x="660" y="207" fill="#e8c84a" font-size="9">→ GPIO 5</text>
+<text x="617" y="222" fill="#e8c84a" font-size="9">SCK</text><text x="660" y="222" fill="#e8c84a" font-size="9">→ GPIO 18</text>
+<text x="617" y="237" fill="#e8c84a" font-size="9">MISO</text><text x="660" y="237" fill="#e8c84a" font-size="9">→ GPIO 19</text>
+<text x="617" y="252" fill="#e8c84a" font-size="9">MOSI</text><text x="660" y="252" fill="#e8c84a" font-size="9">→ GPIO 23</text>
+<!-- SPI bus lines -->
+<polyline points="590,175 600,175" fill="none" stroke="#e8c84a" stroke-width="2.5"/>
+<polyline points="590,195 600,195" fill="none" stroke="#e8c84a" stroke-width="2.5"/>
+<polyline points="590,215 600,215" fill="none" stroke="#e8c84a" stroke-width="2.5"/>
+<polyline points="590,235 600,235" fill="none" stroke="#e8c84a" stroke-width="2.5"/>
+<polyline points="590,255 600,255" fill="none" stroke="#e8c84a" stroke-width="2.5"/>
+<!-- VCC/GND connections from chip -->
+<polyline points="590,115 596,115 596,135 600,135" fill="none" stroke="#ffaa66" stroke-width="1.5"/>
+<polyline points="590,155 596,155 596,148 600,148" fill="none" stroke="#888" stroke-width="1.5" stroke-dasharray="3,2"/>
+<!-- 470uF cap annotation -->
+<rect x="750" y="158" width="22" height="14" rx="2" fill="#222" stroke="#e8c84a" stroke-width="1"/>
+<text x="761" y="169" text-anchor="middle" fill="#e8c84a" font-size="8">470μ</text>
+<text x="775" y="162" fill="#e8c84a" font-size="8">⚡обяз.</text>
+
+<!-- ───── LEFT: Relay Module ───── -->
+<rect x="600" y="340" width="175" height="125" rx="6" fill="#1a0000" stroke="#ff5555" stroke-width="1.5"/>
+<text x="687" y="360" text-anchor="middle" fill="#ff5555" font-size="11" font-weight="bold">4-ch РЕЛЕ 5V</text>
+<line x1="617" y1="368" x2="757" y2="368" stroke="#888" stroke-width="1"/>
+<text x="617" y="382" fill="#ff6666" font-size="9">VCC</text><text x="650" y="382" fill="#ff6666" font-size="9">→ Vin 5V</text>
+<text x="617" y="397" fill="#888" font-size="9">GND</text><text x="650" y="397" fill="#888" font-size="9">→ GND</text>
+<text x="617" y="412" fill="#ff5555" font-size="9">IN1</text><text x="650" y="412" fill="#ff5555" font-size="9">→ GPIO 25 (Электролизер)</text>
+<text x="617" y="427" fill="#ff5555" font-size="9">IN2</text><text x="650" y="427" fill="#ff5555" font-size="9">→ GPIO 26 (Клапан)</text>
+<text x="617" y="442" fill="#ff5555" font-size="9">IN3</text><text x="650" y="442" fill="#ff5555" font-size="9">→ GPIO 27 (Пьезо)</text>
+<!-- Relay bus lines -->
+<polyline points="590,375 600,375" fill="none" stroke="#ff5555" stroke-width="2.5"/>
+<polyline points="590,395 600,395" fill="none" stroke="#ff5555" stroke-width="2.5"/>
+<polyline points="590,415 600,415" fill="none" stroke="#ff5555" stroke-width="2.5"/>
+<!-- Vin line -->
+<polyline points="590,115 594,115 594,370 600,370" fill="none" stroke="#ff6666" stroke-width="1.5" stroke-dasharray="5,2"/>
+
+<!-- ───── LEFT: PSU ───── -->
+<rect x="600" y="500" width="175" height="60" rx="6" fill="#001a0a" stroke="#3fb950" stroke-width="1.5"/>
+<text x="687" y="523" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">БП 5V / 2A</text>
+<text x="687" y="540" text-anchor="middle" fill="#888" font-size="9">Micro-USB · стабильный источник</text>
+<polyline points="600,520 590,520 590,115" fill="none" stroke="#ff6666" stroke-width="1.5" stroke-dasharray="4,2"/>
+
+<!-- ───── RIGHT: OLED ───── -->
+<rect x="20" y="100" width="200" height="80" rx="6" fill="#0a001a" stroke="#8a7bff" stroke-width="1.5"/>
+<text x="120" y="120" text-anchor="middle" fill="#8a7bff" font-size="11" font-weight="bold">OLED 0.96″ SSD1306</text>
+<text x="120" y="135" text-anchor="middle" fill="#888" font-size="9">I²C · адрес 0x3C</text>
+<text x="30" y="152" fill="#8a7bff" font-size="9">SDA→GPIO 21 · SCL→GPIO 22</text>
+<text x="30" y="166" fill="#888" font-size="9">VCC→3.3V · GND→GND</text>
+<polyline points="220,148 390,155" fill="none" stroke="#8a7bff" stroke-width="2.5"/>
+<polyline points="220,163 390,173" fill="none" stroke="#8a7bff" stroke-width="2"/>
+
+<!-- ───── RIGHT: MPU6050 ───── -->
+<rect x="20" y="205" width="200" height="90" rx="6" fill="#001a0a" stroke="#3fb950" stroke-width="1.5"/>
+<text x="120" y="225" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">MPU6050 GY-521</text>
+<text x="25" y="225" fill="#3fb950" font-size="9">★ НОВОЕ</text>
+<text x="120" y="239" text-anchor="middle" fill="#888" font-size="9">I²C · адрес 0x68 · та же шина</text>
+<text x="30" y="255" fill="#8a7bff" font-size="9">SDA→GPIO 21 · SCL→GPIO 22</text>
+<text x="30" y="269" fill="#888" font-size="9">VCC→3.3V · GND→GND · AD0→GND</text>
+<text x="30" y="283" fill="#888" font-size="9">INT — не подключён</text>
+<polyline points="220,252 320,252 320,160 390,160" fill="none" stroke="#8a7bff" stroke-width="2" stroke-dasharray="5,2"/>
+
+<!-- ───── RIGHT: Pressure sensor ───── -->
+<rect x="20" y="325" width="200" height="90" rx="6" fill="#001500" stroke="#56d364" stroke-width="1.5"/>
+<text x="120" y="345" text-anchor="middle" fill="#56d364" font-size="11" font-weight="bold">Датчик давления</text>
+<text x="120" y="359" text-anchor="middle" fill="#888" font-size="9">0–10 бар · выход 0.5–4.5V</text>
+<text x="30" y="377" fill="#56d364" font-size="9">Сигнал → R10кОм → GPIO 36</text>
+<text x="30" y="391" fill="#56d364" font-size="9">GPIO 36 → R20кОм → GND</text>
+<text x="30" y="405" fill="#ff8888" font-size="9">⚠ Без делителя сгорит ADC!</text>
+<polyline points="220,375 390,275" fill="none" stroke="#56d364" stroke-width="2.5"/>
+
+<!-- ───── RIGHT: LEDs ───── -->
+<rect x="20" y="440" width="200" height="95" rx="6" fill="#100018" stroke="#d85cff" stroke-width="1.5"/>
+<text x="120" y="460" text-anchor="middle" fill="#d85cff" font-size="11" font-weight="bold">Светодиоды × 3</text>
+<text x="120" y="473" text-anchor="middle" fill="#888" font-size="9">через резистор 220 Ом</text>
+<text x="30" y="490" fill="#d85cff" font-size="9">LED Power (зелён) → GPIO 17</text>
+<text x="30" y="505" fill="#f0a000" font-size="9">LED Lock (красн) → GPIO 12 ⚠strap</text>
+<text x="30" y="520" fill="#f0a000" font-size="9">LED Mode (синий) → GPIO 2 ⚠strap</text>
+<polyline points="220,487 390,375" fill="none" stroke="#d85cff" stroke-width="2"/>
+<polyline points="220,502 390,395" fill="none" stroke="#f0a000" stroke-width="2"/>
+<polyline points="220,517 390,415" fill="none" stroke="#f0a000" stroke-width="2"/>
+
+<!-- ───── RIGHT: Buttons ───── -->
+<rect x="20" y="558" width="200" height="88" rx="6" fill="#1a0800" stroke="#ffa500" stroke-width="1.5"/>
+<text x="120" y="578" text-anchor="middle" fill="#ffa500" font-size="11" font-weight="bold">Кнопки × 2</text>
+<text x="120" y="591" text-anchor="middle" fill="#888" font-size="9">INPUT_PULLUP → GND</text>
+<text x="30" y="608" fill="#ffa500" font-size="9">BTN Power → GPIO 13</text>
+<text x="30" y="622" fill="#3fb950" font-size="9">BTN Lock → GPIO 14 ★НОВОЕ</text>
+<text x="30" y="636" fill="#888" font-size="9">1×=вкл/выкл · 2×=продувка | lock/TILT</text>
+<polyline points="220,605 390,475" fill="none" stroke="#ffa500" stroke-width="2"/>
+<polyline points="220,619 390,495" fill="none" stroke="#3fb950" stroke-width="2.5"/>
+
+</svg>
+</div>
+
+<div style="height:32px;"></div>
+
+<!-- ═══════ ПУЛЬТ ═══════ -->
+<p style="text-align:center;color:#bc8cff;font-weight:bold;font-size:1.1em;margin-bottom:10px;">🎮 ПУЛЬТ</p>
+<div style="overflow-x:auto;">
+<svg viewBox="0 0 1060 600" style="width:100%;max-width:1060px;display:block;margin:0 auto;background:#0d1117;border-radius:10px;border:1px solid #21262d;" xmlns="http://www.w3.org/2000/svg">
+
+<!-- ───── ESP32 chip body ───── -->
+<g>
+  <rect x="410" y="30" width="160" height="540" rx="8" fill="#0c1020" stroke="#7a5cff" stroke-width="2"/>
+  <text x="490" y="55" text-anchor="middle" fill="#bc8cff" font-size="11" font-weight="bold" font-family="monospace">ESP32</text>
+  <text x="490" y="70" text-anchor="middle" fill="#bc8cff" font-size="9" font-family="monospace">DEVKIT V1</text>
+  <text x="490" y="85" text-anchor="middle" fill="#bc8cff" font-size="9" font-family="monospace">ПУЛЬТ</text>
+
+  <!-- Left pin labels (right side of chip = SPI, outgoing right) -->
+  <text x="563" y="115" text-anchor="end" fill="#ff6666" font-size="9" font-family="monospace">Vin 5V</text>
+  <text x="563" y="133" text-anchor="end" fill="#ffaa66" font-size="9" font-family="monospace">3.3V</text>
+  <text x="563" y="151" text-anchor="end" fill="#888" font-size="9" font-family="monospace">GND</text>
+  <text x="563" y="200" text-anchor="end" fill="#e8c84a" font-size="9" font-family="monospace">GPIO 4</text>
+  <text x="563" y="218" text-anchor="end" fill="#e8c84a" font-size="9" font-family="monospace">GPIO 5</text>
+  <text x="563" y="236" text-anchor="end" fill="#e8c84a" font-size="9" font-family="monospace">GPIO 18</text>
+  <text x="563" y="254" text-anchor="end" fill="#e8c84a" font-size="9" font-family="monospace">GPIO 19</text>
+  <text x="563" y="272" text-anchor="end" fill="#e8c84a" font-size="9" font-family="monospace">GPIO 23</text>
+
+  <!-- Right pin labels (left side of chip = I2C, buttons, LEDs outgoing left) -->
+  <text x="417" y="115" text-anchor="start" fill="#ffaa66" font-size="9" font-family="monospace">3.3V</text>
+  <text x="417" y="133" text-anchor="start" fill="#888" font-size="9" font-family="monospace">GND</text>
+  <text x="417" y="165" text-anchor="start" fill="#8a7bff" font-size="9" font-family="monospace">GPIO 21</text>
+  <text x="417" y="183" text-anchor="start" fill="#8a7bff" font-size="9" font-family="monospace">GPIO 22</text>
+  <text x="417" y="255" text-anchor="start" fill="#ffa500" font-size="9" font-family="monospace">GPIO 13</text>
+  <text x="417" y="273" text-anchor="start" fill="#ffa500" font-size="9" font-family="monospace">GPIO 14</text>
+  <text x="417" y="291" text-anchor="start" fill="#ffa500" font-size="9" font-family="monospace">GPIO 32</text>
+  <text x="417" y="309" text-anchor="start" fill="#ffa500" font-size="9" font-family="monospace">GPIO 33</text>
+  <text x="417" y="327" text-anchor="start" fill="#ffa500" font-size="9" font-family="monospace">GPIO 25</text>
+  <text x="417" y="345" text-anchor="start" fill="#ffa500" font-size="9" font-family="monospace">GPIO 26</text>
+  <text x="417" y="363" text-anchor="start" fill="#ffa500" font-size="9" font-family="monospace">GPIO 16</text>
+  <text x="417" y="381" text-anchor="start" fill="#ffa500" font-size="9" font-family="monospace">GPIO 27</text>
+  <text x="417" y="445" text-anchor="start" fill="#d85cff" font-size="9" font-family="monospace">GPIO 17</text>
+  <text x="417" y="463" text-anchor="start" fill="#d85cff" font-size="9" font-family="monospace">GPIO 15</text>
+
+  <!-- Pin stubs RIGHT (going right) -->
+  <line x1="570" y1="112" x2="590" y2="112" stroke="#ff6666" stroke-width="2"/>
+  <line x1="570" y1="130" x2="590" y2="130" stroke="#ffaa66" stroke-width="2"/>
+  <line x1="570" y1="148" x2="590" y2="148" stroke="#888" stroke-width="2"/>
+  <line x1="570" y1="197" x2="590" y2="197" stroke="#e8c84a" stroke-width="2"/>
+  <line x1="570" y1="215" x2="590" y2="215" stroke="#e8c84a" stroke-width="2"/>
+  <line x1="570" y1="233" x2="590" y2="233" stroke="#e8c84a" stroke-width="2"/>
+  <line x1="570" y1="251" x2="590" y2="251" stroke="#e8c84a" stroke-width="2"/>
+  <line x1="570" y1="269" x2="590" y2="269" stroke="#e8c84a" stroke-width="2"/>
+
+  <!-- Pin stubs LEFT (going left) -->
+  <line x1="410" y1="112" x2="390" y2="112" stroke="#ffaa66" stroke-width="2"/>
+  <line x1="410" y1="130" x2="390" y2="130" stroke="#888" stroke-width="2"/>
+  <line x1="410" y1="162" x2="390" y2="162" stroke="#8a7bff" stroke-width="2"/>
+  <line x1="410" y1="180" x2="390" y2="180" stroke="#8a7bff" stroke-width="2"/>
+  <line x1="410" y1="252" x2="390" y2="252" stroke="#ffa500" stroke-width="2"/>
+  <line x1="410" y1="270" x2="390" y2="270" stroke="#ffa500" stroke-width="2"/>
+  <line x1="410" y1="288" x2="390" y2="288" stroke="#ffa500" stroke-width="2"/>
+  <line x1="410" y1="306" x2="390" y2="306" stroke="#ffa500" stroke-width="2"/>
+  <line x1="410" y1="324" x2="390" y2="324" stroke="#ffa500" stroke-width="2"/>
+  <line x1="410" y1="342" x2="390" y2="342" stroke="#ffa500" stroke-width="2"/>
+  <line x1="410" y1="360" x2="390" y2="360" stroke="#ffa500" stroke-width="2"/>
+  <line x1="410" y1="378" x2="390" y2="378" stroke="#ffa500" stroke-width="2"/>
+  <line x1="410" y1="442" x2="390" y2="442" stroke="#d85cff" stroke-width="2"/>
+  <line x1="410" y1="460" x2="390" y2="460" stroke="#d85cff" stroke-width="2"/>
+
+  <!-- Antenna / USB -->
+  <rect x="452" y="528" width="76" height="28" rx="3" fill="#0a1030" stroke="#7a5cff" stroke-width="1"/>
+  <text x="490" y="546" text-anchor="middle" fill="#bc8cff" font-size="9" font-family="monospace">USB</text>
+</g>
+
+<!-- ───── RIGHT: NRF24L01 ───── -->
+<rect x="600" y="100" width="175" height="165" rx="6" fill="#1a1500" stroke="#e8c84a" stroke-width="1.5"/>
+<text x="687" y="122" text-anchor="middle" fill="#e8c84a" font-size="11" font-weight="bold">NRF24L01+</text>
+<text x="687" y="136" text-anchor="middle" fill="#888" font-size="9">+ адаптер 3.3V</text>
+<line x1="617" y1="143" x2="757" y2="143" stroke="#555" stroke-width="1"/>
+<text x="617" y="157" fill="#888" font-size="9">VCC→3.3V · GND→GND</text>
+<text x="617" y="173" fill="#e8c84a" font-size="9">CE   → GPIO 4</text>
+<text x="617" y="189" fill="#e8c84a" font-size="9">CSN  → GPIO 5</text>
+<text x="617" y="205" fill="#e8c84a" font-size="9">SCK  → GPIO 18</text>
+<text x="617" y="221" fill="#e8c84a" font-size="9">MISO → GPIO 19</text>
+<text x="617" y="237" fill="#e8c84a" font-size="9">MOSI → GPIO 23</text>
+<rect x="735" y="147" width="22" height="14" rx="2" fill="#222" stroke="#e8c84a" stroke-width="1"/>
+<text x="746" y="158" text-anchor="middle" fill="#e8c84a" font-size="8">470μ</text>
+<polyline points="590,197 600,197" fill="none" stroke="#e8c84a" stroke-width="2.5"/>
+<polyline points="590,215 600,215" fill="none" stroke="#e8c84a" stroke-width="2.5"/>
+<polyline points="590,233 600,233" fill="none" stroke="#e8c84a" stroke-width="2.5"/>
+<polyline points="590,251 600,251" fill="none" stroke="#e8c84a" stroke-width="2.5"/>
+<polyline points="590,269 600,269" fill="none" stroke="#e8c84a" stroke-width="2.5"/>
+
+<!-- ───── RIGHT: Power ───── -->
+<rect x="600" y="290" width="175" height="60" rx="6" fill="#001a0a" stroke="#3fb950" stroke-width="1.5"/>
+<text x="687" y="313" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">PowerBank / USB</text>
+<text x="687" y="330" text-anchor="middle" fill="#888" font-size="9">5V · Micro-USB</text>
+<polyline points="590,112 596,112 596,310 600,310" fill="none" stroke="#ff6666" stroke-width="1.5" stroke-dasharray="5,2"/>
+
+<!-- ───── LEFT: OLED ───── -->
+<rect x="20" y="100" width="200" height="85" rx="6" fill="#0a001a" stroke="#8a7bff" stroke-width="1.5"/>
+<text x="120" y="120" text-anchor="middle" fill="#8a7bff" font-size="11" font-weight="bold">OLED 0.96″ SSD1306</text>
+<text x="120" y="135" text-anchor="middle" fill="#888" font-size="9">I²C · адрес 0x3C</text>
+<text x="30" y="153" fill="#8a7bff" font-size="9">SDA → GPIO 21</text>
+<text x="30" y="168" fill="#8a7bff" font-size="9">SCL → GPIO 22</text>
+<text x="30" y="177" fill="#888" font-size="9">VCC→3.3V · GND→GND</text>
+<polyline points="220,151 390,162" fill="none" stroke="#8a7bff" stroke-width="2.5"/>
+<polyline points="220,166 390,180" fill="none" stroke="#8a7bff" stroke-width="2"/>
+
+<!-- ───── LEFT: Buttons ───── -->
+<rect x="20" y="215" width="270" height="200" rx="6" fill="#1a0800" stroke="#ffa500" stroke-width="1.5"/>
+<text x="155" y="235" text-anchor="middle" fill="#ffa500" font-size="11" font-weight="bold">Кнопки × 8</text>
+<text x="155" y="248" text-anchor="middle" fill="#888" font-size="9">INPUT_PULLUP → GND</text>
+<line x1="30" y1="253" x2="280" y2="253" stroke="#555" stroke-width="1"/>
+<text x="30" y="267" fill="#ffa500" font-size="9">BTN Power      → GPIO 13  [1×=cmd, 2×=safe-off]</text>
+<text x="30" y="282" fill="#ffa500" font-size="9">BTN Lock       → GPIO 14</text>
+<text x="30" y="297" fill="#ffa500" font-size="9">BTN Const Gas  → GPIO 32</text>
+<text x="30" y="312" fill="#ffa500" font-size="9">BTN Piezo      → GPIO 33</text>
+<text x="30" y="327" fill="#ffa500" font-size="9">BTN Repulsor   → GPIO 25</text>
+<text x="30" y="342" fill="#ffa500" font-size="9">BTN Mode       → GPIO 26  [был GPIO 22]</text>
+<text x="30" y="357" fill="#ffa500" font-size="9">BTN Manual Gas → GPIO 16</text>
+<text x="30" y="372" fill="#ffa500" font-size="9">BTN Safe Off   → GPIO 27  [был GPIO 21]</text>
+<polyline points="290,261 390,252" fill="none" stroke="#ffa500" stroke-width="2"/>
+<polyline points="290,277 390,270" fill="none" stroke="#ffa500" stroke-width="2"/>
+<polyline points="290,293 390,288" fill="none" stroke="#ffa500" stroke-width="1.5"/>
+<polyline points="290,309 390,306" fill="none" stroke="#ffa500" stroke-width="1.5"/>
+<polyline points="290,325 390,324" fill="none" stroke="#ffa500" stroke-width="1.5"/>
+<polyline points="290,341 390,342" fill="none" stroke="#ffa500" stroke-width="1.5"/>
+<polyline points="290,357 390,360" fill="none" stroke="#ffa500" stroke-width="1.5"/>
+<polyline points="290,373 390,378" fill="none" stroke="#ffa500" stroke-width="1.5"/>
+
+<!-- ───── LEFT: LEDs ───── -->
+<rect x="20" y="430" width="200" height="80" rx="6" fill="#100018" stroke="#d85cff" stroke-width="1.5"/>
+<text x="120" y="450" text-anchor="middle" fill="#d85cff" font-size="11" font-weight="bold">Светодиоды × 2</text>
+<text x="120" y="463" text-anchor="middle" fill="#888" font-size="9">через резистор 220 Ом</text>
+<text x="30" y="480" fill="#d85cff" font-size="9">LED Power (синий) → GPIO 17</text>
+<text x="30" y="495" fill="#d85cff" font-size="9">LED TX (зелён)    → GPIO 15  [мигает при отправке]</text>
+<polyline points="220,478 390,442" fill="none" stroke="#d85cff" stroke-width="2"/>
+<polyline points="220,493 390,460" fill="none" stroke="#d85cff" stroke-width="2"/>
+
+<!-- Radio wave symbol between devices (conceptual) -->
+<text x="490" y="588" text-anchor="middle" fill="#555" font-size="9" font-family="monospace">📡 NRF24 addr:"HYDRO" · 2.4GHz · двусторонний</text>
+
+</svg>
+</div>
+
+<!-- Strapping pin warning -->
+<div style="margin-top:16px;padding:10px 16px;background:#200000;border:1px solid #500;border-radius:8px;font-size:11px;color:#ff8888;">
+  <strong>⚠ Strapping-пины:</strong> GPIO 2 и GPIO 12 используются как выходы для LED.
+  Если ESP32 не стартует — временно отключи эти два светодиода и проверь загрузку без них.
+  На пульте GPIO 5 (NRF24 CSN) тоже strapping — нормально работает после загрузки, просто не нажимай кнопку во время включения если она подключена к этому пину.
+</div>
+
+</div><!-- /page2 -->
+</body>
+</html>

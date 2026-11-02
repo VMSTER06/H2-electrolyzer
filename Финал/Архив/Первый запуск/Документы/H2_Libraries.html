@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>H2 PRO v5.0 — Список библиотек</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0d1117;color:#e0e0e0;font-family:Arial,sans-serif;padding:24px 16px;font-size:14px;}
+  h1{color:#58a6ff;font-size:1.4em;margin-bottom:6px;letter-spacing:2px;}
+  .sub{color:#555;font-size:.85em;margin-bottom:28px;}
+
+  /* Секции */
+  .section{margin-bottom:28px;}
+  .section-title{font-size:.7em;letter-spacing:3px;text-transform:uppercase;
+    color:#8b949e;margin-bottom:10px;padding-left:4px;
+    border-left:3px solid #30363d;padding-left:10px;}
+
+  /* Карточка библиотеки */
+  .lib{background:#161b22;border:1px solid #30363d;border-radius:10px;
+    padding:14px 16px;margin-bottom:10px;display:grid;
+    grid-template-columns:1fr auto;gap:8px;align-items:start;}
+  .lib-name{font-size:1.05em;font-weight:bold;color:#e0e0e0;margin-bottom:3px;}
+  .lib-author{font-size:.78em;color:#8b949e;margin-bottom:6px;}
+  .lib-desc{font-size:.82em;color:#c9d1d9;line-height:1.5;margin-bottom:8px;}
+  .lib-search{font-size:.75em;color:#8b949e;}
+  .lib-search code{background:#21262d;border-radius:4px;padding:2px 7px;
+    color:#58a6ff;font-family:monospace;}
+  .lib-actions{display:flex;flex-direction:column;gap:6px;align-items:flex-end;min-width:130px;}
+
+  /* Кнопки */
+  .btn{display:inline-block;padding:6px 14px;border-radius:6px;font-size:.75em;
+    font-weight:bold;text-decoration:none;text-align:center;
+    cursor:pointer;border:none;transition:all .15s;}
+  .btn-gh{background:#21262d;color:#58a6ff;border:1px solid #30363d;}
+  .btn-gh:hover{background:#2d333b;border-color:#58a6ff;}
+  .btn-zip{background:#1a3a1a;color:#56d364;border:1px solid #2a5a2a;}
+  .btn-zip:hover{background:#243a24;}
+
+  /* Бейджи */
+  .badges{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;}
+  .badge{font-size:.65em;padding:2px 7px;border-radius:10px;font-weight:bold;
+    letter-spacing:.5px;}
+  .b-lm{background:#001a3a;color:#58a6ff;border:1px solid #1c4a7a;}      /* Library Manager */
+  .b-manual{background:#1a1a00;color:#e8c84a;border:1px solid #4a4a00;}  /* Ручная установка */
+  .b-builtin{background:#001a0e;color:#56d364;border:1px solid #1a4a2a;} /* Встроенная */
+  .b-dep{background:#1a0a00;color:#f0a000;border:1px solid #4a2a00;}     /* Зависимость */
+  .b-required{background:#1a0008;color:#ff6b6b;border:1px solid #4a0010;} /* Обязательная */
+
+  /* Встроенные — другой стиль */
+  .lib.builtin{background:#0d1a0d;border-color:#1a4a2a;opacity:.85;}
+  .lib.builtin .lib-name{color:#56d364;}
+
+  /* Предупреждение */
+  .warn-box{background:#1a1500;border:1px solid #4a4000;border-radius:8px;
+    padding:12px 14px;margin-bottom:14px;font-size:.82em;color:#e8c84a;
+    line-height:1.6;}
+  .warn-box strong{color:#ffcc00;}
+
+  /* Boards Manager */
+  .boards-box{background:#001828;border:1px solid #004060;border-radius:10px;
+    padding:16px;margin-bottom:28px;}
+  .boards-title{color:#4da8cc;font-size:.85em;font-weight:bold;
+    letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;}
+  .boards-url{background:#001218;border:1px solid #004060;border-radius:6px;
+    padding:8px 12px;font-family:monospace;font-size:.82em;color:#79b8ff;
+    word-break:break-all;margin-bottom:10px;}
+  .boards-steps{font-size:.82em;color:#c9d1d9;line-height:1.8;padding-left:18px;}
+  .boards-steps li{margin-bottom:2px;}
+
+  /* Порядок установки */
+  .order-box{background:#161b22;border:1px solid #30363d;border-radius:10px;
+    padding:16px;margin-bottom:28px;}
+  .order-title{color:#8b949e;font-size:.75em;letter-spacing:3px;
+    text-transform:uppercase;margin-bottom:12px;border-left:3px solid #30363d;
+    padding-left:10px;}
+  .order-step{display:flex;gap:12px;align-items:flex-start;
+    margin-bottom:10px;font-size:.84em;color:#c9d1d9;}
+  .order-num{background:#21262d;color:#8b949e;border-radius:50%;
+    width:22px;height:22px;display:flex;align-items:center;justify-content:center;
+    font-size:.8em;font-weight:bold;flex-shrink:0;margin-top:1px;}
+  .order-num.active{background:#1c4a7a;color:#58a6ff;}
+
+  footer{text-align:center;color:#444;font-size:.75em;margin-top:30px;}
+
+  @media print{
+    body{background:white;color:#111;padding:10px;}
+    .lib{background:#f5f5f5;border-color:#ccc;}
+    .lib.builtin{background:#f0fff0;}
+    .boards-box{background:#e8f4ff;border-color:#99c;}
+    .order-box{background:#f5f5f5;border-color:#ccc;}
+    .warn-box{background:#fffde7;border-color:#f9a825;}
+    .btn{display:none;}
+    .lib-name{color:#000;}
+    .lib-author{color:#555;}
+    .lib-desc{color:#333;}
+    .lib-search code{background:#eee;color:#00f;}
+  }
+</style>
+</head>
+<body>
+
+<h1>⚡ H2 PRO v5.0 — Библиотеки Arduino IDE</h1>
+<div class="sub">Мозг v5.0 · Пульт v5.0 · ESP32 DevKit v1 (WROOM-32D)</div>
+
+<!-- ШАГ 0: Boards Manager -->
+<div class="boards-box">
+  <div class="boards-title">⓪ Сначала: добавить поддержку ESP32 в Arduino IDE</div>
+  <p style="font-size:.82em;color:#c9d1d9;margin-bottom:10px;">
+    Arduino IDE не умеет работать с ESP32 по умолчанию. Нужно один раз добавить URL платы.
+  </p>
+  <div class="boards-url">https://espressif.github.io/arduino-esp32/package_esp32_index.json</div>
+  <ol class="boards-steps">
+    <li>Arduino IDE → <strong>File → Preferences</strong></li>
+    <li>В поле <em>Additional Boards Manager URLs</em> вставить URL выше</li>
+    <li><strong>Tools → Board → Boards Manager</strong></li>
+    <li>Найти <strong>"esp32"</strong>, установить пакет от <strong>Espressif Systems</strong></li>
+    <li>Tools → Board → esp32 → выбрать <strong>DOIT ESP32 DEVKIT V1</strong></li>
+  </ol>
+  <div style="margin-top:10px;background:#0a1a0a;border:1px solid #2a4a2a;border-radius:6px;padding:8px 12px;font-size:.8em;color:#8f8;">
+    ✓ <strong>Совместимо с любой версией ядра.</strong> Прошивка собирается и на ESP32 core 2.x, и на новом 3.x — LEDC-вызовы (ШИМ вентилятора) выбираются автоматически через <code>#if ESP_ARDUINO_VERSION_MAJOR</code>. Рекомендуется последняя версия пакета.
+  </div>
+  <div style="margin-top:10px;">
+    <a class="btn btn-gh" href="https://github.com/espressif/arduino-esp32" target="_blank">GitHub espressif/arduino-esp32</a>
+  </div>
+</div>
+
+
+<!-- ОБЯЗАТЕЛЬНЫЕ БИБЛИОТЕКИ -->
+<div class="section">
+<div class="section-title">Обязательные — устанавливать через Library Manager (Tools → Manage Libraries)</div>
+
+<!-- RF24 -->
+<div class="lib">
+  <div>
+    <div class="badges">
+      <span class="badge b-required">ОБЯЗАТЕЛЬНАЯ</span>
+      <span class="badge b-lm">Library Manager</span>
+    </div>
+    <div class="lib-name">RF24</div>
+    <div class="lib-author">TMRh20, Avamander</div>
+    <div class="lib-desc">
+      Драйвер для радиомодулей NRF24L01+. Используется на мозге и пульте для двусторонней беспроводной связи 2 Мбит/с. Без этой библиотеки компиляция невозможна.
+    </div>
+    <div class="lib-search">Искать в Library Manager: <code>RF24</code> → автор TMRh20</div>
+  </div>
+  <div class="lib-actions">
+    <a class="btn btn-gh" href="https://github.com/nRF24/RF24" target="_blank">GitHub</a>
+    <a class="btn btn-zip" href="https://github.com/nRF24/RF24/archive/refs/heads/master.zip" target="_blank">ZIP</a>
+  </div>
+</div>
+
+<!-- AsyncTCP -->
+<div class="lib">
+  <div>
+    <div class="badges">
+      <span class="badge b-required">ОБЯЗАТЕЛЬНАЯ</span>
+      <span class="badge b-lm">Library Manager</span>
+    </div>
+    <div class="lib-name">AsyncTCP</div>
+    <div class="lib-author">ESP32Async (me-no-dev)</div>
+    <div class="lib-desc">
+      Асинхронная TCP-библиотека для ESP32. Зависимость для ESPAsyncWebServer — без неё веб-сервер не скомпилируется. Устанавливать строго ESP32-версию (не ESPAsyncTCP, та для ESP8266).
+    </div>
+    <div class="lib-search">Искать в Library Manager: <code>AsyncTCP</code> → автор ESP32Async</div>
+  </div>
+  <div class="lib-actions">
+    <a class="btn btn-gh" href="https://github.com/ESP32Async/AsyncTCP" target="_blank">GitHub</a>
+    <a class="btn btn-zip" href="https://github.com/ESP32Async/AsyncTCP/archive/refs/heads/master.zip" target="_blank">ZIP</a>
+  </div>
+</div>
+
+<!-- ESPAsyncWebServer -->
+<div class="lib">
+  <div>
+    <div class="badges">
+      <span class="badge b-required">ОБЯЗАТЕЛЬНАЯ</span>
+      <span class="badge b-lm">Library Manager</span>
+    </div>
+    <div class="lib-name">ESPAsyncWebServer</div>
+    <div class="lib-author">ESP32Async (Me-No-Dev)</div>
+    <div class="lib-desc">
+      Асинхронный HTTP-сервер для ESP32. Обслуживает веб-интерфейс на 192.168.4.1 — страницу управления, эндпоинты /status, /cmd, /setpressure, /sethysteresis. Требует AsyncTCP (см. выше).
+    </div>
+    <div class="lib-search">Искать в Library Manager: <code>ESP Async WebServer</code> → автор ESP32Async (НЕ форк lacamera — он заброшен и не собирается на ESP32 core 3.x)</div>
+  </div>
+  <div class="lib-actions">
+    <a class="btn btn-gh" href="https://github.com/ESP32Async/ESPAsyncWebServer" target="_blank">GitHub</a>
+    <a class="btn btn-zip" href="https://github.com/ESP32Async/ESPAsyncWebServer/archive/refs/heads/master.zip" target="_blank">ZIP</a>
+  </div>
+</div>
+
+<!-- Adafruit SSD1306 -->
+<div class="lib">
+  <div>
+    <div class="badges">
+      <span class="badge b-required">ОБЯЗАТЕЛЬНАЯ</span>
+      <span class="badge b-lm">Library Manager</span>
+    </div>
+    <div class="lib-name">Adafruit SSD1306</div>
+    <div class="lib-author">Adafruit</div>
+    <div class="lib-desc">
+      Драйвер OLED-дисплея 128×64 на контроллере SSD1306. Используется на мозге и пульте. При установке IDE предложит установить зависимости — нажать <strong>"Install All"</strong>, чтобы автоматически поставились GFX и BusIO.
+    </div>
+    <div class="lib-search">Искать в Library Manager: <code>Adafruit SSD1306</code> → автор Adafruit</div>
+  </div>
+  <div class="lib-actions">
+    <a class="btn btn-gh" href="https://github.com/adafruit/Adafruit_SSD1306" target="_blank">GitHub</a>
+    <a class="btn btn-zip" href="https://github.com/adafruit/Adafruit_SSD1306/archive/refs/heads/master.zip" target="_blank">ZIP</a>
+  </div>
+</div>
+
+<!-- Adafruit GFX -->
+<div class="lib">
+  <div>
+    <div class="badges">
+      <span class="badge b-dep">ЗАВИСИМОСТЬ SSD1306</span>
+      <span class="badge b-lm">Library Manager</span>
+    </div>
+    <div class="lib-name">Adafruit GFX Library</div>
+    <div class="lib-author">Adafruit</div>
+    <div class="lib-desc">
+      Графическое ядро — линии, прямоугольники, текст, шрифты. Нужна для SSD1306. Обычно ставится автоматически при установке SSD1306 ("Install All"). Если не поставилась — установи вручную.
+    </div>
+    <div class="lib-search">Искать в Library Manager: <code>Adafruit GFX Library</code> → автор Adafruit</div>
+  </div>
+  <div class="lib-actions">
+    <a class="btn btn-gh" href="https://github.com/adafruit/Adafruit-GFX-Library" target="_blank">GitHub</a>
+    <a class="btn btn-zip" href="https://github.com/adafruit/Adafruit-GFX-Library/archive/refs/heads/master.zip" target="_blank">ZIP</a>
+  </div>
+</div>
+
+<!-- Adafruit BusIO -->
+<div class="lib">
+  <div>
+    <div class="badges">
+      <span class="badge b-dep">ЗАВИСИМОСТЬ GFX</span>
+      <span class="badge b-lm">Library Manager</span>
+    </div>
+    <div class="lib-name">Adafruit BusIO</div>
+    <div class="lib-author">Adafruit</div>
+    <div class="lib-desc">
+      Абстракция I²C/SPI шин, нужна для GFX Library. Также обычно ставится автоматически. Если при компиляции ошибка про BusIO — установи вручную.
+    </div>
+    <div class="lib-search">Искать в Library Manager: <code>Adafruit BusIO</code> → автор Adafruit</div>
+  </div>
+  <div class="lib-actions">
+    <a class="btn btn-gh" href="https://github.com/adafruit/Adafruit_BusIO" target="_blank">GitHub</a>
+    <a class="btn btn-zip" href="https://github.com/adafruit/Adafruit_BusIO/archive/refs/heads/master.zip" target="_blank">ZIP</a>
+  </div>
+</div>
+
+<!-- OneWire -->
+<div class="lib">
+  <div>
+    <div class="badges">
+      <span class="badge b-required">★ v5.0</span>
+      <span class="badge b-lm">Library Manager</span>
+    </div>
+    <div class="lib-name">OneWire</div>
+    <div class="lib-author">Paul Stoffregen</div>
+    <div class="lib-desc">
+      Протокол 1-Wire для цифрового датчика температуры DS18B20 (мозг, GPIO 15). Нужна только если в прошивке выбран <code>#define TEMP_SENSOR_DS18B20</code>. Если используете аналоговый NTC-термистор — эта библиотека не требуется.
+    </div>
+    <div class="lib-search">Искать в Library Manager: <code>OneWire</code> → автор Paul Stoffregen</div>
+  </div>
+  <div class="lib-actions">
+    <a class="btn btn-gh" href="https://github.com/PaulStoffregen/OneWire" target="_blank">GitHub</a>
+    <a class="btn btn-zip" href="https://github.com/PaulStoffregen/OneWire/archive/refs/heads/master.zip" target="_blank">ZIP</a>
+  </div>
+</div>
+
+<!-- DallasTemperature -->
+<div class="lib">
+  <div>
+    <div class="badges">
+      <span class="badge b-required">★ v5.0</span>
+      <span class="badge b-lm">Library Manager</span>
+    </div>
+    <div class="lib-name">DallasTemperature</div>
+    <div class="lib-author">Miles Burton</div>
+    <div class="lib-desc">
+      Удобная обёртка над OneWire для датчиков DS18B20: запрос температуры, разрешение, °C. Зависит от OneWire (поставьте обе). Нужна только при <code>#define TEMP_SENSOR_DS18B20</code>.
+    </div>
+    <div class="lib-search">Искать в Library Manager: <code>DallasTemperature</code> → автор Miles Burton</div>
+  </div>
+  <div class="lib-actions">
+    <a class="btn btn-gh" href="https://github.com/milesburton/Arduino-Temperature-Control-Library" target="_blank">GitHub</a>
+    <a class="btn btn-zip" href="https://github.com/milesburton/Arduino-Temperature-Control-Library/archive/refs/heads/master.zip" target="_blank">ZIP</a>
+  </div>
+</div>
+
+</div><!-- /section -->
+
+
+<!-- ⚡ v5.0 примечание -->
+<div class="warn-box" style="margin-bottom:28px;">
+  ⚡ <strong>v5.0:</strong> OneWire и DallasTemperature нужны ТОЛЬКО для цифрового датчика DS18B20.
+  Если выбрали аналоговый NTC-термистор (<code>#define TEMP_SENSOR_NTC</code>) — их ставить не надо.
+  Библиотека <code>esp_sleep.h</code> (deep sleep пульта) и <code>Update.h</code> (OTA) — встроены в ESP32 ядро, отдельно не ставятся.
+</div>
+
+
+<!-- ВСТРОЕННЫЕ -->
+<div class="section">
+<div class="section-title">Встроенные — НЕ нужно устанавливать (входят в ESP32 Arduino Core)</div>
+
+<div class="warn-box">
+  ✅ Все библиотеки ниже уже включены в пакет <strong>esp32 by Espressif Systems</strong>.<br>
+  Если установил ESP32 ядро через Boards Manager — они уже есть, искать в Library Manager не нужно.
+</div>
+
+<div class="lib builtin">
+  <div>
+    <div class="badges"><span class="badge b-builtin">ВСТРОЕННАЯ</span></div>
+    <div class="lib-name">WiFi.h</div>
+    <div class="lib-author">Espressif</div>
+    <div class="lib-desc">Wi-Fi точка доступа AP для мозга (SSID: H2_PRO). Входит в ESP32 Arduino Core.</div>
+  </div>
+  <div class="lib-actions">
+    <a class="btn btn-gh" href="https://github.com/espressif/arduino-esp32/tree/master/libraries/WiFi" target="_blank">GitHub</a>
+  </div>
+</div>
+
+<div class="lib builtin">
+  <div>
+    <div class="badges"><span class="badge b-builtin">ВСТРОЕННАЯ</span></div>
+    <div class="lib-name">Preferences.h</div>
+    <div class="lib-author">Espressif</div>
+    <div class="lib-desc">NVS-хранилище (энергонезависимая память). Мозг сохраняет в ней драйвер, гистерезис и целевое давление — настройки переживают перезагрузку.</div>
+  </div>
+  <div class="lib-actions">
+    <a class="btn btn-gh" href="https://github.com/espressif/arduino-esp32/tree/master/libraries/Preferences" target="_blank">GitHub</a>
+  </div>
+</div>
+
+<div class="lib builtin">
+  <div>
+    <div class="badges"><span class="badge b-builtin">ВСТРОЕННАЯ</span></div>
+    <div class="lib-name">SPI.h</div>
+    <div class="lib-author">Arduino / Espressif</div>
+    <div class="lib-desc">SPI-шина. Используется для связи ESP32 с модулем NRF24L01+ (VSPI: GPIO 18/19/23).</div>
+  </div>
+  <div class="lib-actions">
+    <a class="btn btn-gh" href="https://github.com/espressif/arduino-esp32/tree/master/libraries/SPI" target="_blank">GitHub</a>
+  </div>
+</div>
+
+<div class="lib builtin">
+  <div>
+    <div class="badges"><span class="badge b-builtin">ВСТРОЕННАЯ</span></div>
+    <div class="lib-name">Wire.h</div>
+    <div class="lib-author">Arduino / Espressif</div>
+    <div class="lib-desc">I²C-шина. Используется для OLED (адрес 0x3C) и MPU6050 (адрес 0x68) на одной общей шине GPIO 21/22. Для MPU6050 отдельная библиотека не нужна — прямой I²C-доступ.</div>
+  </div>
+  <div class="lib-actions">
+    <a class="btn btn-gh" href="https://github.com/espressif/arduino-esp32/tree/master/libraries/Wire" target="_blank">GitHub</a>
+  </div>
+</div>
+
+<div class="lib builtin">
+  <div>
+    <div class="badges"><span class="badge b-builtin">ВСТРОЕННАЯ</span></div>
+    <div class="lib-name">math.h</div>
+    <div class="lib-author">Стандартная библиотека C</div>
+    <div class="lib-desc">Математические функции: acos(), sqrtf(), roundf(). Используется для расчёта угла наклона TILT-защиты по формуле скалярного произведения.</div>
+  </div>
+  <div class="lib-actions"></div>
+</div>
+
+</div><!-- /section -->
+
+
+<!-- ПОРЯДОК УСТАНОВКИ -->
+<div class="order-box">
+  <div class="order-title">Рекомендуемый порядок установки</div>
+
+  <div class="order-step">
+    <div class="order-num active">1</div>
+    <div>Установить <strong>Arduino IDE 2.x</strong> → <a style="color:#58a6ff" href="https://www.arduino.cc/en/software" target="_blank">arduino.cc/en/software</a></div>
+  </div>
+  <div class="order-step">
+    <div class="order-num active">2</div>
+    <div>File → Preferences → вставить URL ESP32 Boards Manager:<br>
+    <code style="background:#21262d;padding:3px 8px;border-radius:4px;font-size:.85em;color:#79b8ff;">
+    https://espressif.github.io/arduino-esp32/package_esp32_index.json</code></div>
+  </div>
+  <div class="order-step">
+    <div class="order-num active">3</div>
+    <div>Tools → Board → Boards Manager → найти <strong>"esp32"</strong> → Install (Espressif Systems)</div>
+  </div>
+  <div class="order-step">
+    <div class="order-num active">4</div>
+    <div>Tools → Manage Libraries → найти и установить <strong>RF24</strong> (by TMRh20)</div>
+  </div>
+  <div class="order-step">
+    <div class="order-num active">5</div>
+    <div>Там же установить <strong>AsyncTCP</strong> (by ESP32Async)</div>
+  </div>
+  <div class="order-step">
+    <div class="order-num active">6</div>
+    <div>Там же установить <strong>ESP Async WebServer</strong> (by ESP32Async)</div>
+  </div>
+  <div class="order-step">
+    <div class="order-num active">7</div>
+    <div>Там же установить <strong>Adafruit SSD1306</strong> → при запросе нажать <strong>"Install All"</strong>
+    (автоматически поставит GFX и BusIO)</div>
+  </div>
+  <div class="order-step">
+    <div class="order-num">8</div>
+    <div>Выбрать плату: Tools → Board → esp32 → <strong>DOIT ESP32 DEVKIT V1</strong></div>
+  </div>
+  <div class="order-step">
+    <div class="order-num">9</div>
+    <div>Открыть <strong>H2_Brain_v5.ino</strong> или <strong>H2_Remote_v5.ino</strong> → Sketch → Verify/Compile (Ctrl+R) — должна скомпилироваться без ошибок</div>
+  </div>
+</div>
+
+<footer>H2 PRO v5.0 · Arduino IDE 2.x · ESP32 Arduino Core · 2026</footer>
+
+</body>
+</html>

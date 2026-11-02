@@ -1,0 +1,9 @@
+<!-- v1.3.0: маленькая иконка уведомлений — только глифы «H2» (без фона), рисуется по альфа-каналу -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="72" android:viewportHeight="72">
+    <group android:translateX="-16" android:translateY="-18">
+        <path android:fillColor="#FFFFFFFF" android:pathData="M20,24h10v23h23v-23h10v60h-10v-27h-23v27h-10z"/>
+        <path android:fillColor="#FFFFFFFF" android:pathData="M68,45c0,-12 18,-12 18,0c0,6 -5,10 -9,13c-4,3 -8,6 -8,11h18v8h-28v-7c0,-9 6,-14 11,-18c3,-2 6,-4 6,-7c0,-3 -8,-3 -8,0z"/>
+    </group>
+</vector>
