@@ -28,6 +28,7 @@
 // =====================================================================================
 #pragma once
 #include <LittleFS.h>
+#include "h2_melody.h"   // ⚡ v6.7: формат H2M1, проверка, CRC — общий с пультом
 
 // ── Идентификаторы мелодий ─────────────────────────────────────────────────
 //   0..15  — пользовательские (слоты LittleFS)
@@ -44,13 +45,6 @@ const int8_t MEL_CLICK  = -7;   // щелчок кнопки
 const int8_t MEL_NONE   = -9;   // нет звука
 
 const uint8_t  MEL_SLOTS        = 16;       // слотов пользовательских мелодий
-const uint8_t  MEL_NAME_MAX     = 48;       // байт UTF-8 в названии
-const uint16_t MEL_NOTES_MAX    = 1200;     // нот в мелодии
-const uint16_t MEL_FREQ_MIN     = 50;       // Гц
-const uint16_t MEL_FREQ_MAX     = 10000;    // Гц
-const uint16_t MEL_DUR_MAX      = 10000;    // мс на одну ноту
-const uint32_t MEL_TOTAL_MS_MAX = 120000;   // мс на всю мелодию
-const size_t   MEL_FILE_MAX     = 4 + 1 + MEL_NAME_MAX + 2 + (size_t)MEL_NOTES_MAX * 4;  // 4855
 
 // ── Тайминги звуковых событий ──────────────────────────────────────────────
 const unsigned long SND_BOOT_DELAY_MS   = 2500;    // мелодия загрузки через 2.5 с после старта
@@ -58,10 +52,6 @@ const unsigned long SND_BOOT_DELAY_MS   = 2500;    // мелодия загру�
 const unsigned long SND_ALARM_REPEAT_MS = 15000;   // повтор тревоги, пока она активна
 const unsigned long REMOTE_LISTEN_MS    = 1500;    // пульт «слушает», если ACK статуса был не позже
 const float         SND_WARN_REARM_BAR  = 0.10f;   // гистерезис повторного предупреждения по давлению
-
-// ── Нота ───────────────────────────────────────────────────────────────────
-struct Note { uint16_t f; uint16_t d; };   // f — Гц (0 = пауза), d — мс
-static_assert(sizeof(Note) == 4, "Note: 4 байта, как в файле H2M1");
 
 // ── Встроенные мелодии (константы во флеше) ────────────────────────────────
 const Note MEL_BOOT_NOTES[]   = { {1047,90},{0,25},{1319,90},{0,25},{1568,90},{0,25},
@@ -91,14 +81,34 @@ const BuiltinMelody* melBuiltin(int8_t id) {
   return nullptr;
 }
 
-// ── Настройки звука (NVS "sout","svol","salm","sclk","sboot","son") ────────
+// ── Настройки звука (NVS "sout","svol","salm","sclk" + мелодии событий) ────
 // Однобайтовые volatile — задача плеера читает их без блокировок.
 volatile uint8_t soundOut  = SND_OUT_BOTH;   // куда играть: SND_OUT_REMOTE/BRAIN/BOTH/OFF
 volatile uint8_t soundVol  = 10;             // громкость 1..10
 volatile bool    sndAlarms = true;           // звуки тревог и предупреждений
 volatile bool    sndClicks = true;           // щелчки кнопок
-volatile int8_t  sndBoot   = MEL_BOOT;       // мелодия загрузки (-9 = нет)
-volatile int8_t  sndOn     = MEL_ON;         // мелодия включения системы (-9 = нет)
+
+// ⚡ v6.7: мелодии событий — таблица вместо отдельных sndBoot/sndOn. Своя мелодия
+// (слот) назначается любому событию; тревоге и предупреждению — только короткая
+// (иначе повтор каждые 15 с наложится на неё же) и без «Нет» (для тишины есть
+// переключатель «Звуки тревог»).
+enum : uint8_t { SND_EV_BOOT, SND_EV_ON, SND_EV_OFF, SND_EV_PURGED, SND_EV_ALARM, SND_EV_WARN, SND_EV_COUNT };
+struct SndEventDef {
+  const char* key;       // параметр /snd/set и поле /snd/cfg
+  const char* nvs;       // ключ NVS
+  int8_t      def;       // встроенная мелодия по умолчанию
+  bool        allowNone; // можно выбрать «Нет»
+  uint32_t    maxMs;     // предел длительности своей мелодии
+};
+const SndEventDef SND_EVENTS[SND_EV_COUNT] = {
+  { "boot", "sboot", MEL_BOOT,   true,  MEL_TOTAL_MS_MAX },
+  { "on",   "son",   MEL_ON,     true,  MEL_TOTAL_MS_MAX },
+  { "off",  "soff",  MEL_OFF,    true,  MEL_TOTAL_MS_MAX },
+  { "pur",  "spur",  MEL_PURGED, true,  MEL_TOTAL_MS_MAX },
+  { "alr",  "salr",  MEL_ALARM,  false, 10000 },
+  { "wrn",  "swrn",  MEL_WARN,   false, 10000 },
+};
+volatile int8_t sndEvent[SND_EV_COUNT] = { MEL_BOOT, MEL_ON, MEL_OFF, MEL_PURGED, MEL_ALARM, MEL_WARN };
 // ⚡ v6.5: активна тревога со звуком (не заглушена) — ставит loop. Пока true, ноты
 // локальных звуков пульта («Бумер», щелчки) на зуммер мозга не пускаются: в паузах
 // между повторами тревоги (SND_ALARM_REPEAT_MS) музыка пульта заглушала бы сигнал.
@@ -109,19 +119,24 @@ uint8_t soundStatusByte() {
   return (uint8_t)((soundOut & 0x03) | (sndClicks ? 0x04 : 0) | ((soundVol & 0x0F) << 4));
 }
 
+// Встроенные мелодии, которые можно выбрать любому событию: «H2 PRO» и сигнал включения
+inline bool melPickableBuiltin(int id) { return id == MEL_BOOT || id == MEL_ON; }
+
 void soundLoadSettings(Preferences& p) {   // вызывается при открытом пространстве "h2cfg"
   uint8_t o = p.getUChar("sout", SND_OUT_BOTH);
   uint8_t v = p.getUChar("svol", 10);
-  int8_t  b = p.getChar("sboot", MEL_BOOT);
-  int8_t  n = p.getChar("son",   MEL_ON);
   soundOut  = (o <= SND_OUT_OFF) ? o : SND_OUT_BOTH;
   soundVol  = (v >= 1 && v <= 10) ? v : 10;
   sndAlarms = p.getUChar("salm", 1) != 0;
   sndClicks = p.getUChar("sclk", 1) != 0;
-  // Слоты здесь проверяем только по диапазону — наличие файла сверяется после
-  // чтения библиотеки (melFixEventSlots).
-  sndBoot = (b == MEL_NONE || b == MEL_BOOT || b == MEL_ON || (b >= 0 && b < MEL_SLOTS)) ? b : MEL_BOOT;
-  sndOn   = (n == MEL_NONE || n == MEL_BOOT || n == MEL_ON || (n >= 0 && n < MEL_SLOTS)) ? n : MEL_ON;
+  // Слоты здесь проверяем только по диапазону — наличие файла и длительность
+  // сверяются после чтения библиотеки (melFixEventSlots).
+  for (uint8_t e = 0; e < SND_EV_COUNT; e++) {
+    const SndEventDef& d = SND_EVENTS[e];
+    int8_t x = p.getChar(d.nvs, d.def);
+    bool ok = x == d.def || melPickableBuiltin(x) || (x >= 0 && x < MEL_SLOTS) || (x == MEL_NONE && d.allowNone);
+    sndEvent[e] = ok ? x : d.def;
+  }
 }
 
 // Сохранение сразу (вызывается из веб-обработчиков). Отдельный экземпляр Preferences —
@@ -133,8 +148,7 @@ void soundSaveSettings() {
   p.putUChar("svol",  soundVol);
   p.putUChar("salm",  sndAlarms ? 1 : 0);
   p.putUChar("sclk",  sndClicks ? 1 : 0);
-  p.putChar ("sboot", sndBoot);
-  p.putChar ("son",   sndOn);
+  for (uint8_t e = 0; e < SND_EV_COUNT; e++) p.putChar(SND_EVENTS[e].nvs, sndEvent[e]);
   p.end();
 }
 
@@ -202,12 +216,6 @@ void buzzerTone(uint16_t f, uint8_t vol) {
 // =====================================================================================
 //  БИБЛИОТЕКА МЕЛОДИЙ (LittleFS, раздел "spiffs" стандартной схемы разделов)
 // =====================================================================================
-struct MelInfo {
-  bool     used;                     // слот занят корректным файлом
-  uint16_t n;                        // число нот
-  uint32_t ms;                       // общая длительность, мс
-  char     name[MEL_NAME_MAX + 1];   // название (UTF-8, с завершающим нулём)
-};
 MelInfo melCache[MEL_SLOTS];         // кэш списка в RAM (старт / загрузка / удаление)
 bool    fsOk = false;                // LittleFS смонтирована
 
@@ -215,68 +223,24 @@ void melPath(uint8_t slot, char* out, size_t len) { snprintf(out, len, "/mel/%02
 
 bool melSlotUsed(int id) { return id >= 0 && id < MEL_SLOTS && melCache[id].used; }
 
-// Допустима ли мелодия для события (загрузка/включение): нет, -1, -2 или занятый слот
-bool melEventIdValid(int id) { return id == MEL_NONE || id == MEL_BOOT || id == MEL_ON || melSlotUsed(id); }
+// Допустима ли мелодия для события: «Нет» (если можно), своя встроенная, выбираемые
+// встроенные или занятый слот не длиннее предела события
+bool melEventIdValid(uint8_t ev, int id) {
+  const SndEventDef& d = SND_EVENTS[ev];
+  if (id == MEL_NONE) return d.allowNone;
+  if (id == d.def || melPickableBuiltin(id)) return true;
+  return melSlotUsed(id) && melCache[id].ms <= d.maxMs;
+}
 
-// Мелодия для события: пользовательский слот, если он доступен, иначе встроенная
-// (например, если LittleFS не поднялась — встроенные продолжают работать).
-int8_t melEventId(int8_t id, int8_t fallback) {
-  if (id >= 0 && !melSlotUsed(id)) return fallback;
+// Мелодия, которую можно проиграть/скачать из веба: встроенные событий (-1..-6) или слот
+bool melKnown(int id) { return (id <= MEL_BOOT && id >= MEL_PURGED) || melSlotUsed(id); }
+
+// Что играть по событию: MEL_NONE — ничего; недоступный слот (ФС не поднялась,
+// файл удалён) — встроенная мелодия события.
+int8_t soundEventId(uint8_t ev) {
+  int8_t id = sndEvent[ev];
+  if (id >= 0 && !melSlotUsed(id)) return SND_EVENTS[ev].def;
   return id;
-}
-
-// Проверка, что название — корректный UTF-8 без нулевых байтов
-static bool melNameValid(const uint8_t* s, uint8_t len) {
-  uint8_t i = 0;
-  while (i < len) {
-    uint8_t c = s[i], extra;
-    if (c == 0)                              return false;
-    if (c < 0x80)                            extra = 0;
-    else if ((c & 0xE0) == 0xC0 && c >= 0xC2) extra = 1;
-    else if ((c & 0xF0) == 0xE0)             extra = 2;
-    else if ((c & 0xF8) == 0xF0 && c <= 0xF4) extra = 3;
-    else                                     return false;
-    if ((uint16_t)i + extra >= len)          return false;
-    for (uint8_t k = 1; k <= extra; k++)
-      if ((s[i + k] & 0xC0) != 0x80)         return false;
-    i += 1 + extra;
-  }
-  return true;
-}
-
-static uint16_t rdLE16(const uint8_t* p) { return (uint16_t)(p[0] | (p[1] << 8)); }
-
-// Строгая проверка образа H2M1 (магия, длины, ТОЧНЫЙ размер, диапазоны, общая
-// длительность). nullptr — файл корректен (info заполнен), иначе текст ошибки.
-const char* melValidate(const uint8_t* b, size_t len, MelInfo* info) {
-  if (len > MEL_FILE_MAX)                      return "слишком большой файл";
-  if (len < 4 + 1 + 2 || memcmp(b, "H2M1", 4) != 0)
-                                               return "плохой формат: нет сигнатуры H2M1";
-  uint8_t nameLen = b[4];
-  if (nameLen > MEL_NAME_MAX)                  return "плохой формат: длинное название";
-  size_t hdr = 5 + (size_t)nameLen + 2;
-  if (len < hdr)                               return "плохой формат: файл обрезан";
-  if (!melNameValid(b + 5, nameLen))           return "плохой формат: название не UTF-8";
-  uint16_t cnt = rdLE16(b + 5 + nameLen);
-  if (cnt < 1 || cnt > MEL_NOTES_MAX)          return "плохой формат: число нот";
-  if (len != hdr + (size_t)cnt * 4)            return "плохой формат: размер не совпадает";
-  uint32_t total = 0;
-  const uint8_t* p = b + hdr;
-  for (uint16_t i = 0; i < cnt; i++, p += 4) {
-    uint16_t f = rdLE16(p), d = rdLE16(p + 2);
-    if (f != 0 && (f < MEL_FREQ_MIN || f > MEL_FREQ_MAX)) return "плохой формат: частота вне 50..10000 Гц";
-    if (d < 1 || d > MEL_DUR_MAX)                         return "плохой формат: длительность ноты";
-    total += d;
-  }
-  if (total > MEL_TOTAL_MS_MAX)                return "мелодия длиннее 120 с";
-  if (info) {
-    info->used = true;
-    info->n    = cnt;
-    info->ms   = total;
-    memcpy(info->name, b + 5, nameLen);
-    info->name[nameLen] = '\0';
-  }
-  return nullptr;
 }
 
 // Буфер приёма файла (/snd/up). Чтение библиотеки на старте использует его же —
@@ -307,8 +271,8 @@ void melScan() {
 void melFixEventSlots() {
   if (!fsOk) return;
   bool changed = false;
-  if (sndBoot >= 0 && !melSlotUsed(sndBoot)) { sndBoot = MEL_BOOT; changed = true; }
-  if (sndOn   >= 0 && !melSlotUsed(sndOn))   { sndOn   = MEL_ON;   changed = true; }
+  for (uint8_t e = 0; e < SND_EV_COUNT; e++)
+    if (sndEvent[e] >= 0 && !melEventIdValid(e, sndEvent[e])) { sndEvent[e] = SND_EVENTS[e].def; changed = true; }
   if (changed) soundSaveSettings();
 }
 
@@ -349,7 +313,7 @@ static uint16_t melLoadUser(int8_t slot, Note* buf) {
   uint8_t  hdr[5], c[2];
   if (sz >= 7 && sz <= MEL_FILE_MAX && f.read(hdr, 5) == 5 && memcmp(hdr, "H2M1", 4) == 0 &&
       hdr[4] <= MEL_NAME_MAX && f.seek(5 + hdr[4]) && f.read(c, 2) == 2) {
-    uint16_t cnt   = rdLE16(c);
+    uint16_t cnt   = melRdLE16(c);
     size_t   bytes = (size_t)cnt * sizeof(Note);
     if (cnt >= 1 && cnt <= MEL_NOTES_MAX && sz == 7u + hdr[4] + bytes &&
         f.read((uint8_t*)buf, bytes) == bytes) {
@@ -670,17 +634,59 @@ struct MelUpload {
 };
 static MelUpload melUp = { nullptr, 0, nullptr, false, false };
 
+// Приём части "f" multipart-загрузки в melUpBuf (общий для /snd/up и ⚡ v6.7 /rmel/up)
+void melUploadChunk(AsyncWebServerRequest* req, const String& filename, size_t index, uint8_t* data, size_t len, bool final) {
+  (void)filename;
+  if (index == 0) {
+    // Имя поля формы: библиотека кладёт его параметром "name" на время приёма части
+    const AsyncWebParameter* fp = req->getParam("name", true, true);
+    bool isF = (fp == nullptr) || (fp->value() == "f");
+    if (melUp.owner != req) {
+      if (!isF) return;                       // посторонний файл — приём не начинаем
+      melUp.owner  = req;
+      melUp.len    = 0;
+      melUp.err    = nullptr;
+      melUp.done   = false;
+      melUp.active = true;
+      // Клиент оборвал загрузку — освободить буфер для следующей
+      req->onDisconnect([req]() { if (melUp.owner == req) melUp.owner = nullptr; });
+    } else {
+      melUp.active = isF && !melUp.done;      // нужна только первая часть "f"
+    }
+  }
+  if (melUp.owner != req || !melUp.active) return;
+  if (melUp.err == nullptr) {
+    if (melUp.len + len > MEL_FILE_MAX) melUp.err = "слишком большой файл (максимум 4855 байт)";
+    else { memcpy(melUpBuf + melUp.len, data, len); melUp.len += len; }
+  }
+  if (final) { melUp.done = true; melUp.active = false; }
+}
+
+// Завершение загрузки: nullptr — файл req целиком в melUpBuf (melUp.len байт),
+// иначе текст ошибки. Буфер освобождается для следующей загрузки.
+const char* melUploadTake(AsyncWebServerRequest* req) {
+  const char* err = nullptr;
+  if (!fsOk)                                  err = "нет ФС (LittleFS не смонтирована)";
+  else if (melUp.owner != req || !melUp.done) err = "файл не получен";
+  else if (melUp.err)                         err = melUp.err;
+  if (melUp.owner == req) melUp.owner = nullptr;
+  return err;
+}
+
 void soundRegisterHttp() {
   // Настройки + библиотека
   server.on("/snd/cfg", HTTP_GET, [](AsyncWebServerRequest* req) {
     AsyncResponseStream* rs = req->beginResponseStream("application/json");
     unsigned long total = fsOk ? (unsigned long)LittleFS.totalBytes() : 0;
     unsigned long used  = fsOk ? (unsigned long)LittleFS.usedBytes()  : 0;
-    rs->printf("{\"out\":%u,\"vol\":%u,\"alm\":%d,\"clk\":%d,\"boot\":%d,\"on\":%d,"
-               "\"fsok\":%d,\"free\":%lu,\"total\":%lu,\"play\":%d,\"list\":[",
-               (unsigned)soundOut, (unsigned)soundVol, sndAlarms ? 1 : 0, sndClicks ? 1 : 0,
-               (int)sndBoot, (int)sndOn, fsOk ? 1 : 0, total > used ? total - used : 0UL, total,
-               soundIsPlaying() ? 1 : 0);
+    rs->printf("{\"out\":%u,\"vol\":%u,\"alm\":%d,\"clk\":%d,",
+               (unsigned)soundOut, (unsigned)soundVol, sndAlarms ? 1 : 0, sndClicks ? 1 : 0);
+    // ⚡ v6.7: мелодии событий: "boot","on","off","pur","alr","wrn" и пределы длительности
+    for (uint8_t e = 0; e < SND_EV_COUNT; e++) rs->printf("\"%s\":%d,", SND_EVENTS[e].key, (int)sndEvent[e]);
+    rs->printf("\"evmax\":{\"alr\":%lu,\"wrn\":%lu},",
+               (unsigned long)SND_EVENTS[SND_EV_ALARM].maxMs, (unsigned long)SND_EVENTS[SND_EV_WARN].maxMs);
+    rs->printf("\"fsok\":%d,\"free\":%lu,\"total\":%lu,\"play\":%d,\"list\":[",
+               fsOk ? 1 : 0, total > used ? total - used : 0UL, total, soundIsPlaying() ? 1 : 0);
     bool first = true;
     for (uint8_t i = 0; i < MEL_SLOTS; i++) {
       if (!melCache[i].used) continue;
@@ -697,37 +703,39 @@ void soundRegisterHttp() {
 
   // Изменение настроек (любое подмножество параметров), сохраняется сразу
   server.on("/snd/set", HTTP_GET, [](AsyncWebServerRequest* req) {
-    int out = soundOut, vol = soundVol, alm = sndAlarms, clk = sndClicks, boot = sndBoot, on = sndOn;
+    int out = soundOut, vol = soundVol, alm = sndAlarms, clk = sndClicks;
+    int ev[SND_EV_COUNT];
+    for (uint8_t e = 0; e < SND_EV_COUNT; e++) ev[e] = sndEvent[e];
     const char* bad = nullptr;
     if      (!sndParamInt(req, "out",  out)  || out < 0 || out > SND_OUT_OFF) bad = "bad out";
     else if (!sndParamInt(req, "vol",  vol)  || vol < 1 || vol > 10)          bad = "bad vol";
     else if (!sndParamInt(req, "alm",  alm)  || alm < 0 || alm > 1)           bad = "bad alm";
     else if (!sndParamInt(req, "clk",  clk)  || clk < 0 || clk > 1)           bad = "bad clk";
-    // ⚡ v6.3: неприсланные boot/on не проверяем — при битой ФС сохранённый слот иначе
-    // блокирует любой частичный /snd/set (Android шлёт только out/vol/alm/clk); при
-    // воспроизведении melEventId() подменит недоступный слот встроенной мелодией
-    else if (req->hasParam("boot") && (!sndParamInt(req, "boot", boot) || !melEventIdValid(boot))) bad = "bad boot";
-    else if (req->hasParam("on")   && (!sndParamInt(req, "on",   on)   || !melEventIdValid(on)))   bad = "bad on";
+    // ⚡ v6.3: неприсланные мелодии событий не проверяем — при битой ФС сохранённый слот
+    // иначе блокирует любой частичный /snd/set; при воспроизведении soundEventId()
+    // подменит недоступный слот встроенной мелодией
+    for (uint8_t e = 0; e < SND_EV_COUNT && !bad; e++) {
+      const char* k = SND_EVENTS[e].key;
+      if (req->hasParam(k) && (!sndParamInt(req, k, ev[e]) || !melEventIdValid(e, ev[e]))) bad = "bad event melody";
+    }
     if (bad) { req->send(400, "text/plain", bad); return; }
     soundOut  = (uint8_t)out;
     soundVol  = (uint8_t)vol;
     sndAlarms = alm != 0;
     sndClicks = clk != 0;
-    sndBoot   = (int8_t)boot;
-    sndOn     = (int8_t)on;
+    for (uint8_t e = 0; e < SND_EV_COUNT; e++) sndEvent[e] = (int8_t)ev[e];
     soundSaveSettings();
     if (soundOut == SND_OUT_OFF) soundStop();   // «без звука» — замолчать сразу
     wsStateChanged = true;
     req->send(200, "text/plain", "OK");
   });
 
-  // Проиграть мелодию (встроенные -1/-2/-3 или слот) — приоритет MELODY
+  // Проиграть мелодию (встроенные -1..-6 или слот) — приоритет MELODY
   server.on("/snd/play", HTTP_GET, [](AsyncWebServerRequest* req) {
     int id = MEL_NONE, out = -1;
     if (!req->hasParam("id") || !sndParamInt(req, "id", id)) { req->send(400, "text/plain", "bad id"); return; }
     if (!sndParamInt(req, "out", out) || out < -1 || out > SND_OUT_OFF) { req->send(400, "text/plain", "bad out"); return; }
-    bool known = (id == MEL_BOOT || id == MEL_ON || id == MEL_ALARM) || melSlotUsed(id);
-    if (!known) { req->send(404, "text/plain", "no melody"); return; }
+    if (!melKnown(id)) { req->send(404, "text/plain", "no melody"); return; }
     soundPlay((int8_t)id, SND_PRIO_MELODY, (int8_t)out);
     req->send(200, "text/plain", "OK");
   });
@@ -749,8 +757,8 @@ void soundRegisterHttp() {
     melCache[id].used = false;
     // Удалили мелодию события — вернуть встроенную по умолчанию
     bool changed = false;
-    if (sndBoot == id) { sndBoot = MEL_BOOT; changed = true; }
-    if (sndOn   == id) { sndOn   = MEL_ON;   changed = true; }
+    for (uint8_t e = 0; e < SND_EV_COUNT; e++)
+      if (sndEvent[e] == id) { sndEvent[e] = SND_EVENTS[e].def; changed = true; }
     if (changed) soundSaveSettings();
     wsStateChanged = true;
     req->send(200, "text/plain", "OK");
@@ -760,7 +768,8 @@ void soundRegisterHttp() {
   server.on("/snd/get", HTTP_GET, [](AsyncWebServerRequest* req) {
     int id = MEL_NONE;
     if (!req->hasParam("id") || !sndParamInt(req, "id", id)) { req->send(400, "text/plain", "bad id"); return; }
-    if (id == MEL_BOOT || id == MEL_ON || id == MEL_ALARM) {
+    if (id < 0) {
+      if (!melKnown(id)) { req->send(404, "text/plain", "no melody"); return; }
       const BuiltinMelody* b = melBuiltin((int8_t)id);
       uint8_t nameLen = (uint8_t)strlen(b->name);
       uint8_t hdr[5 + MEL_NAME_MAX + 2];
@@ -792,44 +801,14 @@ void soundRegisterHttp() {
   // формат, пишет файл в первый свободный слот и отвечает JSON.
   server.on("/snd/up", HTTP_POST,
     [](AsyncWebServerRequest* req) {
-      const char* err  = nullptr;
+      const char* err  = melUploadTake(req);
       int         slot = -1;
-      if (!fsOk)                                         err = "нет ФС (LittleFS не смонтирована)";
-      else if (melUp.owner != req || !melUp.done)        err = "файл не получен";
-      else if (melUp.err)                                err = melUp.err;
-      else                                               err = melStore(melUpBuf, melUp.len, slot);
-      if (melUp.owner == req) melUp.owner = nullptr;
+      if (!err) err = melStore(melUpBuf, melUp.len, slot);
       char out[160];
       if (err) snprintf(out, sizeof(out), "{\"ok\":0,\"err\":\"%s\"}", err);
       else     snprintf(out, sizeof(out), "{\"ok\":1,\"id\":%d}", slot);
       if (!err) wsStateChanged = true;
       req->send(200, "application/json", out);
     },
-    [](AsyncWebServerRequest* req, const String& filename, size_t index, uint8_t* data, size_t len, bool final) {
-      if (!fsOk) return;
-      if (index == 0) {
-        // Имя поля формы: библиотека кладёт его параметром "name" на время приёма части
-        const AsyncWebParameter* fp = req->getParam("name", true, true);
-        bool isF = (fp == nullptr) || (fp->value() == "f");
-        if (melUp.owner != req) {
-          if (!isF) return;                       // посторонний файл — приём не начинаем
-          melUp.owner  = req;
-          melUp.len    = 0;
-          melUp.err    = nullptr;
-          melUp.done   = false;
-          melUp.active = true;
-          // Клиент оборвал загрузку — освободить буфер для следующей
-          req->onDisconnect([req]() { if (melUp.owner == req) melUp.owner = nullptr; });
-        } else {
-          melUp.active = isF && !melUp.done;      // нужна только первая часть "f"
-        }
-      }
-      if (melUp.owner != req || !melUp.active) return;
-      if (melUp.err == nullptr) {
-        if (melUp.len + len > MEL_FILE_MAX) melUp.err = "слишком большой файл (максимум 4855 байт)";
-        else { memcpy(melUpBuf + melUp.len, data, len); melUp.len += len; }
-      }
-      if (final) { melUp.done = true; melUp.active = false; }
-    }
-  );
+    melUploadChunk);
 }

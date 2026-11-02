@@ -9,6 +9,11 @@
  *    • I2C 400 кГц: перерисовка ≈30 мс вместо ≈110 мс — loop не стоит, кнопки (в т.ч.
  *      двойное нажатие выхода из игры) не теряются.
  *    • Игра: шаг физики 20 мс с догонянием — скорость не зависит от времени отрисовки.
+ *    • СВОИ МЕЛОДИИ ПУЛЬТА: до 8 мелодий H2M1 в LittleFS пульта (/rmel/N.h2m). Их
+ *      готовят в веб/приложении (отрезки трека, прослушивание «как на зуммере») и
+ *      передают через мозг по радио (пакеты PKT_RMEL, remote_rmel.h). В веб/приложении
+ *      выбирается, что играет кнопка МЕЛОДИЯ («Бумер» или своя) и звук включения пульта.
+ *      Настройки — в NVS "h2-rmel". Мозг прошивать вместе с пультом (протокол v6.7).
  *
  *  Адаптирован под мозг v6.0. Мозг и пульт прошивать ОДНОВРЕМЕННО: пакет статуса
  *  стал 16 байт и добавлен пакет нот TonePacket (общий h2_protocol.h v6.0).
@@ -119,7 +124,8 @@
  *        GPIO27 → ПОДЖИГ            cmd 4 (500 мс)
  *        GPIO32 → TARGET +0.5 бар   cmd 8
  *        GPIO33 → TARGET -0.5 бар   cmd 9
- *        GPIO34 → МЕЛОДИЯ           локальная тема «Бумера», повторное нажатие — стоп.
+ *        GPIO34 → МЕЛОДИЯ           активная мелодия пульта («Бумер» или своя, ⚡ v6.7)
+ *                                   по кругу, повторное нажатие — стоп; 2× — игра.
  *                 GPIO34 не имеет внутренней подтяжки: нужен резистор 10 кОм
  *                 между GPIO34 и 3.3 В; кнопка замыкает GPIO34 на GND.
  *
@@ -163,6 +169,9 @@
                            //    пакетов PKT_*, вывод звука SND_OUT_*, трубы, каналы,
                            //    MIN/MAX_TARGET_PRESSURE (единый для мозга и пульта)
 #include "remote_game.h"   // v6.3 + GAME: локальный динозаврик, без изменения протокола
+#include <LittleFS.h>       // ⚡ v6.7: свои мелодии пульта
+#include "h2_melody.h"     // ⚡ v6.7: формат H2M1 (общий с мозгом)
+#include "remote_rmel.h"   // ⚡ v6.7: приём мелодий от мозга (PKT_RMEL)
 
 
 // ======================== ПИНЫ NRF24 ========================
@@ -202,7 +211,7 @@ const uint16_t TONE_MAX_HZ = 10000;
 const uint16_t TONE_MAX_MS = 10000;       // самая длинная нота H2M1 — предел автостопа
 
 // Нота локального звука — тот же формат, что у плеера мозга: f = 0 — пауза.
-struct Note { uint16_t f; uint16_t d; };
+// struct Note — в h2_melody.h (общий с мозгом формат H2M1)
 const Note    MEL_CLICK[]       = { {4000, 15} };                          // щелчок кнопки
 const uint8_t MEL_CLICK_LEN     = sizeof(MEL_CLICK) / sizeof(MEL_CLICK[0]);
 const Note    MEL_LINK_LOST[]   = { {800, 150}, {0, 100}, {600, 250} };   // «связь потеряна»
@@ -232,20 +241,19 @@ const Note MEL_BOOMER[] = {
   {1760, 240}, {1568, 240}, {1760, 240}, {1568, 240}, {1760, 240}, {1568, 240},
   {1760, 240}, {1568, 240}, {1760, 240}, {1976, 480}, {0, 480}
 };
-static_assert(sizeof(MEL_BOOMER) / sizeof(MEL_BOOMER[0]) <= 255,
-              "MEL_BOOMER: индексы плеера (sndSeqIdx/sndSeqLen) — uint8_t, не больше 255 нот");
-const uint8_t MEL_BOOMER_LEN = sizeof(MEL_BOOMER) / sizeof(MEL_BOOMER[0]);
-const uint8_t BOOMER_MAX_VOL    = 8;    // ограничиваем резкость звука на маленьком зуммере
-const uint8_t BOOMER_ATTACK_MS  = 8;    // плавное начало убирает щелчок
-const uint8_t BOOMER_RELEASE_MS = 10;   // плавный конец ноты
-const uint8_t BOOMER_GATE_MS    = 20;   // короткая тишина разделяет повторяющиеся ноты
+const uint16_t MEL_BOOMER_LEN = sizeof(MEL_BOOMER) / sizeof(MEL_BOOMER[0]);
+// Огибающая музыки кнопки МЕЛОДИЯ («Бумер» и ⚡ v6.7 свои мелодии пульта)
+const uint8_t MUSIC_MAX_VOL    = 8;    // ограничиваем резкость звука на маленьком зуммере
+const uint8_t MUSIC_ATTACK_MS  = 8;    // плавное начало убирает щелчок
+const uint8_t MUSIC_RELEASE_MS = 10;   // плавный конец ноты
+const uint8_t MUSIC_GATE_MS    = 20;   // короткая тишина разделяет повторяющиеся ноты
 
 // Приоритеты (как у плеера мозга): новый локальный звук вытесняет текущий, только если
 // его приоритет ≥ приоритета звучащего. Нота от мозга прерывает любой локальный звук.
 const uint8_t SPRIO_CLICK = 0;   // щелчок кнопки
 const uint8_t SPRIO_TONE  = 1;   // нота мелодии от мозга
 const uint8_t SPRIO_ALARM = 2;   // «связь потеряна»
-const uint8_t SPRIO_BOOMER = 1;
+const uint8_t SPRIO_MUSIC = 1;   // музыка кнопки МЕЛОДИЯ и звук загрузки пульта
 
 
 // ======================== OLED ========================
@@ -374,20 +382,21 @@ esp_timer_handle_t bootBlinkTimer = nullptr;   // таймер мигания з
 
 // ======================== ⚡ v6.0: МИНИ-ПЛЕЕР ========================
 const Note*   sndSeq       = nullptr;  // локальная последовательность (nullptr — нота от мозга)
-uint8_t       sndSeqLen    = 0;
-uint8_t       sndSeqIdx    = 0;        // индекс звучащей ноты последовательности
+uint16_t      sndSeqLen    = 0;        // ⚡ v6.7: uint16 — своя мелодия до 1200 нот
+uint16_t      sndSeqIdx    = 0;        // индекс звучащей ноты последовательности
+bool          sndMusic     = false;    // ⚡ v6.7: звучит музыка (огибающая, предел громкости)
 uint8_t       sndVol       = 10;       // громкость текущего звука 1..10
 uint8_t       sndPrio      = 0;        // приоритет текущего звука (SPRIO_*)
 bool          sndActive    = false;    // идёт нота/пауза: отсчёт sndNoteDur от sndNoteStart
 unsigned long sndNoteStart = 0;
 uint16_t      sndNoteDur   = 0;
-bool          boomerPlaying = false;   // восьмая кнопка: локальная мелодия по кругу
+bool          musicPlaying = false;    // восьмая кнопка: активная мелодия пульта по кругу
 bool          sndHere      = true;     // ⚡ v6.5: текущая нота звучит на зуммере пульта (иначе — только на мозге / молча)
 bool          toBrainOn    = false;    // ⚡ v6.5: на мозг отправлена нота, которая ещё может звучать
 unsigned long toBrainEndMs = 0;        // ⚡ v6.5: до какого момента она звучит на мозге
 bool          brainToneSeen  = false;  // ⚡ v6.3: от мозга уже приходила нота (0 не годится как метка: now+dur может дать 0)
 unsigned long brainToneEndMs = 0;      // ⚡ v6.3: конец последней ноты мозга (пауза отсчитывается от конца, а не от начала ноты)
-const unsigned long T_BOOMER_RESUME = 1500;   // столько мс тишины ПОСЛЕ конца ноты мозга — и «Бумер» продолжается
+const unsigned long T_MUSIC_RESUME = 1500;    // столько мс тишины ПОСЛЕ конца ноты мозга — и музыка продолжается
 uint16_t buzzerCurrentDuty = 0;              // не обновлять LEDC без изменения громкости
 
 
@@ -550,6 +559,7 @@ void soundStop() {
   buzzerSilence();
   sndActive = false;
   sndSeq    = nullptr;
+  sndMusic  = false;
   // ⚡ v6.5: нота пульта ещё звучит на мозге (стоп «Бумера», сон, MUTE) — заглушить и там
   if (toBrainOn && (long)(millis() - toBrainEndMs) < 0) sendToneToBrain(0, 0, 0);
   toBrainOn = false;
@@ -579,16 +589,16 @@ void soundBeginNote(uint16_t f, uint16_t d, unsigned long now) {
   sndHere = (sndSeq == nullptr) || seqHere(sndPrio);
   // У локальной темы громкость поднимется в updateSound(): старт с нуля
   // устраняет щелчок. Звуки мозга и кнопок сохраняют прежнюю громкость.
-  if (f > 0 && sndHere) buzzerTone(f, sndSeq == MEL_BOOMER ? 0 : sndVol);
+  if (f > 0 && sndHere) buzzerTone(f, sndMusic ? 0 : sndVol);
   else                  buzzerSilence();   // пауза внутри последовательности / звук не здесь
   // ⚡ v6.5: последовательность идёт по времени и при выводе «Мозг» (молча на пульте),
   // каждая нота уходит на мозг. Паузы не шлём — мозг сам глушит ноту по durMs.
   if (f > 0 && seqToBrain(sndSeq)) {
     uint16_t bd = d;
     uint8_t  bv = sndVol;
-    if (sndSeq == MEL_BOOMER) {              // огибающая «Бумера» на мозге — разрыв и предел громкости
-      if (bd > BOOMER_GATE_MS) bd -= BOOMER_GATE_MS;
-      if (bv > BOOMER_MAX_VOL) bv = BOOMER_MAX_VOL;
+    if (sndMusic) {                          // огибающая музыки на мозге — разрыв и предел громкости
+      if (bd > MUSIC_GATE_MS) bd -= MUSIC_GATE_MS;
+      if (bv > MUSIC_MAX_VOL) bv = MUSIC_MAX_VOL;
     }
     sendToneToBrain(f, bd, bv);
     toBrainOn    = true;
@@ -599,7 +609,7 @@ void soundBeginNote(uint16_t f, uint16_t d, unsigned long now) {
   sndActive    = true;
 }
 
-void soundPlayLocal(const Note* seq, uint8_t len, uint8_t prio) {
+void soundPlayLocal(const Note* seq, uint16_t len, uint8_t prio, bool music = false) {
   // ⚡ v6.5: раньше при выводе «Мозг» звук пульта просто глушился (localSoundAllowed);
   // теперь он уходит на мозг. Не звучит нигде (вывод «Выкл», щелчок без мозга) — не начинаем.
   if (len == 0 || (!seqHere(prio) && !seqToBrain(seq))) return;
@@ -608,6 +618,7 @@ void soundPlayLocal(const Note* seq, uint8_t len, uint8_t prio) {
   sndSeqLen = len;
   sndSeqIdx = 0;
   sndPrio   = prio;
+  sndMusic  = music;
   sndVol    = s_volume();
   soundBeginNote(seq[0].f, seq[0].d, millis());
 }
@@ -620,8 +631,9 @@ void soundPlayRemote(uint16_t freq, uint16_t durMs, uint8_t vol, unsigned long n
   brainToneSeen  = true;
   brainToneEndMs = now + ((freq == 0 || durMs == 0) ? 0 : (durMs > TONE_MAX_MS ? TONE_MAX_MS : durMs));
   if (freq == 0 || durMs == 0) { soundStop(); return; }
-  sndSeq  = nullptr;
-  sndPrio = SPRIO_TONE;
+  sndSeq   = nullptr;
+  sndMusic = false;
+  sndPrio  = SPRIO_TONE;
   sndVol  = normVolume(vol);
   soundBeginNote(freq, durMs > TONE_MAX_MS ? TONE_MAX_MS : durMs, now);
 }
@@ -630,16 +642,16 @@ void updateSound(unsigned long now) {
   if (!sndActive) return;
   unsigned long age = now - sndNoteStart;
   // ⚡ v6.5: огибающая — только когда нота звучит на пульте (при выводе «Мозг» пульт молчит)
-  if (sndSeq == MEL_BOOMER && sndHere && sndSeq[sndSeqIdx].f != 0 && age < sndNoteDur) {
-    uint16_t gateAt = sndNoteDur > BOOMER_GATE_MS ? sndNoteDur - BOOMER_GATE_MS : sndNoteDur;
-    uint16_t maxDuty = dutyForVolume(sndVol > BOOMER_MAX_VOL ? BOOMER_MAX_VOL : sndVol);
+  if (sndMusic && sndHere && sndSeq[sndSeqIdx].f != 0 && age < sndNoteDur) {
+    uint16_t gateAt = sndNoteDur > MUSIC_GATE_MS ? sndNoteDur - MUSIC_GATE_MS : sndNoteDur;
+    uint16_t maxDuty = dutyForVolume(sndVol > MUSIC_MAX_VOL ? MUSIC_MAX_VOL : sndVol);
     uint16_t duty = 0;
     if (age < gateAt) {
       duty = maxDuty;
-      if (age < BOOMER_ATTACK_MS) duty = maxDuty * age / BOOMER_ATTACK_MS;
+      if (age < MUSIC_ATTACK_MS) duty = maxDuty * age / MUSIC_ATTACK_MS;
       unsigned long left = gateAt - age;
-      if (left < BOOMER_RELEASE_MS) {
-        uint16_t fading = maxDuty * left / BOOMER_RELEASE_MS;
+      if (left < MUSIC_RELEASE_MS) {
+        uint16_t fading = maxDuty * left / MUSIC_RELEASE_MS;
         if (fading < duty) duty = fading;
       }
     }
@@ -653,44 +665,217 @@ void updateSound(unsigned long now) {
   soundStop();                         // конец звука / автостоп ноты мозга
 }
 
-void toggleBoomer(unsigned long now) {
-  // ⚡ v6.5: «Бумер» следует выбору «Где играть»: при «Выкл» не запускается (раньше
-  // звучал на пульте при любом выводе), при «Мозг» играет на зуммере мозга.
-  if (!boomerPlaying && s_out() >= SND_OUT_OFF) {
+// =====================================================================================
+//  ⚡ v6.7: СВОИ МЕЛОДИИ ПУЛЬТА (LittleFS /rmel/N.h2m, до RMEL_SLOTS) и звук загрузки
+//  Файлы приходят от мозга пакетами PKT_RMEL (remote_rmel.h). В NVS ("h2-rmel"):
+//  act — что играет кнопка МЕЛОДИЯ (RMEL_BOOMER или слот), boot — звук загрузки
+//  пульта (RMEL_NONE или слот). Ноты активной мелодии читаются в melBuf только когда
+//  ничего не звучит (melBuf не меняется под играющей последовательностью).
+// =====================================================================================
+RmelReceiver rmelRx;
+bool     rmelFsOk  = false;
+uint8_t  rmelUsed  = 0;                  // маска занятых слотов
+MelInfo  rmelInfo[RMEL_SLOTS];
+int8_t   rmelAct   = RMEL_BOOMER;
+int8_t   rmelBoot  = RMEL_NONE;
+Note     melBuf[MEL_NOTES_MAX];          // ноты своей мелодии (музыка или звук загрузки)
+uint16_t melBufLen  = 0;
+int8_t   melBufSlot = -1;                // какой слот сейчас в melBuf (-1 — ничего)
+static uint8_t rmelFileBuf[MEL_FILE_MAX];
+
+void rmelPath(uint8_t slot, char* out, size_t len) { snprintf(out, len, "/rmel/%u.h2m", slot); }
+
+void rmelSaveCfg() {
+  Preferences p;
+  if (!p.begin("h2-rmel", false)) return;
+  p.putChar("act", rmelAct);
+  p.putChar("boot", rmelBoot);
+  p.end();
+}
+
+// Чтение слота в rmelFileBuf с проверкой. Возвращает размер, 0 — нет/битый.
+size_t rmelReadFile(uint8_t slot, MelInfo* info) {
+  if (!rmelFsOk || slot >= RMEL_SLOTS) return 0;
+  char path[20]; rmelPath(slot, path, sizeof(path));
+  if (!LittleFS.exists(path)) return 0;
+  File f = LittleFS.open(path, FILE_READ);
+  if (!f) return 0;
+  size_t sz = f.size();
+  bool ok = sz <= MEL_FILE_MAX && f.read(rmelFileBuf, sz) == sz && melValidate(rmelFileBuf, sz, info) == nullptr;
+  f.close();
+  return ok ? sz : 0;
+}
+
+void rmelInit() {
+  rmelFsOk = LittleFS.begin(true);
+  if (rmelFsOk && !LittleFS.exists("/rmel")) LittleFS.mkdir("/rmel");
+  rmelUsed = 0;
+  for (uint8_t i = 0; i < RMEL_SLOTS; i++) {
+    rmelInfo[i] = {};
+    if (rmelReadFile(i, &rmelInfo[i])) rmelUsed |= (uint8_t)(1u << i);
+  }
+  Preferences p;
+  if (p.begin("h2-rmel", true)) {
+    rmelAct  = p.getChar("act", RMEL_BOOMER);
+    rmelBoot = p.getChar("boot", RMEL_NONE);
+    p.end();
+  }
+  // Ссылки на пустые слоты — по умолчанию
+  if (rmelAct != RMEL_BOOMER && !(rmelAct >= 0 && rmelAct < RMEL_SLOTS && (rmelUsed & (1u << rmelAct)))) rmelAct = RMEL_BOOMER;
+  if (rmelBoot != RMEL_NONE && !(rmelBoot >= 0 && rmelBoot < RMEL_SLOTS && (rmelUsed & (1u << rmelBoot)))) rmelBoot = RMEL_NONE;
+  Serial.printf("[RMEL] LittleFS %s, мелодий %u, кнопка: %d, загрузка: %d\n",
+                rmelFsOk ? "OK" : "FAIL", (unsigned)__builtin_popcount(rmelUsed), (int)rmelAct, (int)rmelBoot);
+}
+
+// Ноты слота — в melBuf (только когда ничего не звучит). false — слот недоступен.
+bool rmelLoadNotes(int8_t slot) {
+  if (melBufSlot == slot && melBufLen) return true;
+  MelInfo info;
+  melBufSlot = -1;
+  melBufLen  = 0;
+  if (slot < 0 || !rmelReadFile((uint8_t)slot, &info)) return false;
+  melBufLen  = melNotesFrom(rmelFileBuf, melBuf);
+  melBufSlot = slot;
+  return true;
+}
+
+// Ответ мозгу по трубе PIPE_R2B (как команда). true — ACK получен.
+bool rmelSendToBrain(const void* pkt, uint8_t len) {
+  radio.stopListening();
+  bool ok = radio.write(pkt, len);
+  radio.startListening();
+  return ok;
+}
+
+// Опись: SUMMARY и описание каждого занятого слота
+void rmelSendInventory() {
+  RmelSummary s = { PKT_RMEL, RMEL_SUMMARY, rmelAct, rmelBoot, (uint8_t)(rmelFsOk ? 1 : 0), rmelUsed };
+  if (!rmelSendToBrain(&s, sizeof(s))) return;     // мозг не слышит — он запросит опись сам
+  for (uint8_t i = 0; i < RMEL_SLOTS; i++) {
+    if (!(rmelUsed & (1u << i))) continue;
+    RmelSlot p = {};
+    p.type = PKT_RMEL; p.op = RMEL_SLOT; p.slot = i;
+    p.n = rmelInfo[i].n; p.ms = rmelInfo[i].ms;
+    p.nameLen = melUtf8Fit(rmelInfo[i].name, (uint8_t)strlen(rmelInfo[i].name), sizeof(p.name));
+    memcpy(p.name, rmelInfo[i].name, p.nameLen);
+    rmelSendToBrain(&p, sizeof(p));
+  }
+}
+
+// Активную мелодию сменили/удалили во время игры — начать новую с начала
+void rmelRestartMusic() {
+  if (musicPlaying && sndMusic) soundStop();
+}
+
+// Сохранение принятого файла: первый свободный слот
+uint8_t rmelStore(uint8_t& slotOut) {
+  if (!rmelFsOk) return RMEL_E_FS;
+  uint8_t slot = rmelFreeSlot(rmelUsed);
+  if (slot == 0xFF) return RMEL_E_FULL;
+  if (sndMusic || melBufSlot == (int8_t)slot) { soundStop(); melBufSlot = -1; }   // буфер слота устарел
+  char path[20]; rmelPath(slot, path, sizeof(path));
+  File f = LittleFS.open(path, FILE_WRITE, true);
+  if (!f) return RMEL_E_FS;
+  size_t w = f.write(rmelRx.file(), rmelRx.size());
+  f.close();
+  if (w != rmelRx.size()) { LittleFS.remove(path); return RMEL_E_FS; }
+  rmelInfo[slot] = rmelRx.info();
+  rmelUsed |= (uint8_t)(1u << slot);
+  slotOut = slot;
+  Serial.printf("[RMEL] Мелодия «%s» сохранена в слот %u\n", rmelInfo[slot].name, slot);
+  return RMEL_OK;
+}
+
+void rmelDelete(uint8_t slot) {
+  if (slot >= RMEL_SLOTS || !(rmelUsed & (1u << slot))) return;
+  if (melBufSlot == (int8_t)slot) { if (sndMusic || sndSeq == melBuf) soundStop(); melBufSlot = -1; melBufLen = 0; }
+  char path[20]; rmelPath(slot, path, sizeof(path));
+  LittleFS.remove(path);
+  rmelUsed &= (uint8_t)~(1u << slot);
+  rmelInfo[slot] = {};
+  bool changed = false;
+  if (rmelAct == (int8_t)slot)  { rmelAct = RMEL_BOOMER; changed = true; rmelRestartMusic(); }
+  if (rmelBoot == (int8_t)slot) { rmelBoot = RMEL_NONE;  changed = true; }
+  if (changed) rmelSaveCfg();
+}
+
+// Пакет PKT_RMEL от мозга (loop)
+void rmelOnPacket(const uint8_t* b, unsigned long now) {
+  lastActivityMs = now;              // передача идёт — пульт не засыпает
+  switch (b[1]) {
+    case RMEL_BEGIN: { RmelBegin p; memcpy(&p, b, sizeof(p)); rmelRx.begin(p); break; }
+    case RMEL_DATA:  { RmelData p;  memcpy(&p, b, sizeof(p)); rmelRx.data(p);  break; }
+    case RMEL_END: {
+      RmelEnd p; memcpy(&p, b, sizeof(p));
+      bool stored = false;
+      if (rmelRx.end(p) == RmelReceiver::STORE) {
+        uint8_t slot = 0xFF;
+        uint8_t code = rmelStore(slot);
+        rmelRx.finish(code, slot);
+        stored = code == RMEL_OK;
+      }
+      RmelResult r = rmelRx.result();
+      rmelSendToBrain(&r, sizeof(r));
+      if (stored) rmelSendInventory();
+      break;
+    }
+    case RMEL_DEL: { RmelDel p; memcpy(&p, b, sizeof(p)); rmelDelete(p.slot); rmelSendInventory(); break; }
+    case RMEL_CFG: {
+      RmelCfg p; memcpy(&p, b, sizeof(p));
+      bool actOk  = p.act == RMEL_BOOMER || (p.act >= 0 && p.act < RMEL_SLOTS && (rmelUsed & (1u << p.act)));
+      bool bootOk = p.boot == RMEL_NONE || (p.boot >= 0 && p.boot < RMEL_SLOTS && (rmelUsed & (1u << p.boot)));
+      if (actOk && p.act != rmelAct) { rmelAct = p.act; rmelRestartMusic(); }
+      if (bootOk) rmelBoot = p.boot;
+      if (actOk || bootOk) rmelSaveCfg();
+      rmelSendInventory();
+      break;
+    }
+    case RMEL_QUERY: rmelSendInventory(); break;
+    default: break;
+  }
+}
+
+// Звук загрузки пульта (только при включении, не при пробуждении из сна)
+void rmelPlayBootSound() {
+  if (rmelBoot < 0 || !rmelLoadNotes(rmelBoot)) return;
+  soundPlayLocal(melBuf, melBufLen, SPRIO_MUSIC, true);
+}
+
+const char* musicName() {
+  return rmelAct >= 0 ? rmelInfo[rmelAct].name : "Бумер";
+}
+
+void toggleMusic(unsigned long now) {
+  // ⚡ v6.5: музыка следует выбору «Где играть»: при «Выкл» не запускается, при «Мозг»
+  // играет на зуммере мозга.
+  if (!musicPlaying && s_out() >= SND_OUT_OFF) {
     lastActivityMs = now;
     strncpy(lastCmdLabel, "SOUND OFF", sizeof(lastCmdLabel) - 1);
     lastCmdLabel[sizeof(lastCmdLabel) - 1] = '\0';
-    Serial.println("[MELODY] Boomer: звук выключен в «Где играть»");
+    Serial.println("[MELODY] Музыка: звук выключен в «Где играть»");
     return;
   }
-  boomerPlaying = !boomerPlaying;
+  musicPlaying = !musicPlaying;
   lastActivityMs = now;
-  if (!boomerPlaying && sndSeq == MEL_BOOMER) soundStop();
-  strncpy(lastCmdLabel, boomerPlaying ? "BOOMER ON" : "BOOMER OFF", sizeof(lastCmdLabel) - 1);
+  if (!musicPlaying && sndMusic) soundStop();
+  strncpy(lastCmdLabel, musicPlaying ? "MUSIC ON" : "MUSIC OFF", sizeof(lastCmdLabel) - 1);
   lastCmdLabel[sizeof(lastCmdLabel) - 1] = '\0';
-  Serial.printf("[MELODY] Boomer %s\n", boomerPlaying ? "ON" : "OFF");
+  Serial.printf("[MELODY] «%s» %s\n", musicName(), musicPlaying ? "ON" : "OFF");
 }
 
-void updateBoomer(unsigned long now) {
-  // ⚡ v6.3: мозг недавно играл на пульте — ждём T_BOOMER_RESUME от КОНЦА его ноты.
+void updateMusic(unsigned long now) {
+  // ⚡ v6.3: мозг недавно играл на пульте — ждём T_MUSIC_RESUME от КОНЦА его ноты.
   // Знаковая разность переживает переполнение millis() и покрывает случай, когда
   // конец ноты ещё впереди (ноту мозга оборвал свой SPRIO_ALARM пульта): тогда ждём
-  // конец ноты + 1.5 с. Паузы мозга ≥ 1.5 с (сам мозг пауз не шлёт) «Бумер» всё же
-  // заполняет — короткие паузы мелодии/тревоги остаются свободными.
-  // Пауза выдержана — метку снимаем КАЖДЫЙ проход (до раннего return, и при выключенном
-  // «Бумере»): иначе через ~24.8 сут без нот мозга знаковая разность уходит в минус и
-  // «Бумер» ложно блокируется ещё на ~24.8 сут.
-  if (brainToneSeen && (long)(now - brainToneEndMs) >= (long)T_BOOMER_RESUME) brainToneSeen = false;
-  // ⚡ v6.5: звук выключили в «Где играть» во время «Бумера» — остановить (иначе он
-  // шёл бы молча и не давал пульту уснуть)
-  if (boomerPlaying && s_out() >= SND_OUT_OFF) { toggleBoomer(now); return; }
-  if (!boomerPlaying || sndActive || brainToneSeen) return;  // тон мозга / тревога / пауза после мозга
-  sndSeq    = MEL_BOOMER;
-  sndSeqLen = MEL_BOOMER_LEN;
-  sndSeqIdx = 0;
-  sndPrio   = SPRIO_BOOMER;
-  sndVol    = s_volume();
-  soundBeginNote(sndSeq[0].f, sndSeq[0].d, now);
+  // конец ноты + 1.5 с. Метку снимаем КАЖДЫЙ проход (и при выключенной музыке):
+  // иначе через ~24.8 сут без нот мозга знаковая разность уходит в минус.
+  if (brainToneSeen && (long)(now - brainToneEndMs) >= (long)T_MUSIC_RESUME) brainToneSeen = false;
+  // ⚡ v6.5: звук выключили в «Где играть» во время музыки — остановить (иначе она
+  // шла бы молча и не давала пульту уснуть)
+  if (musicPlaying && s_out() >= SND_OUT_OFF) { toggleMusic(now); return; }
+  if (!musicPlaying || sndActive || brainToneSeen) return;  // тон мозга / тревога / пауза после мозга
+  if (rmelAct >= 0 && rmelLoadNotes(rmelAct)) soundPlayLocal(melBuf, melBufLen, SPRIO_MUSIC, true);
+  else                                        soundPlayLocal(MEL_BOOMER, MEL_BOOMER_LEN, SPRIO_MUSIC, true);
 }
 
 // Game never owns the control buttons, radio, alarm sound or sleep timer.
@@ -698,8 +883,8 @@ void updateBoomer(unsigned long now) {
 void leaveGame(unsigned long now) {
   melodyClicks.cancel();
   if (!dino.active) return;
-  boomerPlaying = false;
-  if (sndSeq == MEL_BOOMER) soundStop();  // Brain tones/alarms retain their priority.
+  musicPlaying = false;
+  if (sndMusic) soundStop();  // Brain tones/alarms retain their priority.
   melodyClicks.suppressAfterExit(now);
   dino.stop();
   lastActivityMs = now;
@@ -733,7 +918,7 @@ void handleMelodyEvent(MelodyClicks::Event event, unsigned long now) {
     if (dino.active) {
       leaveGame(now);
     } else if (oledOk && !gameAlarmActive()) {
-      if (boomerPlaying) toggleBoomer(now);
+      if (musicPlaying) toggleMusic(now);
       dino.start(now);
       lastGameDraw = now - 80;
       Serial.println("[GAME] DINO: MELODY=jump/restart, double=exit");
@@ -742,7 +927,7 @@ void handleMelodyEvent(MelodyClicks::Event event, unsigned long now) {
     }
   } else if (event == MelodyClicks::SINGLE) {
     if (dino.active) dino.jump(now);
-    else toggleBoomer(now);
+    else toggleMusic(now);
   }
 }
 
@@ -1115,6 +1300,7 @@ void setup() {
 
   // ⚡ v6.0: зуммер — сразу в тишину
   buzzerInit();
+  rmelInit();   // ⚡ v6.7: свои мелодии пульта (LittleFS) и их настройки (NVS)
 
   for (uint8_t i = 0; i < NUM_SIMPLE_BTNS; i++) {
     pinMode(SIMPLE_BTN_PINS[i], SIMPLE_BTN_PINS[i] == 34 ? INPUT : INPUT_PULLUP);
@@ -1187,7 +1373,9 @@ void setup() {
     Serial.println("[WAKE] Пробуждение из сна кнопкой TGT-.");
   } else if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT1) {
     Serial.println("[WAKE] Пробуждение из сна кнопкой МЕЛОДИЯ.");
-    toggleBoomer(millis());
+    toggleMusic(millis());
+  } else {
+    rmelPlayBootSound();   // ⚡ v6.7: свой звук при включении (не при пробуждении)
   }
 
   // ⚡ v6.2: сторожевой таймер loop — зависание дольше 5 с → перезагрузка пульта
@@ -1204,7 +1392,7 @@ void setup() {
   Serial.println("Пульт готов:");
   Serial.println("  GPIO16 → POWER (1× вкл/выкл, 2× или удержание — продувка)");
   for (uint8_t i = 0; i < NUM_SIMPLE_BTNS; i++) {
-    if (SIMPLE_BTN_PINS[i] == 34) Serial.println("  GPIO34 -> MELODY: 1x Boomer, 2x DINO; in game 1x jump/retry, 2x exit");
+    if (SIMPLE_BTN_PINS[i] == 34) Serial.println("  GPIO34 -> MELODY: 1x music on/off, 2x DINO; in game 1x jump/retry, 2x exit");
     else Serial.printf("  GPIO%d → %s (cmd=%d)\n",
       SIMPLE_BTN_PINS[i], SIMPLE_BTN_LABELS[i], SIMPLE_BTN_CMDS[i]);
   }
@@ -1297,11 +1485,15 @@ void loop() {
       soundPlayRemote(tp.freq, tp.durMs, tp.volume, now);   // ⚡ v6.0: нота от мозга
       rfLastActivity = now;           // мозг слышен на этом канале
       lastActivityMs = now;           // во время мелодии не уходим в глубокий сон
+    } else if (buf[0] == PKT_RMEL && len >= 2) {
+      rmelOnPacket(buf, now);         // ⚡ v6.7: мелодии пульта
+      rfLastActivity = now;
     }
   }
 
   bool wasOnline = brainOnline;
   brainOnline = (now - lastRxTime < T_RF_TIMEOUT) && (lastRxTime > 0);
+  if (!wasOnline && brainOnline) rmelSendInventory();   // ⚡ v6.7: мозг знает, что лежит в пульте
   if (wasOnline && !brainOnline) {    // ⚡ v6.0: связь с мозгом пропала
     if (dino.active) leaveGame(now);
     Serial.println("[RF] Связь с мозгом потеряна");
@@ -1331,7 +1523,7 @@ void loop() {
   updateLedTx(millis());     // ⚡ v6.0: вспышки LED TX без delay()
   updateSound(millis());     // ⚡ v6.0: мини-плеер и автостоп тона (millis(): щелчок мог
                              //          стартовать в sendCmd позже, чем снят now)
-  updateBoomer(millis());    // зацикленная мелодия; не задерживает RF и кнопки
+  updateMusic(millis());     // зацикленная мелодия; не задерживает RF и кнопки
   updateStatusLed(now);      // ⚡ v6.0: LED статуса/связи
 
   maybeUpdateDisplay(now);
@@ -1340,7 +1532,7 @@ void loop() {
   // ⚡ v6.0: millis(), а не now — sendCmd() ставит lastActivityMs = millis() уже после
   // снятия now; разность «now − lastActivityMs» ушла бы в переполнение, и пульт
   // засыпал бы сразу после нажатия кнопки.
-  if (DEEP_SLEEP_ENABLE && !boomerPlaying && (millis() - lastActivityMs >= IDLE_SLEEP_MS)) {
+  if (DEEP_SLEEP_ENABLE && !musicPlaying && (millis() - lastActivityMs >= IDLE_SLEEP_MS)) {
     goToSleep();
   }
 

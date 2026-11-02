@@ -913,6 +913,7 @@ bool          tempResOk    = false;   // разрешение 10 бит выст
 // Подключается ЗДЕСЬ, после глобальных переменных: модуль использует radio,
 // radioMutex, remoteAckMs, otaInProgress, wsStateChanged и server.
 #include "h2_sound.h"
+#include "h2_rmel.h"    // ⚡ v6.7: мелодии пульта — передача по радио, /rmel/*
 #include "h2_events.h"   // ⚡ v6.2: журнал аварий и событий (/log)
 #include <esp_task_wdt.h> // ⚡ v6.2: сторожевой таймер цикла управления
 
@@ -2030,7 +2031,7 @@ void maintCheck() {
   bool due = maintHoursLeft() <= 0;
   if (due && !maintDue) {
     evtLog(EVT_MAINT_DUE, (int32_t)(runtimeSeconds / 3600UL));
-    if (sndAlarms) soundPlay(MEL_WARN, SND_PRIO_WARN);   // ⚡ v6.3: не обрывает тревогу
+    if (sndAlarms) soundPlay(soundEventId(SND_EV_WARN), SND_PRIO_WARN);   // ⚡ v6.3: не обрывает тревогу
   }
   maintDue = due;
 }
@@ -2606,20 +2607,20 @@ void soundEvents(unsigned long now) {
   // Мелодия загрузки — один раз, через SND_BOOT_DELAY_MS после старта
   if (!bootPlayed && now - bootMs >= SND_BOOT_DELAY_MS) {
     bootPlayed = true;
-    if (sndBoot != MEL_NONE) soundPlay(melEventId(sndBoot, MEL_BOOT), SND_PRIO_MELODY);
+    soundPlay(soundEventId(SND_EV_BOOT), SND_PRIO_MELODY);   // MEL_NONE soundPlay не ставит
   }
 
   // Включение / выключение системы и окончание продувки. Выключение, вызванное
   // продувкой (она сама гасит систему в конце), звучит как «продувка завершена».
   bool on = systemOn, purging = isPurging;
   if (on && !prevOn) {
-    if (sndOn != MEL_NONE) soundPlay(melEventId(sndOn, MEL_ON), SND_PRIO_MELODY);
+    soundPlay(soundEventId(SND_EV_ON), SND_PRIO_MELODY);
   } else if (!on && prevOn && !prevPurging && !purging) {
-    soundPlay(MEL_OFF, SND_PRIO_MELODY);
+    soundPlay(soundEventId(SND_EV_OFF), SND_PRIO_MELODY);
   }
   if (!purging && prevPurging) {
     // Продувку прервали кнопкой LOCK — это выключение, а не «продувка завершена»
-    soundPlay(purgeAborted ? MEL_OFF : MEL_PURGED, SND_PRIO_MELODY);
+    soundPlay(soundEventId(purgeAborted ? SND_EV_OFF : SND_EV_PURGED), SND_PRIO_MELODY);
     purgeAborted = false;
   }
   prevOn = on; prevPurging = purging;
@@ -2644,7 +2645,7 @@ void soundEvents(unsigned long now) {
   if (!alarmActive && !leakWarn && !maintDue) alarmMuted = false;   // всё прошло — сброс
   bool alarmPlayed = false;
   if (sndAlarms && (alarmEdge || (alarmActive && !alarmMuted && now - lastAlarmMs >= SND_ALARM_REPEAT_MS))) {
-    soundPlay(MEL_ALARM, SND_PRIO_ALARM);
+    soundPlay(soundEventId(SND_EV_ALARM), SND_PRIO_ALARM);
     lastAlarmMs = now;
     alarmPlayed = true;
   }
@@ -2662,7 +2663,7 @@ void soundEvents(unsigned long now) {
   bool warnEdge = (wd && !prevWd) || ovWarnEdge || (lkw && !prevLeakW);
   prevWd = wd; prevLeakW = lkw;
   // ⚡ v6.3: свой приоритет — предупреждение не обрывает звучащую тревогу
-  if (sndAlarms && warnEdge && !alarmPlayed) soundPlay(MEL_WARN, SND_PRIO_WARN);
+  if (sndAlarms && warnEdge && !alarmPlayed) soundPlay(soundEventId(SND_EV_WARN), SND_PRIO_WARN);
 
   // ⚡ v6.2: отказ датчика температуры — только в журнал (фронт)
   static bool prevTok = true;
@@ -2860,6 +2861,7 @@ void setup() {
 
   // ⚡ v6.0: звук — LittleFS + библиотека мелодий, очередь и задача плеера
   soundInit();
+  rmelInit();     // ⚡ v6.7: очередь служебных пакетов мелодий пульта
   // ⚡ v6.2: журнал событий (LittleFS уже смонтирована в soundInit) + запись о загрузке
   evtInit();
   evtLog(EVT_BOOT, (int32_t)esp_reset_reason());
@@ -3119,6 +3121,7 @@ void setup() {
 
   // ⚡ v6.0: звук — /snd/cfg, /snd/set, /snd/play, /snd/stop, /snd/up, /snd/del, /snd/get
   soundRegisterHttp();
+  rmelRegisterHttp();   // ⚡ v6.7
   // ⚡ v6.2: журнал событий — /log, /log/clear
   evtRegisterHttp();
 
@@ -3150,7 +3153,8 @@ void setup() {
   Serial.printf("Вентиляторы: корпус от постоянного питания; выводной реле GPIO25, режим %d %d/%d°C\n",
     (int)fanMode[1], (int)fanTOn[1], (int)fanTOff[1]);
   Serial.printf("Звук: вывод %u, громкость %u, тревоги %d, щелчки %d, загрузка %d, вкл %d\n",
-    (unsigned)soundOut, (unsigned)soundVol, sndAlarms ? 1 : 0, sndClicks ? 1 : 0, (int)sndBoot, (int)sndOn);
+    (unsigned)soundOut, (unsigned)soundVol, sndAlarms ? 1 : 0, sndClicks ? 1 : 0,
+    (int)sndEvent[SND_EV_BOOT], (int)sndEvent[SND_EV_ON]);
 
   // ⚡ v4.4 + v5.0: инициализация таймеров
   wdStart         = millis();
@@ -3289,6 +3293,8 @@ void loop() {
   uint8_t    rxCmdN  = 0;
   TonePacket rxTones[3];
   uint8_t    rxToneN = 0;
+  uint8_t    rxRmel[3][RF_PAYLOAD_MAX];   // ⚡ v6.7: ответы пульта о мелодиях
+  uint8_t    rxRmelN = 0;
   if (radioOk) {
     RadioLock rl(pdMS_TO_TICKS(5));
     for (uint8_t n = 0; rl.ok && n < 3 && radio.available(); n++) {
@@ -3302,6 +3308,8 @@ void loop() {
         rxCmds[rxCmdN++] = pkt.cmd;
       } else if (buf[0] == PKT_TONE && len >= sizeof(TonePacket)) {
         memcpy(&rxTones[rxToneN++], buf, sizeof(TonePacket));
+      } else if (buf[0] == PKT_RMEL) {
+        memcpy(rxRmel[rxRmelN++], buf, RF_PAYLOAD_MAX);
       }
     }
   }
@@ -3320,6 +3328,12 @@ void loop() {
     wsStateChanged = true;         // ⚡ v5.0: пушим в WebSocket немедленно
     Serial.print("[RF] cmd="); Serial.println(rxCode);
   }
+  for (uint8_t i = 0; i < rxRmelN; i++) {   // ⚡ v6.7: опись / результат передачи
+    rmelOnPacket(rxRmel[i], RF_PAYLOAD_MAX);
+    lastRfRx = now;
+    rfLastActivity = now;
+  }
+  rmelLoop(now);                             // ⚡ v6.7: передача мелодии на пульт
   // ⚡ v6.1: команды веба (поставлены в очередь на ядре 0) — исполняем здесь, на ядре 1
   drainWebCommands();
   // ⚡ v6.3: метки старта (purgeStart, purgeShortStart, repulsorStart, piezoStart,
