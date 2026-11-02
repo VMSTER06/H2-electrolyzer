@@ -97,6 +97,10 @@ extern "C" int test_dino() {
   // One step only after a long pause: no unbounded catch-up loop.
   d.start(5000); d.update(1000000); CHECK(d.obstacleX == 126);
   d.start(0xfffffff0UL); d.update(4); CHECK(d.obstacleX == 126);
+  // A slow loop (display redraw) is caught up: 60 ms = 3 steps, remainder kept.
+  d.start(1000); d.update(1060); CHECK(d.obstacleX == 122);
+  d.update(1070); CHECK(d.obstacleX == 122);
+  d.update(1090); CHECK(d.obstacleX == 120);
   // A correctly timed jump clears a cactus and returns to the ground.
   d.start(0);
   for (uint32_t t = 20; t <= 900; t += 20) d.update(t);

@@ -1,7 +1,14 @@
 /*
  * =====================================================================================
- *  H2 CONTROL SYSTEM — ПУЛЬТ v6.5  (ESP32 DevKit v1)
+ *  H2 CONTROL SYSTEM — ПУЛЬТ v6.7  (ESP32 DevKit v1)
  * =====================================================================================
+ *
+ *  ⚡ НОВОЕ В v6.7 (протокол не менялся, мозг — только тот же h2_oled.h):
+ *    • OLED: текст в режиме BUF_ADD — русские строки больше не стирают низ соседних
+ *      строк и линии под собой.
+ *    • I2C 400 кГц: перерисовка ≈30 мс вместо ≈110 мс — loop не стоит, кнопки (в т.ч.
+ *      двойное нажатие выхода из игры) не теряются.
+ *    • Игра: шаг физики 20 мс с догонянием — скорость не зависит от времени отрисовки.
  *
  *  Адаптирован под мозг v6.0. Мозг и пульт прошивать ОДНОВРЕМЕННО: пакет статуса
  *  стал 16 байт и добавлен пакет нот TonePacket (общий h2_protocol.h v6.0).
@@ -1099,7 +1106,7 @@ void setup() {
   startBootBlink();
 
   Serial.begin(115200);
-  Serial.println("\n=== H2 PRO Remote v6.6 + GAME ===");
+  Serial.println("\n=== H2 PRO Remote v6.7 + GAME ===");
   Serial.println("[GAME] revision 2: quiet exit + persistent best");
   Preferences recordStorage;
   if (dinoRecord.load(recordStorage, dino.best)) {
@@ -1132,12 +1139,13 @@ void setup() {
   pinMode(PIN_LED_POWER, OUTPUT); digitalWrite(PIN_LED_POWER, HIGH);
 
   Wire.begin(21, 22);
+  Wire.setClock(400000);   // ⚡ v6.7: на шине только OLED; кадр ≈30 мс вместо ≈110 мс при 100 кГц
   oledOk = oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   if (!oledOk) Serial.println("OLED: нет");
   else {
     oled.cp437(true);   // корректная таблица CP437: \xF8 = знак градуса
     oled.clearDisplay(); oled.setTextSize(1); oled.setTextColor(SSD1306_WHITE);
-    oled.setCursor(0, 20); oled.print("H2 ПУЛЬТ v6.6+ИГРА");
+    oled.setCursor(0, 20); oled.print("H2 ПУЛЬТ v6.7+ИГРА");
     oled.setCursor(20, 36); oled.print("NRF24, 2 Мбит/с");
     oled.display();
     Serial.println("OLED: OK");
