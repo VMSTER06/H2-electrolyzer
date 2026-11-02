@@ -1,0 +1,5 @@
+2026/10/15-17:36:03.162 3438 Creating DB S:\Projects\1Electrolizer\Финал\Архив\edge_mobile_cdp\Default\EdgeCoupons/coupons_data.db since it was missing.
+2026/10/15-17:36:03.180 3438 Reusing MANIFEST S:\Projects\1Electrolizer\Финал\Архив\edge_mobile_cdp\Default\EdgeCoupons/coupons_data.db/MANIFEST-000001
+2026/10/15-17:36:36.275 1684 Level-0 table #5: started
+2026/10/15-17:36:36.279 1684 Level-0 table #5: 683284 bytes OK
+2026/10/15-17:36:36.283 1684 Delete type=0 #3

@@ -1,0 +1,5 @@
+2026/10/15-17:36:00.833 5060 Creating DB S:\Projects\1Electrolizer\Финал\Архив\edge_mobile_cdp\Default\Local Storage\leveldb since it was missing.
+2026/10/15-17:36:00.857 5060 Reusing MANIFEST S:\Projects\1Electrolizer\Финал\Архив\edge_mobile_cdp\Default\Local Storage\leveldb/MANIFEST-000001
+2026/10/15-17:36:55.048 51dc Level-0 table #5: started
+2026/10/15-17:36:55.056 51dc Level-0 table #5: 27631 bytes OK
+2026/10/15-17:36:55.060 51dc Delete type=0 #3
