@@ -17,7 +17,7 @@ preferences.awake=preferences.awake===true;preferences.haptics=preferences.hapti
 // Таймаут JS больше, чем очередь + соединение + чтение в Java: опрос 12 с (4 + 2,5 + 4,5), команды 8 с (1 + 2,5 + 3).
 const NO_ANSWER='Мозг не ответил. Проверь Wi-Fi H2_PRO и повтори';
 function bridge(timeout,start,onProgress){return new Promise((resolve,reject)=>{const id=++requestId;const timer=timeout?setTimeout(()=>{delete pending[id];reject(new Error(NO_ANSWER))},timeout):0;pending[id]={resolve,reject,timer,onProgress};try{start(id)}catch(e){clearTimeout(timer);delete pending[id];reject(new Error('Подключи телефон к Wi-Fi H2_PRO'))}})}
-const READ_PATH=/^\/(status|log|snd\/cfg|snd\/get|settime)(\?|$)/;
+const READ_PATH=/^\/(status|log|snd\/cfg|snd\/get|rmel\/cfg|settime)(\?|$)/;
 function brain(path,o){o=o||{};return bridge(o.timeout!==undefined?o.timeout:READ_PATH.test(path)?12000:8000,id=>Brain.request(id,o.method||'GET',path,o.type||'',o.body||''),o.progress)}
 // v1.3.0: ошибка говорит, что случилось и что делать. Русские ответы Java показываем как есть,
 // служебные коды мозга («bad vol», «Not found», HTML 403) — переводим по коду ответа.
@@ -37,7 +37,7 @@ let sheetResolve=null,sheetReturn=null;
 function ask(title,message,ok,danger){return new Promise(resolve=>{if(sheetResolve)sheetResolve(false);sheetResolve=resolve;text('sheetTitle',title);text('sheetText',message);const b=byId('sheetOk');b.textContent=ok||'Подтвердить';b.classList.toggle('danger',danger!==false);const s=byId('sheet');if(!s.open){sheetReturn=document.activeElement;if(typeof s.showModal==='function')s.showModal();else s.setAttribute('open','')}setTimeout(()=>byId('sheetCancel').focus(),50)})}
 function closeSheet(value){const r=sheetResolve,s=byId('sheet');sheetResolve=null;if(s.open){if(typeof s.close==='function')s.close();else s.removeAttribute('open')}const back=sheetReturn;sheetReturn=null;if(back&&back.focus&&document.contains(back))try{back.focus({preventScroll:true})}catch(e){}if(r)r(value)}
 byId('sheetOk').onclick=()=>closeSheet(true);byId('sheetCancel').onclick=()=>closeSheet(false);byId('sheet').addEventListener('cancel',e=>{e.preventDefault();closeSheet(false)});byId('sheet').addEventListener('click',e=>{const s=byId('sheet');if(e.target!==s)return;const r=s.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeSheet(false)});
-function tab(name){if(!byId('page-'+name)||currentTab===name)return;parkedFocus=null;scrollPositions[currentTab]=window.scrollY;if(name==='settings')previousTab=currentTab;currentTab=name;document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id==='page-'+name));document.querySelectorAll('.nav').forEach(x=>{const active=x.dataset.tab===name;x.classList.toggle('active',active);if(active)x.setAttribute('aria-current','page');else x.removeAttribute('aria-current')});byId('settingsButton').classList.toggle('selected',name==='settings');requestAnimationFrame(()=>window.scrollTo({top:scrollPositions[name]||0,behavior:'instant'}));if(name==='sound'&&online)loadSound();if(name==='diag'&&online)loadLog();if(name==='history')requestAnimationFrame(drawCharts);if(name==='home')requestAnimationFrame(fitPressure)}
+function tab(name){if(!byId('page-'+name)||currentTab===name)return;parkedFocus=null;scrollPositions[currentTab]=window.scrollY;if(name==='settings')previousTab=currentTab;currentTab=name;document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id==='page-'+name));document.querySelectorAll('.nav').forEach(x=>{const active=x.dataset.tab===name;x.classList.toggle('active',active);if(active)x.setAttribute('aria-current','page');else x.removeAttribute('aria-current')});byId('settingsButton').classList.toggle('selected',name==='settings');requestAnimationFrame(()=>window.scrollTo({top:scrollPositions[name]||0,behavior:'instant'}));if(name==='sound'&&online){loadSound();loadRemote(true)}if(name==='diag'&&online)loadLog();if(name==='history')requestAnimationFrame(drawCharts);if(name==='home')requestAnimationFrame(fitPressure)}
 // v1.3.0: «Назад» на «Обзоре» закрывает приложение — во время записи прошивки не выходим (оборвалась бы загрузка)
 window.handleBack=function(){if(byId('sheet').open){closeSheet(false);return true}if(currentTab==='settings'){tab(previousTab);return true}if(currentTab!=='home'){tab('home');return true}if(otaBusy){toast('Идёт обновление прошивки — дождись окончания',true);return true}return false};
 function statusPill(id,ok,good='OK',bad='НЕТ'){const e=byId(id);e.textContent=ok?good:bad;e.className='diag-value '+(ok?'good':'bad')}
@@ -225,19 +225,21 @@ function paintSoundOut(out){soundOut=out;document.querySelectorAll('[data-out]')
 function showPlaying(on){byId('soundBanner').hidden=!on}
 function userMelodies(){return ((soundCfg&&soundCfg.list)||[]).slice().sort((a,b)=>a.id-b.id)}
 // Мелодия события: Нет / встроенные / свои; во время правки выбор не сбрасываем
-function fillEventSelect(id,val,def){const s=byId(id),want=soundDirty&&s.value!==''?s.value:String(val);s.textContent='';const add=(v,t)=>{const o=document.createElement('option');o.value=String(v);o.textContent=t;s.appendChild(o)};add(-9,'Нет');add(-1,'H2 PRO (встроенная)');add(-2,'Сигнал включения (встроенный)');userMelodies().forEach(m=>add(m.id,m.name));s.value=want;if(s.value!==want)s.value=String(def)}
-async function loadSound(){try{const cfg=JSON.parse(await brain('/snd/cfg'));soundCfg=cfg;selectSound(Number(cfg.out),false);if(!soundDirty){byId('volumeSlider').value=cfg.vol;rangeOutput(byId('volumeSlider'),'volumeValue',0,'/ 10');byId('soundAlarms').checked=!!cfg.alm;byId('soundClicks').checked=!!cfg.clk}fillEventSelect('soundBoot',cfg.boot,-1);fillEventSelect('soundOn',cfg.on,-2);renderLibrary();showPlaying(!!cfg.play)}catch(e){if(online)toast('Настройки звука не загрузились. Открой вкладку «Звук» ещё раз',true)}}
-async function setSound(){let q='/snd/set?out='+soundOut+'&vol='+Number(byId('volumeSlider').value)+'&alm='+(byId('soundAlarms').checked?1:0)+'&clk='+(byId('soundClicks').checked?1:0);if(soundCfg&&byId('soundBoot').value!==''&&byId('soundOn').value!=='')q+='&boot='+byId('soundBoot').value+'&on='+byId('soundOn').value;if(await action(q,'Звук сохранён')){soundDirty=false;paintDirty();loadSound()}}
+// v1.4.0: мелодии событий — [ключ /snd/cfg, id списка, встроенная, можно «Нет», предел своей мелодии, мс]
+const SOUND_EVENTS=[['boot','soundBoot',-1,1,0],['on','soundOn',-2,1,0],['off','soundOff',-4,1,0],['pur','soundPur',-6,1,0],['alr','soundAlr',-3,0,10000],['wrn','soundWrn',-5,0,10000]];
+function fillEventSelect(ev,val){const[,id,def,none,max]=ev,s=byId(id),want=soundDirty&&s.value!==''?s.value:String(val===undefined?def:val);s.textContent='';const add=(v,t)=>{const o=document.createElement('option');o.value=String(v);o.textContent=t;s.appendChild(o)};if(none)add(-9,'Нет');const nm=v=>(BUILTIN.find(b=>b.id===v)||{name:'Стандартная'}).name+' (встроенная)';add(def,nm(def));[-1,-2].filter(v=>v!==def).forEach(v=>add(v,nm(v)));userMelodies().filter(m=>!max||m.ms<=max).forEach(m=>add(m.id,m.name));s.value=want;if(s.value!==want)s.value=String(def)}
+async function loadSound(){try{const cfg=JSON.parse(await brain('/snd/cfg'));soundCfg=cfg;selectSound(Number(cfg.out),false);if(!soundDirty){byId('volumeSlider').value=cfg.vol;rangeOutput(byId('volumeSlider'),'volumeValue',0,'/ 10');byId('soundAlarms').checked=!!cfg.alm;byId('soundClicks').checked=!!cfg.clk}SOUND_EVENTS.forEach(e=>fillEventSelect(e,cfg[e[0]]));renderLibrary();showPlaying(!!cfg.play)}catch(e){if(online)toast('Настройки звука не загрузились. Открой вкладку «Звук» ещё раз',true)}}
+async function setSound(){let q='/snd/set?out='+soundOut+'&vol='+Number(byId('volumeSlider').value)+'&alm='+(byId('soundAlarms').checked?1:0)+'&clk='+(byId('soundClicks').checked?1:0);if(soundCfg&&SOUND_EVENTS.every(e=>byId(e[1]).value!==''))q+=SOUND_EVENTS.map(e=>'&'+e[0]+'='+byId(e[1]).value).join('');if(await action(q,'Звук сохранён')){soundDirty=false;paintDirty();loadSound()}}
 // Играть там, что выбрано на экране; «Выкл» — подсказка вместо ложного «запущена»
 function playSound(id){if(soundOut===3){toast('Звук выключен — выбери, где играть',true);return Promise.resolve(false)}return action('/snd/play?id='+id,'Мелодия запущена')}
 function stopSound(){melStopPreview();return action('/snd/stop','Звук остановлен')}
-const BUILTIN=[{id:-1,name:'Загрузка H2 PRO',note:'Запуск устройства'},{id:-2,name:'Включение',note:'Система готова к работе'},{id:-3,name:'Тревога',note:'Проверка сигнала'}];
+const BUILTIN=[{id:-1,name:'Загрузка H2 PRO',note:'Запуск устройства'},{id:-2,name:'Включение',note:'Система готова к работе'},{id:-3,name:'Тревога',note:'Проверка сигнала'},{id:-4,name:'Выключение',note:'Система выключена'},{id:-5,name:'Предупреждение',note:'Внимание'},{id:-6,name:'Продувка завершена',note:'Давление сброшено'}];
 function iconButton(icon,label,handler,cls){const b=document.createElement('button');b.className='play-button'+(cls?' '+cls:'');b.setAttribute('aria-label',label);b.innerHTML='<svg><use href="#'+icon+'"/></svg>';b.onclick=handler;return b}
-function melodyRow(m,index,note,custom){const row=document.createElement('div');row.className='melody';const i=document.createElement('span');i.className='track-index';i.textContent=String(index).padStart(2,'0');const title=document.createElement('span');title.className='track-title';title.textContent=m.name;const hint=document.createElement('small');hint.textContent=note;title.appendChild(hint);const play=iconButton('i-play','Играть на устройстве: '+m.name,()=>playSound(m.id));play.dataset.control='';const ear=iconButton('i-ear','Прослушать на телефоне: '+m.name,()=>melPreview(m.id),'icon-only');ear.dataset.pv=String(m.id);ear.dataset.name=m.name;row.append(i,title,ear,play);if(custom){const del=iconButton('i-x','Удалить: '+m.name,()=>deleteMelody(m.id),'icon-only danger-text');del.dataset.control='';row.appendChild(del)}else{const ph=document.createElement('span');ph.className='play-ph';row.appendChild(ph)}return row}
+function melodyRow(m,index,note,custom){const row=document.createElement('div');row.className='melody';const i=document.createElement('span');i.className='track-index';i.textContent=String(index).padStart(2,'0');const title=document.createElement('span');title.className='track-title';title.textContent=m.name;const hint=document.createElement('small');hint.textContent=note;title.appendChild(hint);const play=iconButton('i-play','Играть на устройстве: '+m.name,()=>playSound(m.id));play.dataset.control='';const ear=iconButton('i-ear','Прослушать на телефоне: '+m.name,()=>melPreview(m.id),'icon-only');ear.dataset.pv=String(m.id);ear.dataset.name=m.name;const acts=document.createElement('span');acts.className='row-actions';acts.append(ear,play);row.append(i,title,acts);if(custom){const up=iconButton('i-upload','Отправить в пульт: '+m.name,()=>rmSendBrain(m.id),'icon-only');up.dataset.control='';const del=iconButton('i-x','Удалить: '+m.name,()=>deleteMelody(m.id),'icon-only danger-text');del.dataset.control='';acts.append(up,del)}else{const ph=document.createElement('span');ph.className='play-ph';acts.appendChild(ph)}return row}
 // v1.3.0: список строится заново — фокус остаётся на той же кнопке, а после удаления — на соседней строке
-function renderLibrary(){const holder=byId('melodyList'),user=userMelodies(),a=document.activeElement,fa=holder.contains(a)&&a!==holder?a:parkedFocus&&holder.contains(parkedFocus)?parkedFocus:null,fl=fa&&fa.getAttribute('aria-label'),fi=fa?[...holder.children].indexOf(fa.closest('.melody')):-1;holder.textContent='';if(fa&&parkedFocus===fa)parkedFocus=null;BUILTIN.forEach((m,i)=>holder.appendChild(melodyRow(m,i+1,m.note,false)));user.forEach((m,i)=>holder.appendChild(melodyRow(m,i+4,m.n+' '+plural(m.n,'нота','ноты','нот')+' · '+fmt(m.ms/1000,1)+' с',true)));text('melodyCount',soundCfg?user.length+' из 16 слотов':'Встроенные');const info=!soundCfg?'':!soundCfg.fsok?'Память мелодий (LittleFS) недоступна — работают только встроенные.':'Свободно '+fmtBytes(soundCfg.free)+' из '+fmtBytes(soundCfg.total)+(user.length?'':' · своих мелодий пока нет');text('melodyInfo',info);byId('melodyInfo').hidden=!info;melPlUi();updateControls();if(fa){const rows=holder.children,same=[...holder.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')===fl),row=rows[Math.min(Math.max(fi,0),rows.length-1)],t=same||(row&&row.querySelector('button'));if(t)try{t.focus({preventScroll:true})}catch(e){}}}
+function renderLibrary(){const holder=byId('melodyList'),user=userMelodies(),a=document.activeElement,fa=holder.contains(a)&&a!==holder?a:parkedFocus&&holder.contains(parkedFocus)?parkedFocus:null,fl=fa&&fa.getAttribute('aria-label'),fi=fa?[...holder.children].indexOf(fa.closest('.melody')):-1;holder.textContent='';if(fa&&parkedFocus===fa)parkedFocus=null;BUILTIN.forEach((m,i)=>holder.appendChild(melodyRow(m,i+1,m.note,false)));user.forEach((m,i)=>holder.appendChild(melodyRow(m,i+1+BUILTIN.length,m.n+' '+plural(m.n,'нота','ноты','нот')+' · '+fmt(m.ms/1000,1)+' с',true)));text('melodyCount',soundCfg?user.length+' из 16 слотов':'Встроенные');const info=!soundCfg?'':!soundCfg.fsok?'Память мелодий (LittleFS) недоступна — работают только встроенные.':'Свободно '+fmtBytes(soundCfg.free)+' из '+fmtBytes(soundCfg.total)+(user.length?'':' · своих мелодий пока нет');text('melodyInfo',info);byId('melodyInfo').hidden=!info;melPlUi();updateControls();if(fa){const rows=holder.children,same=[...holder.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')===fl),row=rows[Math.min(Math.max(fi,0),rows.length-1)],t=same||(row&&row.querySelector('button'));if(t)try{t.focus({preventScroll:true})}catch(e){}}}
 async function deleteMelody(id){const m=userMelodies().find(x=>x.id===id);if(!await ask('Удалить мелодию?','«'+(m?m.name:id)+'» будет удалена из мозга. Если она назначена событию, вернётся встроенная.','Удалить'))return;if(melPl&&melPl.owner==='lib'+id)melStopPreview();if(await action('/snd/del?id='+id,'Мелодия удалена'))loadSound()}
-function melPreview(id){if(melPl&&melPl.owner==='lib'+id){melStopPreview();return}try{melCtx()}catch(e){toast(e.message,true);return}brain('/snd/get?id='+id).then(b64=>melPlay(melParseH2M(b64ToBuf(b64)).notes,'lib'+id)).catch(e=>toast(e.message||'Мелодия недоступна',true))}
+function melPreview(id){if(melPl&&melPl.owner==='lib'+id){melStopPreview();return}try{melCtx()}catch(e){toast(e.message,true);return}brain('/snd/get?id='+id).then(b64=>melPlay(melParseH2M(b64ToBuf(b64)).notes,'lib'+id,false)).catch(e=>toast(e.message||'Мелодия недоступна',true))}
 
 /* ══════════ v1.3.0: из веб-интерфейса мозга — прослушивание (WebAudio), формат H2M1, разбор
    MIDI / RTTTL / аудио и подготовка под зуммер. Логика без изменений, вывод — в элементы приложения. ══════════ */
@@ -248,35 +250,23 @@ function melCtx(){
   if(melAc.state==='suspended') melAc.resume();
   return melAc;
 }
-// Одна OscillatorNode 'square' + GainNode; вся мелодия планируется сразу
-function melPlay(notes,owner){
+// v1.4.0: прослушивание «как на зуммере» — H2Mel.play (h2_mel_edit.js): скважность громкости
+// из «Звука», резонанс зуммера; music — огибающая кнопки МЕЛОДИЯ пульта
+function melPlay(notes,owner,music){
   melStopPreview();
-  const ac=melCtx(), osc=ac.createOscillator(), g=ac.createGain();
-  const V=0.1, R=0.004;   // громкость 0.1 и короткие фронты против щелчков
-  osc.type='square'; g.gain.value=0; osc.connect(g); g.connect(ac.destination);
-  const t0=ac.currentTime+0.05; let t=t0;
-  for(const n of notes){ const d=n.d/1000;
-    if(n.f>0){ osc.frequency.setValueAtTime(n.f,t);
-      if(d>3*R){ g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(V,t+R);
-        g.gain.setValueAtTime(V,t+d-R); g.gain.linearRampToValueAtTime(0,t+d); }
-      else{ g.gain.setValueAtTime(V,t); g.gain.setValueAtTime(0,t+d); } }
-    t+=d; }
-  osc.start(t0); osc.stop(t+0.02);
-  melPl={osc,g,owner};
-  osc.onended=()=>{ if(melPl&&melPl.osc===osc){ melPl=null; melPlUi(); } };
+  const h=H2Mel.play(melCtx(),notes,{vol:Number(byId('volumeSlider').value)||10,music,onEnd:()=>{ if(melPl&&melPl.h===h){ melPl=null; melPlUi(); } }});
+  melPl={h,owner};
   melPlUi();
 }
 function melStopPreview(){
   if(!melPl) return;
-  const p=melPl; melPl=null;
-  try{ p.osc.onended=null; p.osc.stop(); }catch(e){}
-  try{ p.osc.disconnect(); p.g.disconnect(); }catch(e){}
+  const p=melPl; melPl=null; p.h.stop();
   melPlUi();
 }
 function melPlUi(){
   const own=melPl?melPl.owner:'';
   text('melListenBtn',own==='res'?'Стоп':'Прослушать');
-  document.querySelectorAll('[data-pv]').forEach(b=>{ const on=own==='lib'+b.dataset.pv;
+  document.querySelectorAll('[data-pv]').forEach(b=>{ const pv=b.dataset.pv, on=own===(pv.charAt(0)==='p'?pv:'lib'+pv);
     if(b.classList.contains('on')!==on){ b.classList.toggle('on',on); b.innerHTML='<svg><use href="#'+(on?'i-stop':'i-ear')+'"/></svg>';
       b.setAttribute('aria-label',(on?'Остановить прослушивание: ':'Прослушать на телефоне: ')+(b.dataset.name||'')); } });
 }
@@ -408,54 +398,6 @@ function melMidiRaw(mid,sel){
     if(e>s){ raw.push({m:x.n,d:e-s}); t=e; } else t=Math.max(t,s); }
   return raw;
 }
-// Аудио → мелодия: моно ~11 кГц, YIN (окно 512, шаг 12 мс, 70–2000 Гц), порог тишины −35 дБ,
-// полутона, медиана по 5 кадрам, склейка, отбрасывание < 50 мс. Считается кусками с отдачей управления.
-async function melAudioRaw(file,secs){
-  melProg(0,'Декодирование аудио…');
-  const ab=await melReadFile(file,false), ac=melCtx();
-  let buf;
-  try{ buf=await new Promise((res,rej)=>{ const pr=ac.decodeAudioData(ab,res,rej); if(pr&&pr.then) pr.then(res,rej); }); }
-  catch(e){ throw new Error('Не удалось декодировать аудио — этот формат телефон не поддерживает'); }
-  const sr0=buf.sampleRate, fac=Math.max(1,Math.round(sr0/11025)), sr=sr0/fac, chs=buf.numberOfChannels;
-  const n=Math.floor(Math.min(buf.length,Math.floor(secs*sr0))/fac), ch=[];
-  for(let c=0;c<chs;c++) ch.push(buf.getChannelData(c));
-  const x=new Float32Array(n), kk=1/(fac*chs);
-  for(let i=0;i<n;i++){ let s=0; const o=i*fac;
-    for(let c=0;c<chs;c++){ const a=ch[c]; for(let j=0;j<fac;j++) s+=a[o+j]; } x[i]=s*kk; }
-  const W=512, tMin=Math.max(2,Math.floor(sr/2000)), tMax=Math.min(Math.ceil(sr/70),W>>1), L=W-tMax;
-  const hop=Math.max(1,Math.round(sr*0.012)), nf=n>=W?Math.floor((n-W)/hop)+1:0;
-  if(nf<5) throw new Error('Аудиофрагмент слишком короткий');
-  const f0=new Float32Array(nf), rms=new Float32Array(nf), d=new Float32Array(tMax+1);
-  let tY=performance.now();
-  for(let fi=0;fi<nf;fi++){
-    const o=fi*hop; let e=0;
-    for(let j=0;j<W;j++){ const v=x[o+j]; e+=v*v; }
-    rms[fi]=Math.sqrt(e/W);
-    if(e>0){
-      let run=0;   // разностная функция + кумулятивная нормировка (CMNDF)
-      for(let t=1;t<=tMax;t++){ let s=0; for(let j=0;j<L;j++){ const v=x[o+j]-x[o+j+t]; s+=v*v; }
-        run+=s; d[t]=run>0?s*t/run:1; }
-      let bt=-1;
-      for(let t=tMin;t<=tMax;t++) if(d[t]<0.15){ while(t<tMax&&d[t+1]<d[t]) t++; bt=t; break; }
-      if(bt>0){ let tau=bt;
-        if(bt>1&&bt<tMax){ const a=d[bt-1], c=d[bt+1], den=a-2*d[bt]+c; if(den>1e-9) tau=bt+0.5*(a-c)/den; }
-        const f=sr/tau; if(f>=70&&f<=2000) f0[fi]=f; }
-    }
-    if(performance.now()-tY>30){ melProg(fi/nf,'Анализ аудио…'); await new Promise(r=>setTimeout(r,0)); tY=performance.now(); }
-  }
-  let mx=0; for(let i=0;i<nf;i++) if(rms[i]>mx) mx=rms[i];
-  const thr=mx*Math.pow(10,-35/20), mi=new Int16Array(nf), md=new Int16Array(nf), w=[0,0,0,0,0];
-  for(let i=0;i<nf;i++) mi[i]=(f0[i]>0&&mx>0&&rms[i]>=thr)?Math.round(69+12*Math.log2(f0[i]/440)):0;
-  for(let i=0;i<nf;i++){ for(let k=-2;k<=2;k++) w[k+2]=mi[Math.min(nf-1,Math.max(0,i+k))];
-    md[i]=w.slice().sort((a,b)=>a-b)[2]; }
-  const fms=hop/sr*1000, out=[];
-  for(let i=0;i<nf;){ let j=i; while(j<nf&&md[j]===md[i]) j++;
-    const sg={m:md[i]>0?md[i]:-1,d:(j-i)*fms}, Lp=out[out.length-1];
-    if(Lp&&(sg.d<50||Lp.m===sg.m)) Lp.d+=sg.d; else out.push(sg);
-    i=j; }
-  if(!out.some(s=>s.m>=0)) throw new Error('В аудио не найдено устойчивых нот — лучше всего подходят простые одноголосые рингтоны');
-  return out;
-}
 function melHz(m){ return 440*Math.pow(2,(m-69)/12); }
 function melPrepare(raw,o){
   if(!raw.some(x=>x.m>=0&&x.d>0)) throw new Error('В источнике не найдено ни одной ноты');
@@ -507,29 +449,77 @@ function melPrepare(raw,o){
   if(!fmax) throw new Error('После подготовки не осталось нот');
   return {notes,k,auto:o.oct==='auto',ms:prev,fmin,fmax,cutT,cutN,maxMs:o.maxMs};
 }
-// Импорт: файл / RTTTL-текст → «Подготовить» → «Прослушать» → «В мозг»; смена параметров пересчитывает сразу
+// Импорт: файл / RTTTL-текст → (отрезки) → «Подготовить» → «Прослушать» → «В мозг» / «В пульт»; смена параметров пересчитывает сразу.
+// v1.4.0: шкала трека с отрезками (H2Mel.SegEditor): склеить в одну мелодию с паузами или каждый отдельно;
+// аудио распознаётся только на выбранных отрезках.
 const MEL_FILE_HINT='MIDI, RTTTL или аудио (mp3, wav, ogg, m4a)';
-let melSrc=null,melMidi=null,melAudio=null,melLastRaw=null,melRes=null,melBusy=false,melNameAuto=true,melSaving=false;
+let melSrc=null,melMidi=null,melAudio=null,melRaw=null,melLastPieces=null,melRes=null,melBusy=false,melNameAuto=true,melSaving=false,melSeg=null,melTextT=0;
+function melSegInit(){if(!melSeg)melSeg=new H2Mel.SegEditor(byId('melSeg'),{getCtx:()=>{try{return melCtx()}catch(e){return null}},onChange:melOnSeg})}
 function melMsgSet(id,t,c){const e=byId(id);e.textContent=t;e.className='fine msg'+(c?' '+c:'')}
 function melProg(fr,label){const p=byId('melProg');if(fr<0){p.hidden=true;return}p.hidden=false;byId('melProgBar').style.width=Math.round(fr*100)+'%';melMsgSet('melMsg',label+(fr>0?' '+Math.round(fr*100)+' %':''),'')}
 function melSetName(n){if(melNameAuto)byId('melName').value=n||'Мелодия'}
 function melOpts(){const o=byId('melOct').value;return {oct:o==='auto'?'auto':+o,tempo:+byId('melTempo').value,gap:+byId('melGap').value,maxMs:+byId('melMax').value*1000}}
-function melClearRes(){if(melPl&&melPl.owner==='res')melStopPreview();melRes=null;byId('melRes').hidden=true;melMsgSet('melSaveMsg','','')}
-function melNewSource(){melClearRes();melLastRaw=null;melMidi=null;melNameAuto=true;byId('melTrkFld').hidden=true;melMsgSet('melMsg','','')}
-async function melOnFile(inp){const f=inp.files[0];inp.value='';if(!f)return;melNewSource();melSrc=null;byId('melText').value='';const ext=(f.name.split('.').pop()||'').toLowerCase();const kind=['mid','midi','kar','rmi'].includes(ext)?'midi':['rtttl','rtx','txt'].includes(ext)?'rtttl':(['mp3','wav','ogg','oga','opus','m4a','aac','flac','webm'].includes(ext)||/^audio\//.test(f.type))?'audio':null;text('melFileName',f.name);if(!kind){text('melFileName',MEL_FILE_HINT);melMsgSet('melMsg','Формат не поддерживается: нужен .mid, .rtttl/.txt или аудиофайл','bad');return}melSrc={kind,file:f};melSetName(f.name.replace(/\.[^.]*$/,''));if(kind==='midi'){try{melMidi=melParseMidi(await melReadFile(f,false))}catch(e){melSrc=null;melMsgSet('melMsg',e.message,'bad');return}const s=byId('melTrk');s.textContent='';const add=(v,t)=>{const o=document.createElement('option');o.value=String(v);o.textContent=t;s.appendChild(o)};const lbl=t=>t.num+': '+(t.name||'Дорожка')+' ('+t.notes.length+' '+plural(t.notes.length,'нота','ноты','нот')+')';add('auto','Авто — '+lbl(melMidi.tracks[melMidi.auto]));add('all','Все дорожки (верхний голос)');melMidi.tracks.forEach((t,i)=>add(i,lbl(t)));byId('melTrkFld').hidden=false}else if(kind==='audio')melMsgSet('melMsg','Аудио распознаётся при подготовке — это может занять несколько секунд.','')}
-function melOnText(){const has=byId('melText').value.trim()!=='';if(!melSrc||melSrc.kind!=='text'){melNewSource();text('melFileName',MEL_FILE_HINT)}else melClearRes();melSrc=has?{kind:'text'}:null}
-async function melGetRaw(){if(!melSrc)throw new Error('Выбери файл или вставь RTTTL-текст');if(melSrc.kind==='midi')return melMidiRaw(melMidi,byId('melTrk').value);if(melSrc.kind==='text'||melSrc.kind==='rtttl'){const isText=melSrc.kind==='text';const r=melParseRtttl(isText?byId('melText').value:await melReadFile(melSrc.file,true));if(r.name||isText)melSetName(r.name);return r.raw}const secs=+byId('melSecs').value;if(!(melAudio&&melAudio.file===melSrc.file&&melAudio.secs===secs))melAudio={file:melSrc.file,secs,raw:await melAudioRaw(melSrc.file,secs)};return melAudio.raw}
-function melRunPrep(raw){if(melPl&&melPl.owner==='res')melStopPreview();melRes=melPrepare(raw,melOpts());melLastRaw=raw;const r=melRes,ex=['сдвиг октав '+(r.k>0?'+':'')+String(r.k).replace('-','−')+(r.auto?' (авто)':'')];if(r.cutT)ex.push('обрезано до '+(r.maxMs/1000)+' с');if(r.cutN)ex.push('обрезано до 1200 нот');text('melStat',r.notes.length+' '+plural(r.notes.length,'нота','ноты','нот')+' · '+fmt(r.ms/1000,1)+' с · '+r.fmin+'–'+r.fmax+' Гц');text('melStat2',ex.join(' · '));byId('melRes').hidden=false;melMsgSet('melSaveMsg','','')}
-async function melPrepareClick(){if(melBusy)return;const btn=byId('melPrepBtn');melBusy=true;setOff(btn,true);melMsgSet('melMsg','','');try{if(melSrc&&melSrc.kind==='audio')melCtx();melRunPrep(await melGetRaw());melMsgSet('melMsg','Готово — прослушай и сохрани.','ok')}catch(e){melClearRes();melMsgSet('melMsg',(e&&e.message)||String(e),'bad')}finally{melBusy=false;setOff(btn,false);restoreFocus();melProg(-1)}}
-function melReprep(raw){try{melRunPrep(raw)}catch(e){melClearRes();melMsgSet('melMsg',e.message,'bad')}}
+function melOwnRes(){return melPl&&(melPl.owner==='res'||melPl.owner.charAt(0)==='p')}
+function melClearRes(){if(melOwnRes())melStopPreview();melRes=null;byId('melRes').hidden=true;melMsgSet('melSaveMsg','','')}
+function melShowSeg(src){melSegInit();melSeg.setSource(src);byId('melSegLbl').hidden=!src}
+function melNewSource(){melClearRes();melLastPieces=null;melMidi=null;melAudio=null;melRaw=null;melNameAuto=true;byId('melTrkFld').hidden=true;melMsgSet('melMsg','','');melShowSeg(null)}
+async function melOnFile(inp){const f=inp.files[0];inp.value='';if(!f)return;melNewSource();melSrc=null;byId('melText').value='';const ext=(f.name.split('.').pop()||'').toLowerCase();const kind=['mid','midi','kar','rmi'].includes(ext)?'midi':['rtttl','rtx','txt'].includes(ext)?'rtttl':(['mp3','wav','ogg','oga','opus','m4a','aac','flac','webm'].includes(ext)||/^audio\//.test(f.type))?'audio':null;text('melFileName',f.name);if(!kind){text('melFileName',MEL_FILE_HINT);melMsgSet('melMsg','Формат не поддерживается: нужен .mid, .rtttl/.txt или аудиофайл','bad');return}const src={kind,file:f};melSrc=src;melSetName(f.name.replace(/\.[^.]*$/,''));
+  try{if(kind==='midi'){melMidi=melParseMidi(await melReadFile(f,false));const s=byId('melTrk');s.textContent='';const add=(v,t)=>{const o=document.createElement('option');o.value=String(v);o.textContent=t;s.appendChild(o)};const lbl=t=>t.num+': '+(t.name||'Дорожка')+' ('+t.notes.length+' '+plural(t.notes.length,'нота','ноты','нот')+')';add('auto','Авто — '+lbl(melMidi.tracks[melMidi.auto]));add('all','Все дорожки (верхний голос)');melMidi.tracks.forEach((t,i)=>add(i,lbl(t)));byId('melTrkFld').hidden=false;melRaw=melMidiRaw(melMidi,'auto');melShowSeg({kind:'notes',raw:melRaw})}
+    else if(kind==='rtttl'){const r=melParseRtttl(await melReadFile(f,true));if(r.name)melSetName(r.name);melRaw=r.raw;melShowSeg({kind:'notes',raw:melRaw})}
+    else{melMsgSet('melMsg','Декодирование аудио…','');const ab=await melReadFile(f,false),buf=await H2Mel.decode(melCtx(),ab);if(src!==melSrc)return;melAudio={file:f,buffer:buf,cache:new Map()};melShowSeg({kind:'audio',buffer:buf});melMsgSet('melMsg','Длительность '+fmt(buf.duration,1)+' с. Выдели отрезки на шкале или нажми «Подготовить» — возьмётся начало трека.','')}}
+  catch(e){if(src!==melSrc)return;melSrc=null;melShowSeg(null);melMsgSet('melMsg',(e&&e.message)||String(e),'bad')}}
+function melOnText(){const has=byId('melText').value.trim()!=='';if(!melSrc||melSrc.kind!=='text'){melNewSource();text('melFileName',MEL_FILE_HINT)}else melClearRes();melSrc=has?{kind:'text'}:null;clearTimeout(melTextT);melTextT=setTimeout(()=>{if(!melSrc||melSrc.kind!=='text')return;try{const r=melParseRtttl(byId('melText').value);melSetName(r.name);melRaw=r.raw;if(melSeg&&melSeg.src&&melSeg.src.kind==='notes')melSeg.updateNotes(melRaw);else melShowSeg({kind:'notes',raw:melRaw})}catch(e){melRaw=null;melShowSeg(null)}},400)}
+function melSegs(){return melSeg&&melSeg.src?melSeg.segs.map(s=>({a:Math.round(s.a),b:Math.round(s.b),gap:s.gap|0})):[]}
+async function melGetPieces(){if(!melSrc)throw new Error('Выбери файл или вставь RTTTL-текст');const segs=melSegs(),join=!melSeg||melSeg.join;
+  if(melSrc.kind!=='audio'){if(melSrc.kind==='text'){const r=melParseRtttl(byId('melText').value);melSetName(r.name);melRaw=r.raw}if(!melRaw)throw new Error('В источнике не найдено нот');return H2Mel.pieces(segs,join,s=>H2Mel.slice(melRaw,s.a,s.b),()=>melRaw)}
+  const A=melAudio;if(!A)throw new Error('Аудио ещё не декодировано');const parts=segs.length?segs:[{a:0,b:Math.min(A.buffer.duration*1000,+byId('melSecs').value*1000),gap:0}],tot=parts.reduce((s,x)=>s+x.b-x.a,0);
+  if(tot>180000)throw new Error('Отрезки длиннее 3 минут в сумме — распознавание будет слишком долгим, сократи их');
+  let done=0;const raws=[];for(const p of parts){const key=p.a+'-'+p.b;if(!A.cache.has(key))A.cache.set(key,await H2Mel.pitchTrack(A.buffer,p.a,p.b,fr=>melProg((done+fr*(p.b-p.a))/tot,'Анализ аудио…')));done+=p.b-p.a;raws.push(A.cache.get(key))}
+  if(!raws.some(r=>r.some(x=>x.m>=0)))throw new Error('В аудио не найдено устойчивых нот — лучше всего подходят простые одноголосые рингтоны');let i=0;return H2Mel.pieces(segs,join,()=>raws[i++],()=>raws[0])}
+function melPieceName(i){const b=byId('melName').value.trim()||'Мелодия';return melRes&&melRes.list.length>1?b+' '+(i+1):b}
+function melRunPrep(pieces){if(melOwnRes())melStopPreview();const o=melOpts(),list=[],skipped=[];pieces.forEach((p,i)=>{try{list.push(melPrepare(p,o))}catch(e){skipped.push(i+1)}});if(!list.length)throw new Error('После подготовки не осталось нот');melRes={list,skipped};melLastPieces=pieces;
+  const r=list[0],ms=list.reduce((s,x)=>s+x.ms,0),n=list.reduce((s,x)=>s+x.notes.length,0),fmin=Math.min(...list.map(x=>x.fmin)),fmax=Math.max(...list.map(x=>x.fmax)),ex=['сдвиг октав '+(r.k>0?'+':'')+String(r.k).replace('-','−')+(r.auto?' (авто)':'')];
+  if(list.some(x=>x.cutT))ex.push('обрезано до '+(r.maxMs/1000)+' с');if(list.some(x=>x.cutN))ex.push('обрезано до 1200 нот');if(skipped.length)ex.push('без нот, пропущены отрезки: '+skipped.join(', '));
+  text('melStat',(list.length>1?list.length+' '+plural(list.length,'мелодия','мелодии','мелодий')+' · ':'')+n+' '+plural(n,'нота','ноты','нот')+' · '+fmt(ms/1000,1)+' с · '+fmin+'–'+fmax+' Гц');text('melStat2',ex.join(' · '));
+  const box=byId('melPieces');box.textContent='';if(list.length>1)list.forEach((x,i)=>{const row=document.createElement('div');row.className='melody';const idx=document.createElement('span');idx.className='track-index';idx.textContent=String(i+1).padStart(2,'0');const t=document.createElement('span');t.className='track-title';t.textContent=melPieceName(i);const h=document.createElement('small');h.textContent=x.notes.length+' '+plural(x.notes.length,'нота','ноты','нот')+' · '+fmt(x.ms/1000,1)+' с';t.appendChild(h);const ear=iconButton('i-ear','Прослушать на телефоне: '+melPieceName(i),()=>melListenPiece(i),'icon-only');ear.dataset.pv='p'+i;ear.dataset.name=melPieceName(i);row.append(idx,t,ear);box.appendChild(row)});
+  byId('melRes').hidden=false;melMsgSet('melSaveMsg','','');melPlUi()}
+async function melPrepareClick(){if(melBusy)return;const btn=byId('melPrepBtn'),src=melSrc;melBusy=true;setOff(btn,true);melMsgSet('melMsg','','');try{melCtx();const pieces=await melGetPieces();if(src!==melSrc){melMsgSet('melMsg','Источник изменён — нажми «Подготовить».','');return}melRunPrep(pieces);melMsgSet('melMsg','Готово — прослушай и сохрани.','ok')}catch(e){if(src!==melSrc)return;melClearRes();melMsgSet('melMsg',(e&&e.message)||String(e),'bad')}finally{melBusy=false;setOff(btn,false);restoreFocus();melProg(-1)}}
+function melReprep(){if(!melLastPieces)return;try{melRunPrep(melLastPieces)}catch(e){melClearRes();melMsgSet('melMsg',e.message,'bad')}}
+function melOnSeg(){if(!melRes||melBusy)return;if(melSrc&&melSrc.kind==='audio'){melClearRes();melLastPieces=null;melMsgSet('melMsg','Отрезки изменены — нажми «Подготовить».','');return}melGetPieces().then(melRunPrep).catch(e=>{melClearRes();melMsgSet('melMsg',e.message,'bad')})}
 function melParamLabels(){const t=byId('melTempo'),g=byId('melGap'),m=byId('melMax'),s=byId('melSecs');[t,g,m,s].forEach(rangePaint);text('melTempoV',t.value+' %');text('melGapV',g.value+' мс');text('melMaxV',m.value+' с');text('melSecsV',s.value+' с')}
-function melOnParam(){melParamLabels();if(melRes&&melLastRaw&&!melBusy)melReprep(melLastRaw)}
-function melOnSecs(){melParamLabels();if(melSrc&&melSrc.kind==='audio'&&melRes&&!melBusy){melClearRes();melLastRaw=null;melMsgSet('melMsg','Длительность анализа изменена — нажми «Подготовить».','')}}
-function melOnTrack(){if(melMidi&&melRes&&!melBusy)melReprep(melMidiRaw(melMidi,byId('melTrk').value))}
-function melListen(){if(melPl&&melPl.owner==='res'){melStopPreview();return}if(!melRes)return;try{melPlay(melRes.notes,'res')}catch(e){melMsgSet('melSaveMsg',e.message,'bad')}}
-// v1.3.0: загрузка в мозг — multipart POST /snd/up (поле "f", melody.h2m) через мост
-async function melSave(){if(!melRes||melSaving)return;if(!online){melMsgSet('melSaveMsg','Нет связи с мозгом','bad');return}if(otaBusy){melMsgSet('melSaveMsg','Дождись окончания обновления прошивки','bad');return}if(soundCfg&&!soundCfg.fsok){melMsgSet('melSaveMsg','Память мелодий (LittleFS) недоступна','bad');return}if(soundCfg&&(soundCfg.list||[]).length>=16){melMsgSet('melSaveMsg','Все 16 слотов заняты — удали ненужную мелодию','bad');return}const B='h2mel'+Date.now().toString(36),btn=byId('melSaveBtn');melSaving=true;setOff(btn,true);melMsgSet('melSaveMsg','Загрузка…','');try{const t=await brain('/snd/up',{method:'POST',type:'multipart/form-data; boundary='+B,body:bufToB64(multipart(B,'f','melody.h2m',melBuildH2M(byId('melName').value.trim()||'Мелодия',melRes.notes))),timeout:20000});let j=null;try{j=JSON.parse(t)}catch(e){}if(j&&j.ok){melMsgSet('melSaveMsg','Сохранено в слот '+j.id+'. Её можно выбрать мелодией события выше.','ok');toast('Мелодия сохранена');await loadSound()}else melMsgSet('melSaveMsg',(j&&j.err)||t||'Ошибка загрузки','bad')}catch(e){melMsgSet('melSaveMsg',e.message,'bad')}finally{melSaving=false;setOff(btn,false);restoreFocus()}}
+function melOnParam(){melParamLabels();if(melRes&&!melBusy)melReprep()}
+function melOnSecs(){melParamLabels();if(melSrc&&melSrc.kind==='audio'&&!melSegs().length&&melRes&&!melBusy){melClearRes();melLastPieces=null;melMsgSet('melMsg','Длительность анализа изменена — нажми «Подготовить».','')}}
+function melOnTrack(){if(!melMidi)return;melRaw=melMidiRaw(melMidi,byId('melTrk').value);melSeg.updateNotes(melRaw)}
+function melPvMusic(){return byId('melPvAs').value==='remote'}
+function melOnPvAs(){if(melOwnRes())melListen()}
+function melListen(){if(melPl&&melPl.owner==='res'){melStopPreview();return}if(!melRes)return;try{const all=[];melRes.list.forEach((x,i)=>{if(i)all.push({f:0,d:600});all.push(...x.notes)});melPlay(all,'res',melPvMusic())}catch(e){melMsgSet('melSaveMsg',e.message,'bad')}}
+function melListenPiece(i){if(melPl&&melPl.owner==='p'+i){melStopPreview();return}try{melPlay(melRes.list[i].notes,'p'+i,melPvMusic())}catch(e){melMsgSet('melSaveMsg',e.message,'bad')}}
+function melFiles(){return melRes.list.map((x,i)=>({name:melPieceName(i),bytes:melBuildH2M(melPieceName(i),x.notes)}))}
+function melUploadBody(bytes){const B='h2mel'+Date.now().toString(36);return {method:'POST',type:'multipart/form-data; boundary='+B,body:bufToB64(multipart(B,'f','melody.h2m',bytes)),timeout:20000}}
+function melSaveReady(){if(!melRes||melSaving)return false;if(!online){melMsgSet('melSaveMsg','Нет связи с мозгом','bad');return false}if(otaBusy){melMsgSet('melSaveMsg','Дождись окончания обновления прошивки','bad');return false}return true}
+// загрузка в мозг — multipart POST /snd/up (поле "f", melody.h2m) через мост, по одной мелодии
+async function melSave(){if(!melSaveReady())return;const files=melFiles();if(soundCfg&&!soundCfg.fsok){melMsgSet('melSaveMsg','Память мелодий (LittleFS) недоступна','bad');return}if(soundCfg&&(soundCfg.list||[]).length+files.length>16){melMsgSet('melSaveMsg','Не хватит слотов мозга (16) — удали ненужные мелодии','bad');return}const btn=byId('melSaveBtn');melSaving=true;setOff(btn,true);let ok=0;
+  try{for(const f of files){melMsgSet('melSaveMsg','Загрузка «'+f.name+'»…','');const t=await brain('/snd/up',melUploadBody(f.bytes));let j=null;try{j=JSON.parse(t)}catch(e){}if(!(j&&j.ok))throw new Error((j&&j.err)||t||'Ошибка загрузки');ok++}melMsgSet('melSaveMsg','Сохранено в мозг: '+ok+'. Мелодию можно выбрать для события выше.','ok');toast(ok>1?'Мелодии сохранены':'Мелодия сохранена')}
+  catch(e){melMsgSet('melSaveMsg',(ok?'Сохранено '+ok+', затем ошибка: ':'')+e.message,'bad')}finally{melSaving=false;setOff(btn,false);restoreFocus();loadSound()}}
+// v1.4.0: загрузка в пульт — POST /rmel/up, мозг передаёт файл по радио; ждём итог по /rmel/cfg
+async function melSaveRemote(){if(!melSaveReady())return;const btn=byId('melRmBtn');melSaving=true;setOff(btn,true);
+  try{const n=await H2Mel.uploadRemote(melFiles(),b=>brain('/rmel/up',melUploadBody(b)).then(t=>{try{return JSON.parse(t)}catch(e){return {ok:0,err:t}}}),rmCfgJson,t=>melMsgSet('melSaveMsg',t,''));melMsgSet('melSaveMsg','В пульт загружено: '+n+'. Выбери её для кнопки МЕЛОДИЯ в блоке «Пульт».','ok');toast('Мелодия в пульте')}
+  catch(e){melMsgSet('melSaveMsg',e.message,'bad')}finally{melSaving=false;setOff(btn,false);restoreFocus();loadRemote(true)}}
 
+// ── v1.4.0: Мелодии пульта (/rmel/*) — опись пульт присылает мозгу по радио ──
+let rmCfg=null,rmDirty=false,rmTimer=0,rmBusy=false;
+function rmCfgJson(){return brain('/rmel/cfg').then(t=>{const c=JSON.parse(t);rmCfg=c;renderRemote();return c})}
+async function loadRemote(force){clearTimeout(rmTimer);try{const c=await rmCfgJson(),st=c.job&&c.job.st,active=st==='send'||st==='check';if(currentTab==='sound'&&(active||(c.online&&!c.complete)||force===true&&!c.known))rmTimer=setTimeout(loadRemote,active?500:900)}catch(e){text('rmState','нет ответа')}}
+function rmFillSel(id,val,first){const s=byId(id),want=rmDirty&&s.value!==''?s.value:String(val);s.textContent='';const add=(v,t)=>{const o=document.createElement('option');o.value=String(v);o.textContent=t;s.appendChild(o)};add(first[0],first[1]);((rmCfg&&rmCfg.list)||[]).forEach(m=>add(m.id,m.name));s.value=want;if(s.value!==want)s.value=String(first[0])}
+function renderRemote(){const c=rmCfg;if(!c)return;text('rmState',!c.online?'Нет связи':c.known?c.list.length+' из '+c.slots:'На связи');const j=c.job||{},act=j.st==='send'||j.st==='check';byId('rmProg').hidden=!act;if(act)byId('rmProgBar').style.width=(j.pct|0)+'%';
+  const box=byId('rmList');box.textContent='';const note=t=>{const p=document.createElement('p');p.className='fine';p.textContent=t;box.appendChild(p)};
+  if(!c.known)note(c.online?'Запрашиваю список у пульта…':'Пульт не на связи — включи его.');else if(!c.fsok)note('Память пульта (LittleFS) недоступна.');else if(!c.list.length)note('В пульте только «Бумер» — добавь свою мелодию ниже (кнопка «В пульт»).');
+  else c.list.forEach((m,i)=>{const row=document.createElement('div');row.className='melody';const idx=document.createElement('span');idx.className='track-index';idx.textContent=String(i+1).padStart(2,'0');const t=document.createElement('span');t.className='track-title';t.textContent=m.name;const h=document.createElement('small');h.textContent=(m.ms?m.n+' '+plural(m.n,'нота','ноты','нот')+' · '+fmt(m.ms/1000,1)+' с':'…')+(m.id===c.act?' · играет по кнопке':'')+(m.id===c.boot?' · при включении':'');t.appendChild(h);const del=iconButton('i-x','Удалить из пульта: '+m.name,()=>rmDel(m.id),'icon-only danger-text');del.dataset.control='';row.append(idx,t,del);box.appendChild(row)});
+  if(c.known){rmFillSel('rmAct',c.act,[-1,'«Бумер» (встроенный)']);rmFillSel('rmBoot',c.boot,[-9,'Нет'])}updateControls()}
+async function rmApply(){if(!rmCfg||!rmCfg.known){toast('Список пульта ещё не получен',true);loadRemote(true);return}const r=await action('/rmel/set?act='+byId('rmAct').value+'&boot='+byId('rmBoot').value,null);if(r===false)return;let j=null;try{j=JSON.parse(r)}catch(e){}if(!j||!j.ok){toast((j&&j.err)||'Пульт не принял настройку',true);return}rmDirty=false;toast('Отправлено на пульт');setTimeout(()=>loadRemote(true),600)}
+async function rmDel(id){const m=((rmCfg&&rmCfg.list)||[]).find(x=>x.id===id);if(!await ask('Удалить из пульта?','«'+(m?m.name:id)+'» будет удалена из памяти пульта. Если она играла по кнопке, вернётся «Бумер».','Удалить'))return;const r=await action('/rmel/del?id='+id,null);if(r===false)return;let j=null;try{j=JSON.parse(r)}catch(e){}if(!j||!j.ok){toast((j&&j.err)||'Пульт не ответил',true);return}toast('Удалено из пульта');setTimeout(()=>loadRemote(true),600)}
+// мелодия из библиотеки мозга → пульт (мозг читает свой файл и передаёт по радио)
+async function rmSendBrain(id){if(rmBusy)return;if(!online){toast('Нет связи с мозгом',true);return}rmBusy=true;const m=userMelodies().find(x=>x.id===id);try{await H2Mel.uploadRemote([{name:m?m.name:'мелодия',bytes:null}],()=>brain('/rmel/send?id='+id).then(t=>{try{return JSON.parse(t)}catch(e){return {ok:0,err:t}}}),rmCfgJson,t=>text('rmState',t));toast('Мелодия в пульте — выбери её в блоке «Пульт»')}catch(e){toast(e.message,true)}finally{rmBusy=false;loadRemote(true)}}
 function applyPreferences(){const dark=preferences.theme==='dark'||preferences.theme==='auto'&&systemDark.matches;document.documentElement.dataset.theme=dark?'dark':'light';document.querySelector('meta[name="theme-color"]').content=dark?'#171a18':'#f1f0ec';document.querySelectorAll('[data-theme-choice]').forEach(el=>{const selected=preferences.theme===el.dataset.themeChoice;el.classList.toggle('selected',selected);el.classList.toggle('current',preferences.theme==='auto'&&el.dataset.themeChoice===(dark?'dark':'light'));el.setAttribute('aria-pressed',String(selected))});byId('systemTheme').checked=preferences.theme==='auto';byId('keepAwake').checked=preferences.awake;byId('haptics').checked=preferences.haptics;document.querySelectorAll('[data-refresh]').forEach(el=>{const selected=Number(el.dataset.refresh)===preferences.refresh;el.classList.toggle('selected',selected);el.setAttribute('aria-pressed',String(selected))});document.querySelectorAll('[data-digits]').forEach(el=>{const selected=Number(el.dataset.digits)===preferences.digits;el.classList.toggle('selected',selected);el.setAttribute('aria-pressed',String(selected))});if(state&&online){text('pressure',fmt(state.p,preferences.digits));fitPressure()}try{if(window.Brain&&Brain.appearance)Brain.appearance(dark,preferences.awake)}catch(e){}try{if(window.Brain&&Brain.monitorEnabled)byId('monitor').checked=Brain.monitorEnabled()}catch(e){}monitorPaint();if(currentTab==='history')drawCharts()}
 function restartPolling(){clearInterval(pollTimer);pollTimer=setInterval(poll,preferences.refresh)}
 function setPreference(key,value){preferences[key]=value;try{localStorage.setItem('h2.preferences',JSON.stringify(preferences))}catch(e){toast('Не удалось сохранить настройки',true)}applyPreferences();if(key==='refresh')restartPolling();haptic()}
