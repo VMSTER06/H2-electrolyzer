@@ -235,7 +235,7 @@ static const char* rmelStart(const uint8_t* file, size_t len) {
   if (!remoteListening()) return "пульт не на связи — включите его или нажмите любую кнопку";
   if (rmelBusy())         return "идёт другая передача — дождитесь окончания";
   if (rmelInv.known && rmelInv.used == (uint8_t)((1u << RMEL_SLOTS) - 1)) return "на пульте все 8 слотов заняты — удалите ненужную";
-  memcpy(rmelBuf, file, len);
+  if (file != rmelBuf) memcpy(rmelBuf, file, len);   // /rmel/send читает файл прямо в rmelBuf
   portENTER_CRITICAL(&rmelMux);
   memcpy(rmelJob.name, info.name, sizeof(rmelJob.name));
   rmelReqSize  = (uint16_t)len;

@@ -1,7 +1,18 @@
 /*
  * =====================================================================================
- *  H2 CONTROL SYSTEM — МОЗГ v6.5  (ESP32 DevKit v1, WROOM-32D)
+ *  H2 CONTROL SYSTEM — МОЗГ v6.7  (ESP32 DevKit v1, WROOM-32D)
  * =====================================================================================
+ *
+ *  ⚡ НОВОЕ В v6.7 (протокол дополнен пакетами PKT_RMEL — прошивать вместе с пультом v6.7):
+ *    • МЕЛОДИИ ПУЛЬТА: файл H2M1 из веба/приложения (POST /rmel/up) или из библиотеки
+ *      мозга (/rmel/send) мозг передаёт пульту по радио кусками с CRC-32 (h2_rmel.h);
+ *      опись пульта, выбор мелодии кнопки МЕЛОДИЯ и звука включения — /rmel/cfg|set|del.
+ *    • МЕЛОДИИ СОБЫТИЙ: своя мелодия назначается на загрузку, включение, выключение,
+ *      окончание продувки, тревогу и предупреждение (тревога/предупреждение — до 10 с).
+ *    • Формат H2M1 и CRC вынесены в общий h2_melody.h (копия у пульта).
+ *    • OLED: текст в режиме BUF_ADD — русские строки не стирают соседние (h2_oled.h).
+ *    • /cmd и WebSocket принимают только известные номера команд.
+ *    • Экран «целевое давление» не показывается при старте.
  *
  *  ⚡ НОВОЕ В v6.5 (30.10.2026, протокол не менялся — TonePacket теперь идёт и пульт → мозг):
  *    • ВЕСЬ ЗВУК СЛЕДУЕТ ВЫБОРУ «Где играть»: локальные звуки пульта (щелчки, «Бумер»)
@@ -956,7 +967,7 @@ const char OTA_HTML[] PROGMEM = R"rawliteral(
   a{color:#00d4ff;font-size:.8em;text-decoration:none;display:inline-block;margin-top:18px;}
 </style></head><body>
 <h1>⬆ OTA ОБНОВЛЕНИЕ</h1>
-<div class="sub">H2 PRO Brain v6.3</div>
+<div class="sub">H2 PRO Brain v6.7</div>
 <div class="box">
   <div class="warn">⚠ Загрузите файл <b>.bin</b>, собранный в Arduino IDE
     (Sketch → Export Compiled Binary). НЕ выключайте питание во время прошивки!</div>
@@ -1700,6 +1711,12 @@ volatile bool maintDoneRequested    = false;   // ⚡ v6.2: /maint?done=1
 volatile bool gasResetRequested     = false;   // ⚡ v6.2: /setgas?reset=1
 volatile uint32_t timeSyncValue     = 0;       // ⚡ v6.2: /settime — unix-время к применению
 
+// ⚡ v6.7: команды, которые принимают веб и WebSocket (как список COMMANDS приложения)
+bool webCommandKnown(long id) {
+  switch (id) { case 1: case 2: case 3: case 4: case 5: case 7: case 8: case 9: case 12: case 99: return true; }
+  return false;
+}
+
 // Поставить команду веба в очередь (вызывается на ядре 0). false — очередь полна.
 bool queueWebCommand(uint8_t cmd) {
   if (webCmdQueue == nullptr) return false;
@@ -2146,7 +2163,7 @@ void updateDisplayLCD() {
   char tgt[6]; dtostrf(targetPressure, 3, 1, tgt);
 
   // ── Экран установки целевого давления: значение и шкала из 20 знакомест ──
-  if (now - lastTargetChange < T_SHOW_TARGET) {
+  if (lastTargetChange != 0 && now - lastTargetChange < T_SHOW_TARGET) {   // ⚡ v6.7: 0 — цель не меняли (не при старте)
     snprintf(l[0], sizeof(l[0]), "TARGET PRESSURE");
     snprintf(l[1], sizeof(l[0]), "      %s bar", tgt);
     int n = constrain((int)roundf(targetPressure / MAX_TARGET_PRESSURE * 20.0f), 0, 20);
@@ -2206,8 +2223,8 @@ void updateDisplay() {
   oled.clearDisplay();
   oled.setTextColor(SSD1306_WHITE);
 
-  // ── Экран установки целевого давления ──────────────────────────────────
-  if (now - lastTargetChange < T_SHOW_TARGET) {
+  // ── Экран установки целевого давления (⚡ v6.7: не при старте — цель не меняли) ──
+  if (lastTargetChange != 0 && now - lastTargetChange < T_SHOW_TARGET) {
     oled.setTextSize(1);
     oled.setCursor(8, 0); oled.print("ЦЕЛЕВОЕ ДАВЛЕНИЕ");
     oled.drawLine(0, 9, 127, 9, SSD1306_WHITE);
@@ -2322,7 +2339,7 @@ void maybeUpdateDisplay(unsigned long now) {
     (int)roundf(currentTemp), tempSensorOk ? 1 : 0, fanOn[0] ? 1 : 0, fanOn[1] ? 1 : 0,
     pressureFault, leakLock, leakWarn, maintDue, runTimerLeft(), remoteOnline ? 1 : 0,
     mpuFault ? 1 : 0);
-  bool animated = (now - lastTargetChange < T_SHOW_TARGET) || repulsorActive;
+  bool animated = (lastTargetChange != 0 && now - lastTargetChange < T_SHOW_TARGET) || repulsorActive;
   bool forced   = (now - lastDispDraw >= 1000);
   // ⚡ v6.3: самовосстановление LCD после помехи. Теневой буфер раньше не давал экрану
   // восстановиться, пока не изменятся сами знаки. Раз в 20 с одна строка (по кругу)
@@ -2584,7 +2601,7 @@ void onWsEvent(AsyncWebSocket* s, AsyncWebSocketClient* c, AwsEventType type,
       int ci = msg.indexOf("\"cmd\":");
       if (ci >= 0) {
         int cmd = msg.substring(ci + 6).toInt();
-        queueWebCommand((uint8_t)cmd);   // ⚡ v6.1: выполнит loop на ядре 1
+        if (webCommandKnown(cmd)) queueWebCommand((uint8_t)cmd);   // ⚡ v6.1: выполнит loop на ядре 1
       }
     }
   }
@@ -2731,7 +2748,7 @@ void setup() {
   buzzerInit();
 
   Serial.begin(115200);
-  Serial.println("\n=== H2 PRO Brain v6.6 ===");
+  Serial.println("\n=== H2 PRO Brain v6.7 ===");
   bootMs = millis();
 
   // ⚡ v4.3: Загружаем сохранённые настройки из NVS (цель, вентиляторы, звук, таймер…)
@@ -2781,7 +2798,7 @@ void setup() {
     memset(lcdShadow, ' ', sizeof(lcdShadow));
     for (uint8_t r = 0; r < 4; r++) lcdShadow[r][20] = '\0';
     lcdOk = true;
-    lcdLine(0, "H2 PRO  Brain v6.6");
+    lcdLine(0, "H2 PRO  Brain v6.7");
     lcdLine(1, "LCD2004 OK");
     lcdLine(2, "MPU6050 calibrating");
     lcdLine(3, "Do not move!");
@@ -2905,7 +2922,14 @@ void setup() {
   });
   server.on("/cmd", HTTP_GET, [](AsyncWebServerRequest* req) {
     // ⚡ v6.1: команда выполняется в loop на ядре 1 (очередь), ответ — сразу
-    if (req->hasParam("id") && !queueWebCommand((uint8_t)req->getParam("id")->value().toInt())) {
+    // ⚡ v6.7: только известные номера. Раньше toInt() + (uint8_t) превращал «257» в 1
+    // (POWER), «355» в 99 (продувка), а «abc» — в 0.
+    if (!req->hasParam("id")) { req->send(400, "text/plain", "bad id"); return; }
+    const String& sid = req->getParam("id")->value();
+    char* end = nullptr;
+    long  id  = strtol(sid.c_str(), &end, 10);
+    if (sid.length() == 0 || *end != '\0' || !webCommandKnown(id)) { req->send(400, "text/plain", "bad id"); return; }
+    if (!queueWebCommand((uint8_t)id)) {
       req->send(503, "text/plain", "busy");
       return;
     }
