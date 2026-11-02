@@ -1,0 +1,56 @@
+{
+  "source_cloud_document": "корпус для пульта v2; exact same native lid as Пульт с поддержками",
+  "native_copy": "S:\\Projects\\1Electrolizer\\Финал\\Корпус_Fusion360\\Крышка_пульта_2026-10-30\\Крышка_пульта_клипсы_1.6_без_стоек.f3d",
+  "desktop_stl": "C:\\Users\\vladm\\Desktop\\Крышка_пульта_клипсы_1.6_без_стоек_2026-10-30.stl",
+  "clip_beam_mm": 1.6,
+  "clips": [
+    [
+      -10.6,
+      -36.1,
+      -5.4,
+      -34.5
+    ],
+    [
+      32.4,
+      -36.1,
+      37.6,
+      -34.5
+    ],
+    [
+      -10.6,
+      24.02,
+      -5.4,
+      25.62
+    ],
+    [
+      40.4,
+      24.02,
+      45.6,
+      25.62
+    ]
+  ],
+  "supports_in_export": 0,
+  "standoffs_removed": [
+    "keypad (4)",
+    "OLED (4)"
+  ],
+  "skin_mm": 1.2,
+  "volume_before_mm3": 6875.94679602855,
+  "volume_after_mm3": 6728.52155104469,
+  "lid_housing_interference_before_mm3": 0.0,
+  "lid_housing_interference_after_mm3": 0.0,
+  "feature_issues": [],
+  "triangles": 9100,
+  "native_bbox_mm": [
+    [
+      -25.0,
+      -38.0,
+      30.200000762939453
+    ],
+    [
+      51.86324691772461,
+      27.520000457763672,
+      39.0
+    ]
+  ]
+}

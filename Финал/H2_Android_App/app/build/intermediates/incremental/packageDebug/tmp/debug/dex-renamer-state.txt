@@ -1,0 +1,7 @@
+#Fri Oct 30 23:20:05 MSK 2026
+base.1=S\:\\Projects\\1Electrolizer\\Финал\\H2_Android_App\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\8\\classes.dex
+path.1=8/classes.dex
+base.0=S\:\\Projects\\1Electrolizer\\Финал\\H2_Android_App\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\0\\classes.dex
+renamed.1=classes2.dex
+renamed.0=classes.dex
+path.0=0/classes.dex

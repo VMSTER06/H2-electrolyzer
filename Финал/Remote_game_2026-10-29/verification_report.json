@@ -1,0 +1,36 @@
+{
+  "firmware": "H2 PRO Remote v6.3 + GAME",
+  "date": "2026-10-29",
+  "port": "COM5",
+  "chip": "ESP32-D0WD-V3",
+  "mac": "e0:8c:fe:61:72:18",
+  "flash_backup_bytes": 4194304,
+  "upload_verified_regions": 4,
+  "boot_observation_seconds": 15,
+  "oled_initialized": true,
+  "nrf24_initialized": true,
+  "brain_detected": false,
+  "physical_buttons_and_live_rf_tested": false,
+  "tests": [
+    {
+      "name": "test_clicks",
+      "passed": true,
+      "failedLine": null
+    },
+    {
+      "name": "test_dino",
+      "passed": true,
+      "failedLine": null
+    },
+    {
+      "name": "test_controls_regression",
+      "passed": true,
+      "failedLine": null
+    },
+    {
+      "name": "test_music_game_integration",
+      "passed": true,
+      "failedLine": null
+    }
+  ]
+}

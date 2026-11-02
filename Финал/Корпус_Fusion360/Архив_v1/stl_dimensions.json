@@ -1,0 +1,56 @@
+[
+  {
+    "file": "base.stl",
+    "triangles": 2892,
+    "size_mm": [
+      140.0,
+      160.0,
+      52.0
+    ]
+  },
+  {
+    "file": "clamp_1.stl",
+    "triangles": 424,
+    "size_mm": [
+      12.5,
+      10.0,
+      2.5
+    ]
+  },
+  {
+    "file": "clamp_2.stl",
+    "triangles": 424,
+    "size_mm": [
+      12.5,
+      10.0,
+      2.5
+    ]
+  },
+  {
+    "file": "clamp_3.stl",
+    "triangles": 424,
+    "size_mm": [
+      12.5,
+      10.0,
+      2.5
+    ]
+  },
+  {
+    "file": "clamp_4.stl",
+    "triangles": 424,
+    "size_mm": [
+      12.5,
+      10.0,
+      2.5
+    ]
+  },
+  {
+    "file": "lid.stl",
+    "triangles": 11308,
+    "size_mm": [
+      140.0,
+      160.0,
+      13.0
+    ]
+  }
+]

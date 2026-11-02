@@ -1,0 +1,41 @@
+[
+  {
+    "file": "Корпус_основание.stl",
+    "source_body": "base_full",
+    "triangles": 252864,
+    "flipped_about_x": false,
+    "size_mm": [
+      140.0,
+      180.0,
+      64.0
+    ],
+    "volume_cm3": 211.766,
+    "non_manifold_edges": 0
+  },
+  {
+    "file": "Корпус_крышка.stl",
+    "source_body": "lid",
+    "triangles": 262000,
+    "flipped_about_x": true,
+    "size_mm": [
+      140.0,
+      180.0,
+      15.8
+    ],
+    "volume_cm3": 64.131,
+    "non_manifold_edges": 0
+  },
+  {
+    "file": "Вставка_кнопки_LED.stl",
+    "source_body": "control_fascia",
+    "triangles": 67816,
+    "flipped_about_x": true,
+    "size_mm": [
+      64.0,
+      50.0,
+      20.5
+    ],
+    "volume_cm3": 8.702,
+    "non_manifold_edges": 0
+  }
+]

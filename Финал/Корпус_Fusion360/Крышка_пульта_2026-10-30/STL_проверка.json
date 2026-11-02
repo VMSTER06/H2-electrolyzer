@@ -1,0 +1,53 @@
+{
+  "desktop_file": "C:\\Users\\vladm\\Desktop\\Крышка_пульта_клипсы_1.6_без_стоек_2026-10-30.stl",
+  "sha256": "43531360fccb681c05243db4f09da31f69fae73d5e9f3fc800be8b253a88d3e7",
+  "watertight": true,
+  "single_closed_body": true,
+  "winding_consistent": true,
+  "dimensions_mm": [
+    76.86324492447375,
+    65.52000427246094,
+    8.799999237060547
+  ],
+  "volume_mm3": 6726.549134889414,
+  "triangles": 9100,
+  "clips": [
+    {
+      "center_mm": [
+        -8,
+        -35.3
+      ],
+      "width_mm": 5.200000286102295,
+      "thickness_mm": 1.5999984741210938
+    },
+    {
+      "center_mm": [
+        35,
+        -35.3
+      ],
+      "width_mm": 5.1999969482421875,
+      "thickness_mm": 1.5999984741210938
+    },
+    {
+      "center_mm": [
+        -8,
+        24.82
+      ],
+      "width_mm": 5.200000286102295,
+      "thickness_mm": 1.6000003814697266
+    },
+    {
+      "center_mm": [
+        43,
+        24.82
+      ],
+      "width_mm": 5.1999969482421875,
+      "thickness_mm": 1.6000003814697266
+    }
+  ],
+  "orientation": "outer face flat at Z=0; interior and clips face up",
+  "supports": 0,
+  "volume_deviation_from_CAD_percent": 0.029322853601785968,
+  "physical_snap_test_performed": false,
+  "sliced": true
+}

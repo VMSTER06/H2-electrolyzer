@@ -1,0 +1,36 @@
+{
+  "source": "S:\\Projects\\1Electrolizer\\Финал\\Курсовая\\434701_Мурачев_В_К_КП2",
+  "output": "S:\\Projects\\1Electrolizer\\Финал\\Курсовая\\434701_Мурачев_В_К_КП2_проверено_09-10",
+  "intro_functions": 7,
+  "intro_parts": 3,
+  "uzly_occurrences": 0,
+  "board_one_element": true,
+  "reference_ends_section_2": true,
+  "structural_drawing_blocks": 7,
+  "word_sheet_mm": [
+    [
+      210.03,
+      297.02
+    ],
+    [
+      420.0,
+      297.0
+    ],
+    [
+      210.03,
+      297.02
+    ],
+    [
+      420.05,
+      297.04
+    ]
+  ],
+  "citation_groups_normalized": 9,
+  "scope": "Only the checkpoint package is edited. Full note and prior checkpoints are preserved.",
+  "references_total": 26,
+  "all_references_cited": true,
+  "pdf_note_pages": 32,
+  "intro_page_fraction": 0.716,
+  "drawing_frame_clipping_fixed": true,
+  "visual_review_complete": true
+}

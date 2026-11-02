@@ -1,0 +1,7 @@
+by.h2pro.control.app-pngs-0 S:\Projects\1Electrolizer\Финал\H2_Android_App\app\build\generated\res\pngs\debug
+by.h2pro.control.app-resValues-1 S:\Projects\1Electrolizer\Финал\H2_Android_App\app\build\generated\res\resValues\debug
+by.h2pro.control.app-packageDebugResources-2 S:\Projects\1Electrolizer\Финал\H2_Android_App\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+by.h2pro.control.app-packageDebugResources-3 S:\Projects\1Electrolizer\Финал\H2_Android_App\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+by.h2pro.control.app-merged_res-4 S:\Projects\1Electrolizer\Финал\H2_Android_App\app\build\intermediates\merged_res\debug
+by.h2pro.control.app-debug-5 S:\Projects\1Electrolizer\Финал\H2_Android_App\app\src\debug\res
+by.h2pro.control.app-main-6 S:\Projects\1Electrolizer\Финал\H2_Android_App\app\src\main\res

@@ -1,0 +1,105 @@
+{
+  "date": "2026-10-18",
+  "source_thread": "01a0e1b5-2336-75f1-ac25-19954ee948b9",
+  "source_photos_folder": "S:\\Projects\\1Electrolizer\\Финал\\Корпус_Fusion360\\Фото_комплектующих",
+  "boards": {
+    "main_board": {
+      "size_mm": [
+        90,
+        80,
+        20
+      ],
+      "position_min_mm": [
+        25,
+        20,
+        8
+      ],
+      "evidence": "27.09.2026: photo 80x70; correction +10 mm in both plan axes is the existing model interpretation; height 20 mm explicit",
+      "checks": [
+        {
+          "part": "base",
+          "intersection_mm3": 0.0
+        },
+        {
+          "part": "lid",
+          "intersection_mm3": 0.0
+        },
+        {
+          "part": "fascia",
+          "intersection_mm3": 0.0
+        }
+      ]
+    },
+    "relay_board": {
+      "size_mm": [
+        70,
+        50,
+        20
+      ],
+      "position_min_mm": [
+        35,
+        114.5,
+        8
+      ],
+      "evidence": "27.09.2026: user photos explicitly annotated 7 cm x 5 cm x 2 cm",
+      "checks": [
+        {
+          "part": "base",
+          "intersection_mm3": 0.0
+        },
+        {
+          "part": "lid",
+          "intersection_mm3": 0.0
+        },
+        {
+          "part": "fascia",
+          "intersection_mm3": 0.0
+        }
+      ]
+    }
+  },
+  "boards_overlap_mm3": 0.0,
+  "relay_support_patches": [
+    {
+      "bounds_mm": [
+        35.0,
+        117.0,
+        36.25,
+        127.0
+      ],
+      "area_mm2": 12.5
+    },
+    {
+      "bounds_mm": [
+        35.0,
+        155.0,
+        36.25,
+        164.5
+      ],
+      "area_mm2": 11.875
+    },
+    {
+      "bounds_mm": [
+        103.75,
+        155.0,
+        105.0,
+        164.5
+      ],
+      "area_mm2": 11.875
+    },
+    {
+      "bounds_mm": [
+        103.75,
+        117.0,
+        105.0,
+        127.0
+      ],
+      "area_mm2": 12.5
+    }
+  ],
+  "controls_size_status": "User authorized estimate from photo on 27.09.2026; 30x30 is not a separately supplied exact measurement",
+  "missing_in_recovered_six_photos": [
+    "case fan mounting drawing",
+    "separate toggle mounting drawing"
+  ]
+}

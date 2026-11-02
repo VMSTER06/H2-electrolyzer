@@ -1,0 +1,5 @@
+R_DEF: Internal format may change without notice
+local
+drawable ic_launcher
+drawable ic_stat_h2
+style AppTheme

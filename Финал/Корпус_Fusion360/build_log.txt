@@ -1,0 +1,5 @@
+Base complete
+Lid complete
+Reference electronics complete
+Verification: {"case_mm": [140.0, 160.0, 55.0], "pcb_mm": [90, 100, 15], "pcb_bottom_z_mm": 8, "pcb_top_z_mm": 23, "backpack_bottom_z_mm": 30, "nominal_vertical_gap_mm": 7, "parts": [{"name": "base", "solid": true, "volume_cm3": 174.83333527197854}, {"name": "lid", "solid": true, "volume_cm3": 64.36529798210381}, {"name": "clamp_1", "solid": true, "volume_cm3": 0.2876559747117874}, {"name": "clamp_2", "solid": true, "volume_cm3": 0.28765597471178733}, {"name": "clamp_3", "solid": true, "volume_cm3": 0.2876559747117874}, {"name": "clamp_4", "solid": true, "volume_cm3": 0.28765597471178733}], "feature_problems": [{"name": "Engrave MODE", "message": "Cannot complete extrusion.<b>1 Reference Failures</b><br/>Cannot complete extrusion.Engrave MODE"}], "printable_part_interferences": 0}
+SUCCESS - native F3D, STEP, six STL parts and previews saved

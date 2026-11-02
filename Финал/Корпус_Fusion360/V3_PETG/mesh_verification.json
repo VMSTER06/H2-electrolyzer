@@ -1,0 +1,362 @@
+[
+  {
+    "file": "STL_print_nominal/base.stl",
+    "triangles": 5034,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 216900.60257588644,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      140.0,
+      180.0,
+      64.0
+    ]
+  },
+  {
+    "file": "STL_print_nominal/control_carrier.stl",
+    "triangles": 688,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 6150.220832667492,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      60.0,
+      35.5,
+      7.5
+    ]
+  },
+  {
+    "file": "STL_print_nominal/control_fascia.stl",
+    "triangles": 2340,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 8492.39895403713,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      64.0,
+      50.0,
+      20.5
+    ]
+  },
+  {
+    "file": "STL_print_nominal/lid.stl",
+    "triangles": 11740,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 69158.63826267786,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      140.0,
+      180.0,
+      15.799999237060547
+    ]
+  },
+  {
+    "file": "STL_print_nominal/main_clamp_1.stl",
+    "triangles": 448,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 253.57078810924585,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      12.5,
+      10.0,
+      2.5
+    ]
+  },
+  {
+    "file": "STL_print_nominal/main_clamp_2.stl",
+    "triangles": 448,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 253.57079449833685,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      12.5,
+      10.0,
+      2.5
+    ]
+  },
+  {
+    "file": "STL_print_nominal/main_clamp_3.stl",
+    "triangles": 448,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 253.57072550985333,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      12.5,
+      10.0,
+      2.5
+    ]
+  },
+  {
+    "file": "STL_print_nominal/main_clamp_4.stl",
+    "triangles": 448,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 253.57073388819094,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      12.5,
+      10.0,
+      2.5
+    ]
+  },
+  {
+    "file": "STL_print_nominal/plunger_1.stl",
+    "triangles": 1034,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 221.60662600856128,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      6.999996185302734,
+      6.995330810546875,
+      11.150001525878906
+    ]
+  },
+  {
+    "file": "STL_print_nominal/plunger_2.stl",
+    "triangles": 1034,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 221.60663366855746,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      7.0,
+      6.995330810546875,
+      11.150001525878906
+    ]
+  },
+  {
+    "file": "STL_print_nominal/plunger_3.stl",
+    "triangles": 1034,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 221.60662055249506,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      7.0,
+      6.995330810546875,
+      11.150001525878906
+    ]
+  },
+  {
+    "file": "STL_print_nominal/relay_clamp_1.stl",
+    "triangles": 432,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 338.4921918898617,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      14.0,
+      10.0,
+      3.0
+    ]
+  },
+  {
+    "file": "STL_print_nominal/relay_clamp_2.stl",
+    "triangles": 432,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 338.4921973112505,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      14.0,
+      10.0,
+      3.0
+    ]
+  },
+  {
+    "file": "STL_print_nominal/relay_clamp_3.stl",
+    "triangles": 432,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 338.49223058251664,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      14.0,
+      10.0,
+      3.0
+    ]
+  },
+  {
+    "file": "STL_print_nominal/relay_clamp_4.stl",
+    "triangles": 432,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 338.4922360035125,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      14.0,
+      10.0,
+      3.0
+    ]
+  },
+  {
+    "file": "STL_print_trial_XY_100.301/base.stl",
+    "triangles": 5034,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 218207.98710212085,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      140.4212646484375,
+      180.5416259765625,
+      64.0
+    ]
+  },
+  {
+    "file": "STL_print_trial_XY_100.301/control_carrier.stl",
+    "triangles": 688,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 6187.288914153056,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      60.1805419921875,
+      35.60681915283203,
+      7.5
+    ]
+  },
+  {
+    "file": "STL_print_trial_XY_100.301/control_fascia.stl",
+    "triangles": 2340,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 8543.583744809219,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      64.19258117675781,
+      50.15045166015625,
+      20.5
+    ]
+  },
+  {
+    "file": "STL_print_trial_XY_100.301/lid.stl",
+    "triangles": 11740,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 69575.46601497708,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      140.4212646484375,
+      180.5416259765625,
+      15.799999237060547
+    ]
+  },
+  {
+    "file": "STL_print_trial_XY_100.301/main_clamp_1.stl",
+    "triangles": 448,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 255.0990878626482,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      12.537612915039062,
+      10.03009033203125,
+      2.5
+    ]
+  },
+  {
+    "file": "STL_print_trial_XY_100.301/main_clamp_2.stl",
+    "triangles": 448,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 255.09909296603874,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      12.537612915039062,
+      10.03009033203125,
+      2.5
+    ]
+  },
+  {
+    "file": "STL_print_trial_XY_100.301/main_clamp_3.stl",
+    "triangles": 448,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 255.09902508573342,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      12.537612915039062,
+      10.03009033203125,
+      2.5
+    ]
+  },
+  {
+    "file": "STL_print_trial_XY_100.301/main_clamp_4.stl",
+    "triangles": 448,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 255.09903218409377,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      12.537612915039062,
+      10.03009033203125,
+      2.5
+    ]
+  },
+  {
+    "file": "STL_print_trial_XY_100.301/plunger_1.stl",
+    "triangles": 1034,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 222.94227232393493,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      7.021059513092041,
+      7.0163798332214355,
+      11.150001525878906
+    ]
+  },
+  {
+    "file": "STL_print_trial_XY_100.301/plunger_2.stl",
+    "triangles": 1034,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 222.94228006636806,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      7.021063327789307,
+      7.0163798332214355,
+      11.150001525878906
+    ]
+  },
+  {
+    "file": "STL_print_trial_XY_100.301/plunger_3.stl",
+    "triangles": 1034,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 222.94226713098203,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      7.021063327789307,
+      7.0163798332214355,
+      11.150001525878906
+    ]
+  },
+  {
+    "file": "STL_print_trial_XY_100.301/relay_clamp_1.stl",
+    "triangles": 432,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 340.53232470935563,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      14.042126655578613,
+      10.03009033203125,
+      3.0
+    ]
+  },
+  {
+    "file": "STL_print_trial_XY_100.301/relay_clamp_2.stl",
+    "triangles": 432,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 340.53233153522655,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      14.042126655578613,
+      10.03009033203125,
+      3.0
+    ]
+  },
+  {
+    "file": "STL_print_trial_XY_100.301/relay_clamp_3.stl",
+    "triangles": 432,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 340.53236380143085,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      14.042126655578613,
+      10.03009033203125,
+      3.0
+    ]
+  },
+  {
+    "file": "STL_print_trial_XY_100.301/relay_clamp_4.stl",
+    "triangles": 432,
+    "non_manifold_edges": 0,
+    "signed_volume_mm3": 340.532370626942,
+    "min_z_mm": 0.0,
+    "dimensions_mm": [
+      14.042126655578613,
+      10.03009033203125,
+      3.0
+    ]
+  }
+]

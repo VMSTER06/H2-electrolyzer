@@ -1,0 +1,20 @@
+{
+  "document": "Murik corrected copy 2026-10-18",
+  "components": 19,
+  "timeline_count": 95,
+  "fascia_volume_cm3": 8.496353323235454,
+  "feature_problems": [],
+  "added_plungers": 3,
+  "parameters": {
+    "murik_guide_d": "6.3 mm",
+    "murik_button_pitch": "7.62 mm",
+    "murik_button_center_x": "70 mm",
+    "murik_button_row_y": "53 mm",
+    "murik_led_w": "22 mm",
+    "murik_led_h": "8 mm",
+    "murik_led_r": "2 mm",
+    "murik_led_center_x": "70 mm",
+    "murik_led_center_y": "39 mm",
+    "murik_plunger_d": "5.5 mm"
+  }
+}

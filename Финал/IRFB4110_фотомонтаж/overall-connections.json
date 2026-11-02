@@ -1,0 +1,4620 @@
+{
+  "nodes": {
+    "АКБ.P+": {
+      "id": "АКБ.P+",
+      "x": 360,
+      "y": 220,
+      "net": "BATT",
+      "label": "АКБ: плюс P+ после BMS",
+      "joint": false
+    },
+    "АКБ.P-": {
+      "id": "АКБ.P-",
+      "x": 360,
+      "y": 330,
+      "net": "GND",
+      "label": "АКБ: минус P− после BMS",
+      "joint": false
+    },
+    "F1.1": {
+      "id": "F1.1",
+      "x": 500,
+      "y": 220,
+      "net": "BATT",
+      "label": "F1: вход",
+      "joint": false
+    },
+    "F1.2": {
+      "id": "F1.2",
+      "x": 650,
+      "y": 220,
+      "net": "FUSED",
+      "label": "F1: выход",
+      "joint": false
+    },
+    "S1.1": {
+      "id": "S1.1",
+      "x": 760,
+      "y": 220,
+      "net": "FUSED",
+      "label": "S1: вход",
+      "joint": false
+    },
+    "S1.2": {
+      "id": "S1.2",
+      "x": 910,
+      "y": 220,
+      "net": "BP",
+      "label": "S1: выход",
+      "joint": false
+    },
+    "НАГРУЗКА.+": {
+      "id": "НАГРУЗКА.+",
+      "x": 3350,
+      "y": 280,
+      "net": "BP",
+      "label": "Электролизёр: плюс",
+      "joint": false
+    },
+    "НАГРУЗКА.-": {
+      "id": "НАГРУЗКА.-",
+      "x": 3700,
+      "y": 350,
+      "net": "D",
+      "label": "Электролизёр: минус",
+      "joint": false
+    },
+    "BPLUS": {
+      "id": "BPLUS",
+      "x": 1100,
+      "y": 220,
+      "net": "BP",
+      "label": "Плюсовая шина B+ после F1/S1",
+      "joint": true
+    },
+    "DMAIN": {
+      "id": "DMAIN",
+      "x": 3780,
+      "y": 2100,
+      "net": "D",
+      "label": "Общая шина D: минус электролизёра",
+      "joint": true
+    },
+    "SSTAR": {
+      "id": "SSTAR",
+      "x": 1540,
+      "y": 2300,
+      "net": "GND",
+      "label": "Общая шина S / GND: минус АКБ",
+      "joint": true
+    },
+    "SLEFT": {
+      "id": "SLEFT",
+      "x": 430,
+      "y": 2300,
+      "net": "GND",
+      "label": "Левый конец общей минусовой шины",
+      "joint": true
+    },
+    "PGND": {
+      "id": "PGND",
+      "x": 55,
+      "y": 1080,
+      "net": "GND",
+      "label": "Минус аккумулятора, ответвление питания",
+      "joint": true
+    },
+    "SEND": {
+      "id": "SEND",
+      "x": 3800,
+      "y": 2300,
+      "net": "GND",
+      "label": "Правый конец общей минусовой шины",
+      "joint": true
+    },
+    "F2.1": {
+      "id": "F2.1",
+      "x": 140,
+      "y": 650,
+      "net": "BP",
+      "label": "F2: вход от B+",
+      "joint": false
+    },
+    "F2.2": {
+      "id": "F2.2",
+      "x": 310,
+      "y": 650,
+      "net": "AUX",
+      "label": "F2: выход",
+      "joint": false
+    },
+    "D1.A": {
+      "id": "D1.A",
+      "x": 350,
+      "y": 650,
+      "net": "AUX",
+      "label": "D1 1N4007: конец без полоски A",
+      "joint": false
+    },
+    "D1.K": {
+      "id": "D1.K",
+      "x": 510,
+      "y": 650,
+      "net": "D1OUT",
+      "label": "D1 1N4007: конец с полоской K",
+      "joint": false
+    },
+    "R13.1": {
+      "id": "R13.1",
+      "x": 600,
+      "y": 650,
+      "net": "D1OUT",
+      "label": "R13 100 Ом / 1 Вт: левый конец",
+      "joint": false
+    },
+    "R13.2": {
+      "id": "R13.2",
+      "x": 780,
+      "y": 650,
+      "net": "VPRE",
+      "label": "R13 100 Ом / 1 Вт: правый конец",
+      "joint": false
+    },
+    "U2.1": {
+      "id": "U2.1",
+      "x": 973,
+      "y": 714,
+      "net": "VPRE",
+      "label": "U2 L7812: ножка 1 (IN — вход)",
+      "joint": false
+    },
+    "U2.2": {
+      "id": "U2.2",
+      "x": 995.5,
+      "y": 714,
+      "net": "GND",
+      "label": "U2 L7812: ножка 2 (GND — земля)",
+      "joint": false
+    },
+    "U2.3": {
+      "id": "U2.3",
+      "x": 1020,
+      "y": 714,
+      "net": "V12",
+      "label": "U2 L7812: ножка 3 (OUT — 12 В)",
+      "joint": false
+    },
+    "VPRE": {
+      "id": "VPRE",
+      "x": 800,
+      "y": 714,
+      "net": "VPRE",
+      "label": "Узел VPRE после R13",
+      "joint": true
+    },
+    "VPRECAP": {
+      "id": "VPRECAP",
+      "x": 800,
+      "y": 790,
+      "net": "VPRE",
+      "label": "VPRE для C4/C5/TV2",
+      "joint": true
+    },
+    "V12": {
+      "id": "V12",
+      "x": 1450,
+      "y": 714,
+      "net": "V12",
+      "label": "Выход стабилизатора +12 В",
+      "joint": true
+    },
+    "AUXGND": {
+      "id": "AUXGND",
+      "x": 430,
+      "y": 1080,
+      "net": "GND",
+      "label": "Общая земля цепи L7812",
+      "joint": true
+    },
+    "D2.K": {
+      "id": "D2.K",
+      "x": 1110,
+      "y": 390,
+      "net": "VPRE",
+      "label": "D2 1N4007: конец с полоской K",
+      "joint": false
+    },
+    "D2.A": {
+      "id": "D2.A",
+      "x": 1320,
+      "y": 390,
+      "net": "V12",
+      "label": "D2 1N4007: конец без полоски A",
+      "joint": false
+    },
+    "VPREC4": {
+      "id": "VPREC4",
+      "x": 545,
+      "y": 790,
+      "net": "VPRE",
+      "label": "VPREC4",
+      "joint": true
+    },
+    "VPREC5": {
+      "id": "VPREC5",
+      "x": 725,
+      "y": 790,
+      "net": "VPRE",
+      "label": "VPREC5",
+      "joint": true
+    },
+    "VPRETV2": {
+      "id": "VPRETV2",
+      "x": 250,
+      "y": 790,
+      "net": "VPRE",
+      "label": "VPRETV2",
+      "joint": true
+    },
+    "C4.+": {
+      "id": "C4.+",
+      "x": 587,
+      "y": 926,
+      "net": "VPRE",
+      "label": "C4 10 мкФ / 50 В: плюс",
+      "joint": false
+    },
+    "C4.-": {
+      "id": "C4.-",
+      "x": 613,
+      "y": 926,
+      "net": "GND",
+      "label": "C4 10 мкФ / 50 В: минус, полоса «−»",
+      "joint": false
+    },
+    "C5.+": {
+      "id": "C5.+",
+      "x": 767,
+      "y": 926,
+      "net": "VPRE",
+      "label": "C5 330 нФ / 50 В: первый вывод",
+      "joint": false
+    },
+    "C5.-": {
+      "id": "C5.-",
+      "x": 793,
+      "y": 926,
+      "net": "GND",
+      "label": "C5 330 нФ / 50 В: второй вывод",
+      "joint": false
+    },
+    "TV2.K": {
+      "id": "TV2.K",
+      "x": 250,
+      "y": 910,
+      "net": "VPRE",
+      "label": "TV2 1.5KE24A: конец с полоской K",
+      "joint": false
+    },
+    "TV2.A": {
+      "id": "TV2.A",
+      "x": 470,
+      "y": 910,
+      "net": "GND",
+      "label": "TV2 1.5KE24A: конец без полоски A",
+      "joint": false
+    },
+    "C6.+": {
+      "id": "C6.+",
+      "x": 1187,
+      "y": 931,
+      "net": "V12",
+      "label": "C6 10 мкФ / 25 В: плюс",
+      "joint": false
+    },
+    "C6.-": {
+      "id": "C6.-",
+      "x": 1213,
+      "y": 931,
+      "net": "GND",
+      "label": "C6 10 мкФ / 25 В: минус, полоса «−»",
+      "joint": false
+    },
+    "C7.+": {
+      "id": "C7.+",
+      "x": 1377,
+      "y": 931,
+      "net": "V12",
+      "label": "C7 100 нФ / 50 В: первый вывод",
+      "joint": false
+    },
+    "C7.-": {
+      "id": "C7.-",
+      "x": 1403,
+      "y": 931,
+      "net": "GND",
+      "label": "C7 100 нФ / 50 В: второй вывод",
+      "joint": false
+    },
+    "BPCAPS": {
+      "id": "BPCAPS",
+      "x": 1600,
+      "y": 220,
+      "net": "BP",
+      "label": "BPCAPS",
+      "joint": true
+    },
+    "MAINCAPGND": {
+      "id": "MAINCAPGND",
+      "x": 2100,
+      "y": 700,
+      "net": "GND",
+      "label": "MAINCAPGND",
+      "joint": true
+    },
+    "C1.+": {
+      "id": "C1.+",
+      "x": 1587,
+      "y": 556,
+      "net": "BP",
+      "label": "C1 1000 мкФ / 63 В: плюс",
+      "joint": false
+    },
+    "C1.-": {
+      "id": "C1.-",
+      "x": 1613,
+      "y": 556,
+      "net": "GND",
+      "label": "C1 1000 мкФ / 63 В: минус, полоса «−»",
+      "joint": false
+    },
+    "C2.+": {
+      "id": "C2.+",
+      "x": 1797,
+      "y": 556,
+      "net": "BP",
+      "label": "C2 1000 мкФ / 63 В: плюс",
+      "joint": false
+    },
+    "C2.-": {
+      "id": "C2.-",
+      "x": 1823,
+      "y": 556,
+      "net": "GND",
+      "label": "C2 1000 мкФ / 63 В: минус, полоса «−»",
+      "joint": false
+    },
+    "C3.+": {
+      "id": "C3.+",
+      "x": 2007,
+      "y": 556,
+      "net": "BP",
+      "label": "C3 1 мкФ / 100 В: первый вывод",
+      "joint": false
+    },
+    "C3.-": {
+      "id": "C3.-",
+      "x": 2033,
+      "y": 556,
+      "net": "GND",
+      "label": "C3 1 мкФ / 100 В: второй вывод",
+      "joint": false
+    },
+    "DFLY": {
+      "id": "DFLY",
+      "x": 3780,
+      "y": 700,
+      "net": "D",
+      "label": "DFLY",
+      "joint": true
+    },
+    "D3.1": {
+      "id": "D3.1",
+      "x": 2542.9998214331267,
+      "y": 602.4150810160262,
+      "net": "D",
+      "label": "D3 MBR60100CT: ножка 1",
+      "joint": false
+    },
+    "D3.2": {
+      "id": "D3.2",
+      "x": 2568.7738636073764,
+      "y": 602.7332790675603,
+      "net": "BP",
+      "label": "D3 MBR60100CT: ножка 2",
+      "joint": false
+    },
+    "D3.3": {
+      "id": "D3.3",
+      "x": 2592.6387174724223,
+      "y": 602.4150810160262,
+      "net": "D",
+      "label": "D3 MBR60100CT: ножка 3",
+      "joint": false
+    },
+    "D4.1": {
+      "id": "D4.1",
+      "x": 2962.9998214331267,
+      "y": 602.4150810160262,
+      "net": "D",
+      "label": "D4 MBR60100CT: ножка 1",
+      "joint": false
+    },
+    "D4.2": {
+      "id": "D4.2",
+      "x": 2988.7738636073764,
+      "y": 602.7332790675603,
+      "net": "BP",
+      "label": "D4 MBR60100CT: ножка 2",
+      "joint": false
+    },
+    "D4.3": {
+      "id": "D4.3",
+      "x": 3012.6387174724223,
+      "y": 602.4150810160262,
+      "net": "D",
+      "label": "D4 MBR60100CT: ножка 3",
+      "joint": false
+    },
+    "ESP.32": {
+      "id": "ESP.32",
+      "x": 105.8,
+      "y": 1502.9,
+      "net": "ESP",
+      "label": "ESP32: контакт с надписью 32 / GPIO32",
+      "joint": false
+    },
+    "ESP.GND": {
+      "id": "ESP.GND",
+      "x": 105.8,
+      "y": 1701.8,
+      "net": "GND",
+      "label": "ESP32: контакт GND",
+      "joint": false
+    },
+    "U1.1": {
+      "id": "U1.1",
+      "x": 930.9375,
+      "y": 1456.875,
+      "net": "EN",
+      "label": "U1 UCC27524: ножка 1 (ENA)",
+      "joint": false
+    },
+    "U1.2": {
+      "id": "U1.2",
+      "x": 979.6875,
+      "y": 1499.0625,
+      "net": "IN",
+      "label": "U1 UCC27524: ножка 2 (INA)",
+      "joint": false
+    },
+    "U1.3": {
+      "id": "U1.3",
+      "x": 1029.375,
+      "y": 1545.9375,
+      "net": "GND",
+      "label": "U1 UCC27524: ножка 3 (GND)",
+      "joint": false
+    },
+    "U1.4": {
+      "id": "U1.4",
+      "x": 1080.9375,
+      "y": 1579.6875,
+      "net": "IN",
+      "label": "U1 UCC27524: ножка 4 (INB)",
+      "joint": false
+    },
+    "U1.5": {
+      "id": "U1.5",
+      "x": 1316.25,
+      "y": 1410,
+      "net": "OUTB",
+      "label": "U1 UCC27524: ножка 5 (OUTB)",
+      "joint": false
+    },
+    "U1.6": {
+      "id": "U1.6",
+      "x": 1262.8125,
+      "y": 1371.5625,
+      "net": "V12",
+      "label": "U1 UCC27524: ножка 6 (12 В VDD)",
+      "joint": false
+    },
+    "U1.7": {
+      "id": "U1.7",
+      "x": 1213.125,
+      "y": 1331.25,
+      "net": "OUTA",
+      "label": "U1 UCC27524: ножка 7 (OUTA)",
+      "joint": false
+    },
+    "U1.8": {
+      "id": "U1.8",
+      "x": 1157.8125,
+      "y": 1293.75,
+      "net": "EN",
+      "label": "U1 UCC27524: ножка 8 (ENB)",
+      "joint": false
+    },
+    "R9.1": {
+      "id": "R9.1",
+      "x": 490,
+      "y": 1520,
+      "net": "ESP",
+      "label": "R9 100 Ом: левый конец",
+      "joint": false
+    },
+    "R9.2": {
+      "id": "R9.2",
+      "x": 670,
+      "y": 1520,
+      "net": "IN",
+      "label": "R9 100 Ом: правый конец",
+      "joint": false
+    },
+    "INPUT": {
+      "id": "INPUT",
+      "x": 730,
+      "y": 1520,
+      "net": "IN",
+      "label": "Вход IN: ножки 2/4 после R9",
+      "joint": true
+    },
+    "R10.1": {
+      "id": "R10.1",
+      "x": 530,
+      "y": 1770,
+      "net": "GND",
+      "label": "R10 10 кОм: левый конец",
+      "joint": false
+    },
+    "R10.2": {
+      "id": "R10.2",
+      "x": 730,
+      "y": 1770,
+      "net": "IN",
+      "label": "R10 10 кОм: правый конец",
+      "joint": false
+    },
+    "SIGNALGND": {
+      "id": "SIGNALGND",
+      "x": 460,
+      "y": 2370,
+      "net": "GND",
+      "label": "Отдельный тонкий провод земли управления",
+      "joint": true
+    },
+    "DRVGND": {
+      "id": "DRVGND",
+      "x": 1540,
+      "y": 1940,
+      "net": "GND",
+      "label": "Земля драйвера и C8–C10",
+      "joint": true
+    },
+    "VDDDRV": {
+      "id": "VDDDRV",
+      "x": 1450,
+      "y": 1150,
+      "net": "V12",
+      "label": "Питание драйвера 12 В",
+      "joint": true
+    },
+    "VDDCAPS": {
+      "id": "VDDCAPS",
+      "x": 1450,
+      "y": 1680,
+      "net": "V12",
+      "label": "Плюс C8–C10",
+      "joint": true
+    },
+    "C8.+": {
+      "id": "C8.+",
+      "x": 1107,
+      "y": 1846,
+      "net": "V12",
+      "label": "C8 47 мкФ / 25 В: плюс",
+      "joint": false
+    },
+    "C8.-": {
+      "id": "C8.-",
+      "x": 1133,
+      "y": 1846,
+      "net": "GND",
+      "label": "C8 47 мкФ / 25 В: минус, полоса «−»",
+      "joint": false
+    },
+    "C9.+": {
+      "id": "C9.+",
+      "x": 1247,
+      "y": 1846,
+      "net": "V12",
+      "label": "C9 1 мкФ / 25 В: первый вывод",
+      "joint": false
+    },
+    "C9.-": {
+      "id": "C9.-",
+      "x": 1273,
+      "y": 1846,
+      "net": "GND",
+      "label": "C9 1 мкФ / 25 В: второй вывод",
+      "joint": false
+    },
+    "C10.+": {
+      "id": "C10.+",
+      "x": 1372,
+      "y": 1846,
+      "net": "V12",
+      "label": "C10 100 нФ / 50 В: первый вывод",
+      "joint": false
+    },
+    "C10.-": {
+      "id": "C10.-",
+      "x": 1398,
+      "y": 1846,
+      "net": "GND",
+      "label": "C10 100 нФ / 50 В: второй вывод",
+      "joint": false
+    },
+    "T1.1": {
+      "id": "T1.1",
+      "x": 589.75,
+      "y": 1939.6,
+      "net": "V12",
+      "label": "T1 NC 70 °C: первый провод (любой)",
+      "joint": false
+    },
+    "T1.2": {
+      "id": "T1.2",
+      "x": 553.7,
+      "y": 1954.3,
+      "net": "T1OUT",
+      "label": "T1 NC 70 °C: второй провод",
+      "joint": false
+    },
+    "R11.1": {
+      "id": "R11.1",
+      "x": 810,
+      "y": 2050,
+      "net": "T1OUT",
+      "label": "R11 2,2 кОм: левый конец",
+      "joint": false
+    },
+    "R11.2": {
+      "id": "R11.2",
+      "x": 1010,
+      "y": 2050,
+      "net": "EN",
+      "label": "R11 2,2 кОм: правый конец",
+      "joint": false
+    },
+    "R12.1": {
+      "id": "R12.1",
+      "x": 1120,
+      "y": 2180,
+      "net": "EN",
+      "label": "R12 1 кОм: левый конец",
+      "joint": false
+    },
+    "R12.2": {
+      "id": "R12.2",
+      "x": 1300,
+      "y": 2180,
+      "net": "GND",
+      "label": "R12 1 кОм: правый конец",
+      "joint": false
+    },
+    "ENABLE": {
+      "id": "ENABLE",
+      "x": 1050,
+      "y": 2050,
+      "net": "EN",
+      "label": "Узел EN после R11",
+      "joint": true
+    },
+    "OUTA.BUS": {
+      "id": "OUTA.BUS",
+      "x": 2165,
+      "y": 900,
+      "net": "OUTA",
+      "label": "Разветвление OUTA к R1/R2",
+      "joint": true
+    },
+    "OUTA.Q1": {
+      "id": "OUTA.Q1",
+      "x": 1715,
+      "y": 900,
+      "net": "OUTA",
+      "label": "OUTA.Q1",
+      "joint": true
+    },
+    "OUTB.BUS": {
+      "id": "OUTB.BUS",
+      "x": 3065,
+      "y": 820,
+      "net": "OUTB",
+      "label": "Разветвление OUTB к R3/R4",
+      "joint": true
+    },
+    "OUTB.Q3": {
+      "id": "OUTB.Q3",
+      "x": 2615,
+      "y": 820,
+      "net": "OUTB",
+      "label": "OUTB.Q3",
+      "joint": true
+    },
+    "DLEFT": {
+      "id": "DLEFT",
+      "x": 1650,
+      "y": 2100,
+      "net": "D",
+      "label": "DLEFT",
+      "joint": true
+    },
+    "Q1.1": {
+      "id": "Q1.1",
+      "x": 1976.1871480493082,
+      "y": 1535.8543263699646,
+      "net": "G1",
+      "label": "Q1 IRFB4110: ножка 1 (G — левая)",
+      "joint": false
+    },
+    "Q1.2": {
+      "id": "Q1.2",
+      "x": 2018.8416538821741,
+      "y": 1533.3452377915605,
+      "net": "D",
+      "label": "Q1 IRFB4110: ножка 2 (D — средняя)",
+      "joint": false
+    },
+    "Q1.3": {
+      "id": "Q1.3",
+      "x": 2060.994341999359,
+      "y": 1530.3343314974761,
+      "net": "GND",
+      "label": "Q1 IRFB4110: ножка 3 (S — правая)",
+      "joint": false
+    },
+    "Q1.GATE": {
+      "id": "Q1.GATE",
+      "x": 1790,
+      "y": 1730,
+      "net": "G1",
+      "label": "Q1: узел G после своего резистора 10 Ом",
+      "joint": true
+    },
+    "Q1.GLOW": {
+      "id": "Q1.GLOW",
+      "x": 1790,
+      "y": 1940,
+      "net": "G1",
+      "label": "Q1.GLOW",
+      "joint": true
+    },
+    "Q1.SOURCE": {
+      "id": "Q1.SOURCE",
+      "x": 1950,
+      "y": 1620,
+      "net": "GND",
+      "label": "Q1: ветвь к ножке 3 S",
+      "joint": true
+    },
+    "Q1.SLOW": {
+      "id": "Q1.SLOW",
+      "x": 1950,
+      "y": 1940,
+      "net": "GND",
+      "label": "Q1.SLOW",
+      "joint": true
+    },
+    "Q1.DRAIN": {
+      "id": "Q1.DRAIN",
+      "x": 2018.8416538821741,
+      "y": 2100,
+      "net": "D",
+      "label": "Q1.DRAIN",
+      "joint": true
+    },
+    "Q1.SRETURN": {
+      "id": "Q1.SRETURN",
+      "x": 1950,
+      "y": 2300,
+      "net": "GND",
+      "label": "Q1.SRETURN",
+      "joint": true
+    },
+    "R1.1": {
+      "id": "R1.1",
+      "x": 1600,
+      "y": 1730,
+      "net": "OUTA",
+      "label": "R1 10 Ом: левый конец",
+      "joint": false
+    },
+    "R1.2": {
+      "id": "R1.2",
+      "x": 1780,
+      "y": 1730,
+      "net": "G1",
+      "label": "R1 10 Ом: правый конец",
+      "joint": false
+    },
+    "R5.1": {
+      "id": "R5.1",
+      "x": 1795,
+      "y": 1840,
+      "net": "G1",
+      "label": "R5 10 кОм: левый конец",
+      "joint": false
+    },
+    "R5.2": {
+      "id": "R5.2",
+      "x": 1940,
+      "y": 1840,
+      "net": "GND",
+      "label": "R5 10 кОм: правый конец",
+      "joint": false
+    },
+    "Z1.K": {
+      "id": "Z1.K",
+      "x": 1795,
+      "y": 1940,
+      "net": "G1",
+      "label": "Z1 BZX55C15: конец с полоской K",
+      "joint": false
+    },
+    "Z1.A": {
+      "id": "Z1.A",
+      "x": 1950,
+      "y": 1940,
+      "net": "GND",
+      "label": "Z1 BZX55C15: конец без полоски A",
+      "joint": false
+    },
+    "Q2.1": {
+      "id": "Q2.1",
+      "x": 2426.1871480493082,
+      "y": 1535.8543263699646,
+      "net": "G2",
+      "label": "Q2 IRFB4110: ножка 1 (G — левая)",
+      "joint": false
+    },
+    "Q2.2": {
+      "id": "Q2.2",
+      "x": 2468.8416538821743,
+      "y": 1533.3452377915605,
+      "net": "D",
+      "label": "Q2 IRFB4110: ножка 2 (D — средняя)",
+      "joint": false
+    },
+    "Q2.3": {
+      "id": "Q2.3",
+      "x": 2510.994341999359,
+      "y": 1530.3343314974761,
+      "net": "GND",
+      "label": "Q2 IRFB4110: ножка 3 (S — правая)",
+      "joint": false
+    },
+    "Q2.GATE": {
+      "id": "Q2.GATE",
+      "x": 2240,
+      "y": 1730,
+      "net": "G2",
+      "label": "Q2: узел G после своего резистора 10 Ом",
+      "joint": true
+    },
+    "Q2.GLOW": {
+      "id": "Q2.GLOW",
+      "x": 2240,
+      "y": 1940,
+      "net": "G2",
+      "label": "Q2.GLOW",
+      "joint": true
+    },
+    "Q2.SOURCE": {
+      "id": "Q2.SOURCE",
+      "x": 2400,
+      "y": 1620,
+      "net": "GND",
+      "label": "Q2: ветвь к ножке 3 S",
+      "joint": true
+    },
+    "Q2.SLOW": {
+      "id": "Q2.SLOW",
+      "x": 2400,
+      "y": 1940,
+      "net": "GND",
+      "label": "Q2.SLOW",
+      "joint": true
+    },
+    "Q2.DRAIN": {
+      "id": "Q2.DRAIN",
+      "x": 2468.8416538821743,
+      "y": 2100,
+      "net": "D",
+      "label": "Q2.DRAIN",
+      "joint": true
+    },
+    "Q2.SRETURN": {
+      "id": "Q2.SRETURN",
+      "x": 2400,
+      "y": 2300,
+      "net": "GND",
+      "label": "Q2.SRETURN",
+      "joint": true
+    },
+    "R2.1": {
+      "id": "R2.1",
+      "x": 2050,
+      "y": 1730,
+      "net": "OUTA",
+      "label": "R2 10 Ом: левый конец",
+      "joint": false
+    },
+    "R2.2": {
+      "id": "R2.2",
+      "x": 2230,
+      "y": 1730,
+      "net": "G2",
+      "label": "R2 10 Ом: правый конец",
+      "joint": false
+    },
+    "R6.1": {
+      "id": "R6.1",
+      "x": 2245,
+      "y": 1840,
+      "net": "G2",
+      "label": "R6 10 кОм: левый конец",
+      "joint": false
+    },
+    "R6.2": {
+      "id": "R6.2",
+      "x": 2390,
+      "y": 1840,
+      "net": "GND",
+      "label": "R6 10 кОм: правый конец",
+      "joint": false
+    },
+    "Z2.K": {
+      "id": "Z2.K",
+      "x": 2245,
+      "y": 1940,
+      "net": "G2",
+      "label": "Z2 BZX55C15: конец с полоской K",
+      "joint": false
+    },
+    "Z2.A": {
+      "id": "Z2.A",
+      "x": 2400,
+      "y": 1940,
+      "net": "GND",
+      "label": "Z2 BZX55C15: конец без полоски A",
+      "joint": false
+    },
+    "Q3.1": {
+      "id": "Q3.1",
+      "x": 2876.1871480493082,
+      "y": 1535.8543263699646,
+      "net": "G3",
+      "label": "Q3 IRFB4110: ножка 1 (G — левая)",
+      "joint": false
+    },
+    "Q3.2": {
+      "id": "Q3.2",
+      "x": 2918.8416538821743,
+      "y": 1533.3452377915605,
+      "net": "D",
+      "label": "Q3 IRFB4110: ножка 2 (D — средняя)",
+      "joint": false
+    },
+    "Q3.3": {
+      "id": "Q3.3",
+      "x": 2960.994341999359,
+      "y": 1530.3343314974761,
+      "net": "GND",
+      "label": "Q3 IRFB4110: ножка 3 (S — правая)",
+      "joint": false
+    },
+    "Q3.GATE": {
+      "id": "Q3.GATE",
+      "x": 2690,
+      "y": 1730,
+      "net": "G3",
+      "label": "Q3: узел G после своего резистора 10 Ом",
+      "joint": true
+    },
+    "Q3.GLOW": {
+      "id": "Q3.GLOW",
+      "x": 2690,
+      "y": 1940,
+      "net": "G3",
+      "label": "Q3.GLOW",
+      "joint": true
+    },
+    "Q3.SOURCE": {
+      "id": "Q3.SOURCE",
+      "x": 2850,
+      "y": 1620,
+      "net": "GND",
+      "label": "Q3: ветвь к ножке 3 S",
+      "joint": true
+    },
+    "Q3.SLOW": {
+      "id": "Q3.SLOW",
+      "x": 2850,
+      "y": 1940,
+      "net": "GND",
+      "label": "Q3.SLOW",
+      "joint": true
+    },
+    "Q3.DRAIN": {
+      "id": "Q3.DRAIN",
+      "x": 2918.8416538821743,
+      "y": 2100,
+      "net": "D",
+      "label": "Q3.DRAIN",
+      "joint": true
+    },
+    "Q3.SRETURN": {
+      "id": "Q3.SRETURN",
+      "x": 2850,
+      "y": 2300,
+      "net": "GND",
+      "label": "Q3.SRETURN",
+      "joint": true
+    },
+    "R3.1": {
+      "id": "R3.1",
+      "x": 2500,
+      "y": 1730,
+      "net": "OUTB",
+      "label": "R3 10 Ом: левый конец",
+      "joint": false
+    },
+    "R3.2": {
+      "id": "R3.2",
+      "x": 2680,
+      "y": 1730,
+      "net": "G3",
+      "label": "R3 10 Ом: правый конец",
+      "joint": false
+    },
+    "R7.1": {
+      "id": "R7.1",
+      "x": 2695,
+      "y": 1840,
+      "net": "G3",
+      "label": "R7 10 кОм: левый конец",
+      "joint": false
+    },
+    "R7.2": {
+      "id": "R7.2",
+      "x": 2840,
+      "y": 1840,
+      "net": "GND",
+      "label": "R7 10 кОм: правый конец",
+      "joint": false
+    },
+    "Z3.K": {
+      "id": "Z3.K",
+      "x": 2695,
+      "y": 1940,
+      "net": "G3",
+      "label": "Z3 BZX55C15: конец с полоской K",
+      "joint": false
+    },
+    "Z3.A": {
+      "id": "Z3.A",
+      "x": 2850,
+      "y": 1940,
+      "net": "GND",
+      "label": "Z3 BZX55C15: конец без полоски A",
+      "joint": false
+    },
+    "Q4.1": {
+      "id": "Q4.1",
+      "x": 3326.1871480493082,
+      "y": 1535.8543263699646,
+      "net": "G4",
+      "label": "Q4 IRFB4110: ножка 1 (G — левая)",
+      "joint": false
+    },
+    "Q4.2": {
+      "id": "Q4.2",
+      "x": 3368.8416538821743,
+      "y": 1533.3452377915605,
+      "net": "D",
+      "label": "Q4 IRFB4110: ножка 2 (D — средняя)",
+      "joint": false
+    },
+    "Q4.3": {
+      "id": "Q4.3",
+      "x": 3410.994341999359,
+      "y": 1530.3343314974761,
+      "net": "GND",
+      "label": "Q4 IRFB4110: ножка 3 (S — правая)",
+      "joint": false
+    },
+    "Q4.GATE": {
+      "id": "Q4.GATE",
+      "x": 3140,
+      "y": 1730,
+      "net": "G4",
+      "label": "Q4: узел G после своего резистора 10 Ом",
+      "joint": true
+    },
+    "Q4.GLOW": {
+      "id": "Q4.GLOW",
+      "x": 3140,
+      "y": 1940,
+      "net": "G4",
+      "label": "Q4.GLOW",
+      "joint": true
+    },
+    "Q4.SOURCE": {
+      "id": "Q4.SOURCE",
+      "x": 3300,
+      "y": 1620,
+      "net": "GND",
+      "label": "Q4: ветвь к ножке 3 S",
+      "joint": true
+    },
+    "Q4.SLOW": {
+      "id": "Q4.SLOW",
+      "x": 3300,
+      "y": 1940,
+      "net": "GND",
+      "label": "Q4.SLOW",
+      "joint": true
+    },
+    "Q4.DRAIN": {
+      "id": "Q4.DRAIN",
+      "x": 3368.8416538821743,
+      "y": 2100,
+      "net": "D",
+      "label": "Q4.DRAIN",
+      "joint": true
+    },
+    "Q4.SRETURN": {
+      "id": "Q4.SRETURN",
+      "x": 3300,
+      "y": 2300,
+      "net": "GND",
+      "label": "Q4.SRETURN",
+      "joint": true
+    },
+    "R4.1": {
+      "id": "R4.1",
+      "x": 2950,
+      "y": 1730,
+      "net": "OUTB",
+      "label": "R4 10 Ом: левый конец",
+      "joint": false
+    },
+    "R4.2": {
+      "id": "R4.2",
+      "x": 3130,
+      "y": 1730,
+      "net": "G4",
+      "label": "R4 10 Ом: правый конец",
+      "joint": false
+    },
+    "R8.1": {
+      "id": "R8.1",
+      "x": 3145,
+      "y": 1840,
+      "net": "G4",
+      "label": "R8 10 кОм: левый конец",
+      "joint": false
+    },
+    "R8.2": {
+      "id": "R8.2",
+      "x": 3290,
+      "y": 1840,
+      "net": "GND",
+      "label": "R8 10 кОм: правый конец",
+      "joint": false
+    },
+    "Z4.K": {
+      "id": "Z4.K",
+      "x": 3145,
+      "y": 1940,
+      "net": "G4",
+      "label": "Z4 BZX55C15: конец с полоской K",
+      "joint": false
+    },
+    "Z4.A": {
+      "id": "Z4.A",
+      "x": 3300,
+      "y": 1940,
+      "net": "GND",
+      "label": "Z4 BZX55C15: конец без полоски A",
+      "joint": false
+    },
+    "TV1.K": {
+      "id": "TV1.K",
+      "x": 3658.8888888888887,
+      "y": 1953.7777777777778,
+      "net": "D",
+      "label": "TV1 DOWO SM8S33A: маленький контакт K",
+      "joint": false
+    },
+    "TV1.A": {
+      "id": "TV1.A",
+      "x": 3610,
+      "y": 1992.888888888889,
+      "net": "GND",
+      "label": "TV1 DOWO SM8S33A: большая нижняя площадка A",
+      "joint": false
+    }
+  },
+  "edges": [
+    {
+      "id": "wire-1",
+      "a": "АКБ.P+",
+      "b": "F1.1",
+      "via": [],
+      "net": "BATT",
+      "description": "Толстый провод: плюс АКБ → вход F1",
+      "width": 8
+    },
+    {
+      "id": "wire-2",
+      "a": "F1.2",
+      "b": "S1.1",
+      "via": [],
+      "net": "FUSED",
+      "description": "F1: выход → S1: вход",
+      "width": 8
+    },
+    {
+      "id": "wire-3",
+      "a": "S1.2",
+      "b": "BPLUS",
+      "via": [],
+      "net": "BP",
+      "description": "S1: выход → Плюсовая шина B+ после F1/S1",
+      "width": 8
+    },
+    {
+      "id": "wire-4",
+      "a": "BPLUS",
+      "b": "НАГРУЗКА.+",
+      "via": [
+        [
+          3350,
+          220
+        ]
+      ],
+      "net": "BP",
+      "description": "Толстый провод: B+ → плюс электролизёра",
+      "width": 8
+    },
+    {
+      "id": "wire-5",
+      "a": "НАГРУЗКА.-",
+      "b": "DMAIN",
+      "via": [
+        [
+          3780,
+          350
+        ]
+      ],
+      "net": "D",
+      "description": "Толстый провод: минус электролизёра → общая шина D",
+      "width": 8
+    },
+    {
+      "id": "wire-6",
+      "a": "АКБ.P-",
+      "b": "PGND",
+      "via": [
+        [
+          430,
+          330
+        ],
+        [
+          430,
+          450
+        ],
+        [
+          55,
+          450
+        ]
+      ],
+      "net": "GND",
+      "description": "Толстый провод: минус АКБ → общая шина S",
+      "width": 9
+    },
+    {
+      "id": "wire-7",
+      "a": "PGND",
+      "b": "SLEFT",
+      "via": [
+        [
+          55,
+          2300
+        ]
+      ],
+      "net": "GND",
+      "description": "Толстый провод минуса к шине S",
+      "width": 9
+    },
+    {
+      "id": "wire-8",
+      "a": "SLEFT",
+      "b": "SSTAR",
+      "via": [],
+      "net": "GND",
+      "description": "Толстая медная шина S / GND",
+      "width": 9
+    },
+    {
+      "id": "wire-9",
+      "a": "SSTAR",
+      "b": "SEND",
+      "via": [],
+      "net": "GND",
+      "description": "Толстая медная шина S / GND",
+      "width": 9
+    },
+    {
+      "id": "wire-10",
+      "a": "BPLUS",
+      "b": "F2.1",
+      "via": [
+        [
+          1100,
+          430
+        ],
+        [
+          140,
+          430
+        ]
+      ],
+      "net": "BP",
+      "description": "B+ → F2: маломощное питание драйвера",
+      "width": 8
+    },
+    {
+      "id": "wire-11",
+      "a": "F2.2",
+      "b": "D1.A",
+      "via": [],
+      "net": "AUX",
+      "description": "F2: выход → D1 1N4007: конец без полоски A",
+      "width": 4
+    },
+    {
+      "id": "wire-12",
+      "a": "D1.K",
+      "b": "R13.1",
+      "via": [],
+      "net": "D1OUT",
+      "description": "D1 1N4007: конец с полоской K → R13 100 Ом / 1 Вт: левый конец",
+      "width": 4
+    },
+    {
+      "id": "wire-13",
+      "a": "R13.2",
+      "b": "VPRE",
+      "via": [
+        [
+          800,
+          650
+        ]
+      ],
+      "net": "VPRE",
+      "description": "R13 100 Ом / 1 Вт: правый конец → Узел VPRE после R13",
+      "width": 4
+    },
+    {
+      "id": "wire-14",
+      "a": "VPRE",
+      "b": "U2.1",
+      "via": [],
+      "net": "VPRE",
+      "description": "Узел VPRE после R13 → U2 L7812: ножка 1 (IN — вход)",
+      "width": 4
+    },
+    {
+      "id": "wire-15",
+      "a": "U2.3",
+      "b": "V12",
+      "via": [],
+      "net": "V12",
+      "description": "U2 L7812: ножка 3 (OUT — 12 В) → Выход стабилизатора +12 В",
+      "width": 4
+    },
+    {
+      "id": "wire-16",
+      "a": "U2.2",
+      "b": "AUXGND",
+      "via": [
+        [
+          995.5,
+          1080
+        ]
+      ],
+      "net": "GND",
+      "description": "U2 L7812: ножка 2 (GND — земля) → Общая земля цепи L7812",
+      "width": 4
+    },
+    {
+      "id": "wire-17",
+      "a": "AUXGND",
+      "b": "PGND",
+      "via": [],
+      "net": "GND",
+      "description": "Земля вспомогательного питания → минус аккумулятора",
+      "width": 4
+    },
+    {
+      "id": "wire-18",
+      "a": "D2.K",
+      "b": "VPRE",
+      "via": [
+        [
+          800,
+          390
+        ]
+      ],
+      "net": "VPRE",
+      "description": "D2 1N4007: конец с полоской K → Узел VPRE после R13",
+      "width": 4
+    },
+    {
+      "id": "wire-19",
+      "a": "D2.A",
+      "b": "V12",
+      "via": [
+        [
+          1450,
+          390
+        ]
+      ],
+      "net": "V12",
+      "description": "D2 1N4007: конец без полоски A → Выход стабилизатора +12 В",
+      "width": 4
+    },
+    {
+      "id": "wire-20",
+      "a": "VPRE",
+      "b": "VPRECAP",
+      "via": [],
+      "net": "VPRE",
+      "description": "Узел VPRE после R13 → VPRE для C4/C5/TV2",
+      "width": 4
+    },
+    {
+      "id": "wire-21",
+      "a": "VPRECAP",
+      "b": "VPREC5",
+      "via": [],
+      "net": "VPRE",
+      "description": "VPRE для C4/C5/TV2 → VPREC5",
+      "width": 4
+    },
+    {
+      "id": "wire-22",
+      "a": "VPREC5",
+      "b": "VPREC4",
+      "via": [],
+      "net": "VPRE",
+      "description": "VPREC5 → VPREC4",
+      "width": 4
+    },
+    {
+      "id": "wire-23",
+      "a": "VPREC4",
+      "b": "VPRETV2",
+      "via": [],
+      "net": "VPRE",
+      "description": "VPREC4 → VPRETV2",
+      "width": 4
+    },
+    {
+      "id": "wire-24",
+      "a": "C4.+",
+      "b": "VPREC4",
+      "via": [
+        [
+          545,
+          926
+        ]
+      ],
+      "net": "VPRE",
+      "description": "C4 10 мкФ / 50 В: плюс → VPREC4",
+      "width": 4
+    },
+    {
+      "id": "wire-25",
+      "a": "C5.+",
+      "b": "VPREC5",
+      "via": [
+        [
+          725,
+          926
+        ]
+      ],
+      "net": "VPRE",
+      "description": "C5 330 нФ / 50 В: первый вывод → VPREC5",
+      "width": 4
+    },
+    {
+      "id": "wire-26",
+      "a": "C4.-",
+      "b": "AUXGND",
+      "via": [
+        [
+          655,
+          926
+        ],
+        [
+          655,
+          1080
+        ]
+      ],
+      "net": "GND",
+      "description": "C4 10 мкФ / 50 В: минус, полоса «−» → Общая земля цепи L7812",
+      "width": 4
+    },
+    {
+      "id": "wire-27",
+      "a": "C5.-",
+      "b": "AUXGND",
+      "via": [
+        [
+          835,
+          926
+        ],
+        [
+          835,
+          1080
+        ]
+      ],
+      "net": "GND",
+      "description": "C5 330 нФ / 50 В: второй вывод → Общая земля цепи L7812",
+      "width": 4
+    },
+    {
+      "id": "wire-28",
+      "a": "TV2.K",
+      "b": "VPRETV2",
+      "via": [],
+      "net": "VPRE",
+      "description": "TV2 1.5KE24A: конец с полоской K → VPRETV2",
+      "width": 4
+    },
+    {
+      "id": "wire-29",
+      "a": "TV2.A",
+      "b": "AUXGND",
+      "via": [
+        [
+          500,
+          910
+        ],
+        [
+          500,
+          1080
+        ]
+      ],
+      "net": "GND",
+      "description": "TV2 1.5KE24A: конец без полоски A → Общая земля цепи L7812",
+      "width": 4
+    },
+    {
+      "id": "wire-30",
+      "a": "C6.+",
+      "b": "V12",
+      "via": [
+        [
+          1145,
+          931
+        ],
+        [
+          1145,
+          790
+        ],
+        [
+          1450,
+          790
+        ]
+      ],
+      "net": "V12",
+      "description": "C6 10 мкФ / 25 В: плюс → Выход стабилизатора +12 В",
+      "width": 4
+    },
+    {
+      "id": "wire-31",
+      "a": "C7.+",
+      "b": "V12",
+      "via": [
+        [
+          1335,
+          931
+        ],
+        [
+          1335,
+          790
+        ],
+        [
+          1450,
+          790
+        ]
+      ],
+      "net": "V12",
+      "description": "C7 100 нФ / 50 В: первый вывод → Выход стабилизатора +12 В",
+      "width": 4
+    },
+    {
+      "id": "wire-32",
+      "a": "C6.-",
+      "b": "AUXGND",
+      "via": [
+        [
+          1255,
+          931
+        ],
+        [
+          1255,
+          1080
+        ]
+      ],
+      "net": "GND",
+      "description": "C6 10 мкФ / 25 В: минус, полоса «−» → Общая земля цепи L7812",
+      "width": 4
+    },
+    {
+      "id": "wire-33",
+      "a": "C7.-",
+      "b": "AUXGND",
+      "via": [
+        [
+          1445,
+          931
+        ],
+        [
+          1445,
+          1080
+        ]
+      ],
+      "net": "GND",
+      "description": "C7 100 нФ / 50 В: второй вывод → Общая земля цепи L7812",
+      "width": 4
+    },
+    {
+      "id": "wire-34",
+      "a": "BPLUS",
+      "b": "BPCAPS",
+      "via": [],
+      "net": "BP",
+      "description": "Плюсовая шина B+ после F1/S1 → BPCAPS",
+      "width": 8
+    },
+    {
+      "id": "wire-35",
+      "a": "MAINCAPGND",
+      "b": "PGND",
+      "via": [
+        [
+          2100,
+          760
+        ],
+        [
+          80,
+          760
+        ],
+        [
+          80,
+          1080
+        ]
+      ],
+      "net": "GND",
+      "description": "MAINCAPGND → Минус аккумулятора, ответвление питания",
+      "width": 4
+    },
+    {
+      "id": "wire-36",
+      "a": "C1.+",
+      "b": "BPCAPS",
+      "via": [
+        [
+          1545,
+          556
+        ],
+        [
+          1545,
+          280
+        ],
+        [
+          1600,
+          280
+        ]
+      ],
+      "net": "BP",
+      "description": "C1 1000 мкФ / 63 В: плюс → BPCAPS",
+      "width": 8
+    },
+    {
+      "id": "wire-37",
+      "a": "C1.-",
+      "b": "MAINCAPGND",
+      "via": [
+        [
+          1655,
+          556
+        ],
+        [
+          1655,
+          700
+        ]
+      ],
+      "net": "GND",
+      "description": "C1 1000 мкФ / 63 В: минус, полоса «−» → MAINCAPGND",
+      "width": 4
+    },
+    {
+      "id": "wire-38",
+      "a": "C2.+",
+      "b": "BPCAPS",
+      "via": [
+        [
+          1755,
+          556
+        ],
+        [
+          1755,
+          280
+        ],
+        [
+          1600,
+          280
+        ]
+      ],
+      "net": "BP",
+      "description": "C2 1000 мкФ / 63 В: плюс → BPCAPS",
+      "width": 8
+    },
+    {
+      "id": "wire-39",
+      "a": "C2.-",
+      "b": "MAINCAPGND",
+      "via": [
+        [
+          1865,
+          556
+        ],
+        [
+          1865,
+          700
+        ]
+      ],
+      "net": "GND",
+      "description": "C2 1000 мкФ / 63 В: минус, полоса «−» → MAINCAPGND",
+      "width": 4
+    },
+    {
+      "id": "wire-40",
+      "a": "C3.+",
+      "b": "BPCAPS",
+      "via": [
+        [
+          1965,
+          556
+        ],
+        [
+          1965,
+          280
+        ],
+        [
+          1600,
+          280
+        ]
+      ],
+      "net": "BP",
+      "description": "C3 1 мкФ / 100 В: первый вывод → BPCAPS",
+      "width": 8
+    },
+    {
+      "id": "wire-41",
+      "a": "C3.-",
+      "b": "MAINCAPGND",
+      "via": [
+        [
+          2075,
+          556
+        ],
+        [
+          2075,
+          700
+        ]
+      ],
+      "net": "GND",
+      "description": "C3 1 мкФ / 100 В: второй вывод → MAINCAPGND",
+      "width": 4
+    },
+    {
+      "id": "wire-42",
+      "a": "DFLY",
+      "b": "DMAIN",
+      "via": [],
+      "net": "D",
+      "description": "DFLY → Общая шина D: минус электролизёра",
+      "width": 8
+    },
+    {
+      "id": "wire-43",
+      "a": "D3.1",
+      "b": "DFLY",
+      "via": [
+        [
+          2542.9998214331267,
+          700
+        ]
+      ],
+      "net": "D",
+      "description": "D3 MBR60100CT: ножка 1 → DFLY",
+      "width": 8
+    },
+    {
+      "id": "wire-44",
+      "a": "D3.3",
+      "b": "DFLY",
+      "via": [
+        [
+          2592.6387174724223,
+          700
+        ]
+      ],
+      "net": "D",
+      "description": "D3 MBR60100CT: ножка 3 → DFLY",
+      "width": 8
+    },
+    {
+      "id": "wire-45",
+      "a": "D3.2",
+      "b": "BPCAPS",
+      "via": [
+        [
+          2568.7738636073764,
+          640
+        ],
+        [
+          2740,
+          640
+        ],
+        [
+          2740,
+          220
+        ]
+      ],
+      "net": "BP",
+      "description": "D3 MBR60100CT: ножка 2 → BPCAPS",
+      "width": 8
+    },
+    {
+      "id": "wire-46",
+      "a": "D4.1",
+      "b": "DFLY",
+      "via": [
+        [
+          2962.9998214331267,
+          700
+        ]
+      ],
+      "net": "D",
+      "description": "D4 MBR60100CT: ножка 1 → DFLY",
+      "width": 8
+    },
+    {
+      "id": "wire-47",
+      "a": "D4.3",
+      "b": "DFLY",
+      "via": [
+        [
+          3012.6387174724223,
+          700
+        ]
+      ],
+      "net": "D",
+      "description": "D4 MBR60100CT: ножка 3 → DFLY",
+      "width": 8
+    },
+    {
+      "id": "wire-48",
+      "a": "D4.2",
+      "b": "BPCAPS",
+      "via": [
+        [
+          2988.7738636073764,
+          640
+        ],
+        [
+          3160,
+          640
+        ],
+        [
+          3160,
+          220
+        ]
+      ],
+      "net": "BP",
+      "description": "D4 MBR60100CT: ножка 2 → BPCAPS",
+      "width": 8
+    },
+    {
+      "id": "wire-49",
+      "a": "ESP.32",
+      "b": "R9.1",
+      "via": [
+        [
+          450,
+          1502.9
+        ],
+        [
+          450,
+          1520
+        ]
+      ],
+      "net": "ESP",
+      "description": "ESP32: контакт с надписью 32 / GPIO32 → R9 100 Ом: левый конец",
+      "width": 4
+    },
+    {
+      "id": "wire-50",
+      "a": "R9.2",
+      "b": "INPUT",
+      "via": [],
+      "net": "IN",
+      "description": "R9 100 Ом: правый конец → Вход IN: ножки 2/4 после R9",
+      "width": 4
+    },
+    {
+      "id": "wire-51",
+      "a": "INPUT",
+      "b": "U1.2",
+      "via": [
+        [
+          870,
+          1520
+        ],
+        [
+          870,
+          1499.0625
+        ]
+      ],
+      "net": "IN",
+      "description": "Вход IN: ножки 2/4 после R9 → U1 UCC27524: ножка 2 (INA)",
+      "width": 4
+    },
+    {
+      "id": "wire-52",
+      "a": "INPUT",
+      "b": "U1.4",
+      "via": [
+        [
+          840,
+          1520
+        ],
+        [
+          840,
+          1640
+        ],
+        [
+          1080.9375,
+          1640
+        ]
+      ],
+      "net": "IN",
+      "description": "Вход IN: ножки 2/4 после R9 → U1 UCC27524: ножка 4 (INB)",
+      "width": 4
+    },
+    {
+      "id": "wire-53",
+      "a": "R10.2",
+      "b": "INPUT",
+      "via": [
+        [
+          730,
+          1770
+        ]
+      ],
+      "net": "IN",
+      "description": "R10 10 кОм: правый конец → Вход IN: ножки 2/4 после R9",
+      "width": 4
+    },
+    {
+      "id": "wire-54",
+      "a": "R10.1",
+      "b": "SIGNALGND",
+      "via": [
+        [
+          460,
+          1770
+        ]
+      ],
+      "net": "GND",
+      "description": "R10 10 кОм: левый конец → Отдельный тонкий провод земли управления",
+      "width": 4
+    },
+    {
+      "id": "wire-55",
+      "a": "ESP.GND",
+      "b": "SIGNALGND",
+      "via": [
+        [
+          400,
+          1701.8
+        ],
+        [
+          400,
+          2370
+        ]
+      ],
+      "net": "GND",
+      "description": "ESP32: контакт GND → Отдельный тонкий провод земли управления",
+      "width": 4
+    },
+    {
+      "id": "wire-56",
+      "a": "SIGNALGND",
+      "b": "SSTAR",
+      "via": [
+        [
+          1540,
+          2370
+        ]
+      ],
+      "net": "GND",
+      "description": "Отдельная земля ESP32 → общая точка S",
+      "width": 4
+    },
+    {
+      "id": "wire-57",
+      "a": "U1.3",
+      "b": "DRVGND",
+      "via": [
+        [
+          1029.375,
+          1940
+        ]
+      ],
+      "net": "GND",
+      "description": "U1 UCC27524: ножка 3 (GND) → Земля драйвера и C8–C10",
+      "width": 4
+    },
+    {
+      "id": "wire-58",
+      "a": "DRVGND",
+      "b": "SSTAR",
+      "via": [],
+      "net": "GND",
+      "description": "Земля драйвера и C8–C10 → Общая шина S / GND: минус АКБ",
+      "width": 4
+    },
+    {
+      "id": "wire-59",
+      "a": "V12",
+      "b": "VDDDRV",
+      "via": [],
+      "net": "V12",
+      "description": "Выход стабилизатора +12 В → Питание драйвера 12 В",
+      "width": 4
+    },
+    {
+      "id": "wire-60",
+      "a": "VDDDRV",
+      "b": "U1.6",
+      "via": [
+        [
+          1262.8125,
+          1150
+        ]
+      ],
+      "net": "V12",
+      "description": "Питание драйвера 12 В → U1 UCC27524: ножка 6 (12 В VDD)",
+      "width": 4
+    },
+    {
+      "id": "wire-61",
+      "a": "VDDDRV",
+      "b": "VDDCAPS",
+      "via": [],
+      "net": "V12",
+      "description": "Питание драйвера 12 В → Плюс C8–C10",
+      "width": 4
+    },
+    {
+      "id": "wire-62",
+      "a": "C8.+",
+      "b": "VDDCAPS",
+      "via": [
+        [
+          1065,
+          1846
+        ],
+        [
+          1065,
+          1680
+        ]
+      ],
+      "net": "V12",
+      "description": "C8 47 мкФ / 25 В: плюс → Плюс C8–C10",
+      "width": 4
+    },
+    {
+      "id": "wire-63",
+      "a": "C8.-",
+      "b": "DRVGND",
+      "via": [
+        [
+          1175,
+          1846
+        ],
+        [
+          1175,
+          1940
+        ]
+      ],
+      "net": "GND",
+      "description": "C8 47 мкФ / 25 В: минус, полоса «−» → Земля драйвера и C8–C10",
+      "width": 4
+    },
+    {
+      "id": "wire-64",
+      "a": "C9.+",
+      "b": "VDDCAPS",
+      "via": [
+        [
+          1205,
+          1846
+        ],
+        [
+          1205,
+          1680
+        ]
+      ],
+      "net": "V12",
+      "description": "C9 1 мкФ / 25 В: первый вывод → Плюс C8–C10",
+      "width": 4
+    },
+    {
+      "id": "wire-65",
+      "a": "C9.-",
+      "b": "DRVGND",
+      "via": [
+        [
+          1315,
+          1846
+        ],
+        [
+          1315,
+          1940
+        ]
+      ],
+      "net": "GND",
+      "description": "C9 1 мкФ / 25 В: второй вывод → Земля драйвера и C8–C10",
+      "width": 4
+    },
+    {
+      "id": "wire-66",
+      "a": "C10.+",
+      "b": "VDDCAPS",
+      "via": [
+        [
+          1330,
+          1846
+        ],
+        [
+          1330,
+          1680
+        ]
+      ],
+      "net": "V12",
+      "description": "C10 100 нФ / 50 В: первый вывод → Плюс C8–C10",
+      "width": 4
+    },
+    {
+      "id": "wire-67",
+      "a": "C10.-",
+      "b": "DRVGND",
+      "via": [
+        [
+          1440,
+          1846
+        ],
+        [
+          1440,
+          1940
+        ]
+      ],
+      "net": "GND",
+      "description": "C10 100 нФ / 50 В: второй вывод → Земля драйвера и C8–C10",
+      "width": 4
+    },
+    {
+      "id": "wire-68",
+      "a": "VDDCAPS",
+      "b": "T1.1",
+      "via": [
+        [
+          1450,
+          1900
+        ],
+        [
+          589.75,
+          1900
+        ]
+      ],
+      "net": "V12",
+      "description": "Плюс C8–C10 → T1 NC 70 °C: первый провод (любой)",
+      "width": 4
+    },
+    {
+      "id": "wire-69",
+      "a": "T1.2",
+      "b": "R11.1",
+      "via": [
+        [
+          480,
+          1954.3
+        ],
+        [
+          480,
+          2260
+        ],
+        [
+          780,
+          2260
+        ],
+        [
+          780,
+          2050
+        ]
+      ],
+      "net": "T1OUT",
+      "description": "T1 NC 70 °C: второй провод → R11 2,2 кОм: левый конец",
+      "width": 4
+    },
+    {
+      "id": "wire-70",
+      "a": "R11.2",
+      "b": "ENABLE",
+      "via": [],
+      "net": "EN",
+      "description": "R11 2,2 кОм: правый конец → Узел EN после R11",
+      "width": 4
+    },
+    {
+      "id": "wire-71",
+      "a": "ENABLE",
+      "b": "R12.1",
+      "via": [
+        [
+          1050,
+          2180
+        ]
+      ],
+      "net": "EN",
+      "description": "Узел EN после R11 → R12 1 кОм: левый конец",
+      "width": 4
+    },
+    {
+      "id": "wire-72",
+      "a": "R12.2",
+      "b": "SSTAR",
+      "via": [
+        [
+          1300,
+          2180
+        ],
+        [
+          1300,
+          2300
+        ]
+      ],
+      "net": "GND",
+      "description": "R12 1 кОм: правый конец → Общая шина S / GND: минус АКБ",
+      "width": 4
+    },
+    {
+      "id": "wire-73",
+      "a": "ENABLE",
+      "b": "U1.1",
+      "via": [
+        [
+          1050,
+          2010
+        ],
+        [
+          760,
+          2010
+        ],
+        [
+          760,
+          1456.875
+        ]
+      ],
+      "net": "EN",
+      "description": "Узел EN после R11 → U1 UCC27524: ножка 1 (ENA)",
+      "width": 4
+    },
+    {
+      "id": "wire-74",
+      "a": "ENABLE",
+      "b": "U1.8",
+      "via": [
+        [
+          1500,
+          2050
+        ],
+        [
+          1500,
+          1100
+        ],
+        [
+          1157.8125,
+          1100
+        ]
+      ],
+      "net": "EN",
+      "description": "Узел EN после R11 → U1 UCC27524: ножка 8 (ENB)",
+      "width": 4
+    },
+    {
+      "id": "wire-75",
+      "a": "U1.7",
+      "b": "OUTA.Q1",
+      "via": [
+        [
+          1213.125,
+          900
+        ]
+      ],
+      "net": "OUTA",
+      "description": "U1 UCC27524: ножка 7 (OUTA) → OUTA.Q1",
+      "width": 4
+    },
+    {
+      "id": "wire-76",
+      "a": "OUTA.Q1",
+      "b": "OUTA.BUS",
+      "via": [],
+      "net": "OUTA",
+      "description": "OUTA.Q1 → Разветвление OUTA к R1/R2",
+      "width": 4
+    },
+    {
+      "id": "wire-77",
+      "a": "U1.5",
+      "b": "OUTB.Q3",
+      "via": [
+        [
+          1410,
+          1410
+        ],
+        [
+          1410,
+          820
+        ]
+      ],
+      "net": "OUTB",
+      "description": "U1 UCC27524: ножка 5 (OUTB) → OUTB.Q3",
+      "width": 4
+    },
+    {
+      "id": "wire-78",
+      "a": "OUTB.Q3",
+      "b": "OUTB.BUS",
+      "via": [],
+      "net": "OUTB",
+      "description": "OUTB.Q3 → Разветвление OUTB к R3/R4",
+      "width": 4
+    },
+    {
+      "id": "wire-79",
+      "a": "DLEFT",
+      "b": "DMAIN",
+      "via": [],
+      "net": "D",
+      "description": "Общая толстая шина D: все средние ножки MOSFET",
+      "width": 9
+    },
+    {
+      "id": "wire-80",
+      "a": "R1.2",
+      "b": "Q1.GATE",
+      "via": [],
+      "net": "G1",
+      "description": "R1 10 Ом: правый конец → Q1: узел G после своего резистора 10 Ом",
+      "width": 4
+    },
+    {
+      "id": "wire-81",
+      "a": "Q1.1",
+      "b": "Q1.GATE",
+      "via": [
+        [
+          1790,
+          1535.8543263699646
+        ]
+      ],
+      "net": "G1",
+      "description": "Q1 IRFB4110: ножка 1 (G — левая) → Q1: узел G после своего резистора 10 Ом",
+      "width": 4
+    },
+    {
+      "id": "wire-82",
+      "a": "Q1.GATE",
+      "b": "Q1.GLOW",
+      "via": [],
+      "net": "G1",
+      "description": "Q1: узел G после своего резистора 10 Ом → Q1.GLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-83",
+      "a": "Q1.GATE",
+      "b": "R5.1",
+      "via": [
+        [
+          1790,
+          1840
+        ]
+      ],
+      "net": "G1",
+      "description": "Q1: узел G после своего резистора 10 Ом → R5 10 кОм: левый конец",
+      "width": 4
+    },
+    {
+      "id": "wire-84",
+      "a": "R5.2",
+      "b": "Q1.SLOW",
+      "via": [
+        [
+          1950,
+          1840
+        ]
+      ],
+      "net": "GND",
+      "description": "R5 10 кОм: правый конец → Q1.SLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-85",
+      "a": "Z1.K",
+      "b": "Q1.GLOW",
+      "via": [],
+      "net": "G1",
+      "description": "Z1 BZX55C15: конец с полоской K → Q1.GLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-86",
+      "a": "Z1.A",
+      "b": "Q1.SLOW",
+      "via": [],
+      "net": "GND",
+      "description": "Z1 BZX55C15: конец без полоски A → Q1.SLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-87",
+      "a": "Q1.3",
+      "b": "Q1.SOURCE",
+      "via": [
+        [
+          2060.994341999359,
+          1620
+        ]
+      ],
+      "net": "GND",
+      "description": "Q1 IRFB4110: ножка 3 (S — правая) → Q1: ветвь к ножке 3 S",
+      "width": 4
+    },
+    {
+      "id": "wire-88",
+      "a": "Q1.SOURCE",
+      "b": "Q1.SLOW",
+      "via": [],
+      "net": "GND",
+      "description": "Q1: ветвь к ножке 3 S → Q1.SLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-89",
+      "a": "Q1.SLOW",
+      "b": "Q1.SRETURN",
+      "via": [],
+      "net": "GND",
+      "description": "Q1.SLOW → Q1.SRETURN",
+      "width": 4
+    },
+    {
+      "id": "wire-90",
+      "a": "Q1.SRETURN",
+      "b": "SSTAR",
+      "via": [],
+      "net": "GND",
+      "description": "Q1.SRETURN → Общая шина S / GND: минус АКБ",
+      "width": 4
+    },
+    {
+      "id": "wire-91",
+      "a": "Q1.2",
+      "b": "Q1.DRAIN",
+      "via": [],
+      "net": "D",
+      "description": "Q1 IRFB4110: ножка 2 (D — средняя) → Q1.DRAIN",
+      "width": 8
+    },
+    {
+      "id": "wire-92",
+      "a": "Q1.DRAIN",
+      "b": "DLEFT",
+      "via": [],
+      "net": "D",
+      "description": "Q1.DRAIN → DLEFT",
+      "width": 8
+    },
+    {
+      "id": "wire-93",
+      "a": "OUTA.Q1",
+      "b": "R1.1",
+      "via": [
+        [
+          1715,
+          1660
+        ],
+        [
+          1600,
+          1660
+        ]
+      ],
+      "net": "OUTA",
+      "description": "OUTA.Q1 → R1 10 Ом: левый конец",
+      "width": 4
+    },
+    {
+      "id": "wire-94",
+      "a": "R2.2",
+      "b": "Q2.GATE",
+      "via": [],
+      "net": "G2",
+      "description": "R2 10 Ом: правый конец → Q2: узел G после своего резистора 10 Ом",
+      "width": 4
+    },
+    {
+      "id": "wire-95",
+      "a": "Q2.1",
+      "b": "Q2.GATE",
+      "via": [
+        [
+          2240,
+          1535.8543263699646
+        ]
+      ],
+      "net": "G2",
+      "description": "Q2 IRFB4110: ножка 1 (G — левая) → Q2: узел G после своего резистора 10 Ом",
+      "width": 4
+    },
+    {
+      "id": "wire-96",
+      "a": "Q2.GATE",
+      "b": "Q2.GLOW",
+      "via": [],
+      "net": "G2",
+      "description": "Q2: узел G после своего резистора 10 Ом → Q2.GLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-97",
+      "a": "Q2.GATE",
+      "b": "R6.1",
+      "via": [
+        [
+          2240,
+          1840
+        ]
+      ],
+      "net": "G2",
+      "description": "Q2: узел G после своего резистора 10 Ом → R6 10 кОм: левый конец",
+      "width": 4
+    },
+    {
+      "id": "wire-98",
+      "a": "R6.2",
+      "b": "Q2.SLOW",
+      "via": [
+        [
+          2400,
+          1840
+        ]
+      ],
+      "net": "GND",
+      "description": "R6 10 кОм: правый конец → Q2.SLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-99",
+      "a": "Z2.K",
+      "b": "Q2.GLOW",
+      "via": [],
+      "net": "G2",
+      "description": "Z2 BZX55C15: конец с полоской K → Q2.GLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-100",
+      "a": "Z2.A",
+      "b": "Q2.SLOW",
+      "via": [],
+      "net": "GND",
+      "description": "Z2 BZX55C15: конец без полоски A → Q2.SLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-101",
+      "a": "Q2.3",
+      "b": "Q2.SOURCE",
+      "via": [
+        [
+          2510.994341999359,
+          1620
+        ]
+      ],
+      "net": "GND",
+      "description": "Q2 IRFB4110: ножка 3 (S — правая) → Q2: ветвь к ножке 3 S",
+      "width": 4
+    },
+    {
+      "id": "wire-102",
+      "a": "Q2.SOURCE",
+      "b": "Q2.SLOW",
+      "via": [],
+      "net": "GND",
+      "description": "Q2: ветвь к ножке 3 S → Q2.SLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-103",
+      "a": "Q2.SLOW",
+      "b": "Q2.SRETURN",
+      "via": [],
+      "net": "GND",
+      "description": "Q2.SLOW → Q2.SRETURN",
+      "width": 4
+    },
+    {
+      "id": "wire-104",
+      "a": "Q2.SRETURN",
+      "b": "SSTAR",
+      "via": [],
+      "net": "GND",
+      "description": "Q2.SRETURN → Общая шина S / GND: минус АКБ",
+      "width": 4
+    },
+    {
+      "id": "wire-105",
+      "a": "Q2.2",
+      "b": "Q2.DRAIN",
+      "via": [],
+      "net": "D",
+      "description": "Q2 IRFB4110: ножка 2 (D — средняя) → Q2.DRAIN",
+      "width": 8
+    },
+    {
+      "id": "wire-106",
+      "a": "Q2.DRAIN",
+      "b": "DLEFT",
+      "via": [],
+      "net": "D",
+      "description": "Q2.DRAIN → DLEFT",
+      "width": 8
+    },
+    {
+      "id": "wire-107",
+      "a": "OUTA.BUS",
+      "b": "R2.1",
+      "via": [
+        [
+          2165,
+          1660
+        ],
+        [
+          2050,
+          1660
+        ]
+      ],
+      "net": "OUTA",
+      "description": "Разветвление OUTA к R1/R2 → R2 10 Ом: левый конец",
+      "width": 4
+    },
+    {
+      "id": "wire-108",
+      "a": "R3.2",
+      "b": "Q3.GATE",
+      "via": [],
+      "net": "G3",
+      "description": "R3 10 Ом: правый конец → Q3: узел G после своего резистора 10 Ом",
+      "width": 4
+    },
+    {
+      "id": "wire-109",
+      "a": "Q3.1",
+      "b": "Q3.GATE",
+      "via": [
+        [
+          2690,
+          1535.8543263699646
+        ]
+      ],
+      "net": "G3",
+      "description": "Q3 IRFB4110: ножка 1 (G — левая) → Q3: узел G после своего резистора 10 Ом",
+      "width": 4
+    },
+    {
+      "id": "wire-110",
+      "a": "Q3.GATE",
+      "b": "Q3.GLOW",
+      "via": [],
+      "net": "G3",
+      "description": "Q3: узел G после своего резистора 10 Ом → Q3.GLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-111",
+      "a": "Q3.GATE",
+      "b": "R7.1",
+      "via": [
+        [
+          2690,
+          1840
+        ]
+      ],
+      "net": "G3",
+      "description": "Q3: узел G после своего резистора 10 Ом → R7 10 кОм: левый конец",
+      "width": 4
+    },
+    {
+      "id": "wire-112",
+      "a": "R7.2",
+      "b": "Q3.SLOW",
+      "via": [
+        [
+          2850,
+          1840
+        ]
+      ],
+      "net": "GND",
+      "description": "R7 10 кОм: правый конец → Q3.SLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-113",
+      "a": "Z3.K",
+      "b": "Q3.GLOW",
+      "via": [],
+      "net": "G3",
+      "description": "Z3 BZX55C15: конец с полоской K → Q3.GLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-114",
+      "a": "Z3.A",
+      "b": "Q3.SLOW",
+      "via": [],
+      "net": "GND",
+      "description": "Z3 BZX55C15: конец без полоски A → Q3.SLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-115",
+      "a": "Q3.3",
+      "b": "Q3.SOURCE",
+      "via": [
+        [
+          2960.994341999359,
+          1620
+        ]
+      ],
+      "net": "GND",
+      "description": "Q3 IRFB4110: ножка 3 (S — правая) → Q3: ветвь к ножке 3 S",
+      "width": 4
+    },
+    {
+      "id": "wire-116",
+      "a": "Q3.SOURCE",
+      "b": "Q3.SLOW",
+      "via": [],
+      "net": "GND",
+      "description": "Q3: ветвь к ножке 3 S → Q3.SLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-117",
+      "a": "Q3.SLOW",
+      "b": "Q3.SRETURN",
+      "via": [],
+      "net": "GND",
+      "description": "Q3.SLOW → Q3.SRETURN",
+      "width": 4
+    },
+    {
+      "id": "wire-118",
+      "a": "Q3.SRETURN",
+      "b": "SSTAR",
+      "via": [],
+      "net": "GND",
+      "description": "Q3.SRETURN → Общая шина S / GND: минус АКБ",
+      "width": 4
+    },
+    {
+      "id": "wire-119",
+      "a": "Q3.2",
+      "b": "Q3.DRAIN",
+      "via": [],
+      "net": "D",
+      "description": "Q3 IRFB4110: ножка 2 (D — средняя) → Q3.DRAIN",
+      "width": 8
+    },
+    {
+      "id": "wire-120",
+      "a": "Q3.DRAIN",
+      "b": "DLEFT",
+      "via": [],
+      "net": "D",
+      "description": "Q3.DRAIN → DLEFT",
+      "width": 8
+    },
+    {
+      "id": "wire-121",
+      "a": "OUTB.Q3",
+      "b": "R3.1",
+      "via": [
+        [
+          2615,
+          1660
+        ],
+        [
+          2500,
+          1660
+        ]
+      ],
+      "net": "OUTB",
+      "description": "OUTB.Q3 → R3 10 Ом: левый конец",
+      "width": 4
+    },
+    {
+      "id": "wire-122",
+      "a": "R4.2",
+      "b": "Q4.GATE",
+      "via": [],
+      "net": "G4",
+      "description": "R4 10 Ом: правый конец → Q4: узел G после своего резистора 10 Ом",
+      "width": 4
+    },
+    {
+      "id": "wire-123",
+      "a": "Q4.1",
+      "b": "Q4.GATE",
+      "via": [
+        [
+          3140,
+          1535.8543263699646
+        ]
+      ],
+      "net": "G4",
+      "description": "Q4 IRFB4110: ножка 1 (G — левая) → Q4: узел G после своего резистора 10 Ом",
+      "width": 4
+    },
+    {
+      "id": "wire-124",
+      "a": "Q4.GATE",
+      "b": "Q4.GLOW",
+      "via": [],
+      "net": "G4",
+      "description": "Q4: узел G после своего резистора 10 Ом → Q4.GLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-125",
+      "a": "Q4.GATE",
+      "b": "R8.1",
+      "via": [
+        [
+          3140,
+          1840
+        ]
+      ],
+      "net": "G4",
+      "description": "Q4: узел G после своего резистора 10 Ом → R8 10 кОм: левый конец",
+      "width": 4
+    },
+    {
+      "id": "wire-126",
+      "a": "R8.2",
+      "b": "Q4.SLOW",
+      "via": [
+        [
+          3300,
+          1840
+        ]
+      ],
+      "net": "GND",
+      "description": "R8 10 кОм: правый конец → Q4.SLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-127",
+      "a": "Z4.K",
+      "b": "Q4.GLOW",
+      "via": [],
+      "net": "G4",
+      "description": "Z4 BZX55C15: конец с полоской K → Q4.GLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-128",
+      "a": "Z4.A",
+      "b": "Q4.SLOW",
+      "via": [],
+      "net": "GND",
+      "description": "Z4 BZX55C15: конец без полоски A → Q4.SLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-129",
+      "a": "Q4.3",
+      "b": "Q4.SOURCE",
+      "via": [
+        [
+          3410.994341999359,
+          1620
+        ]
+      ],
+      "net": "GND",
+      "description": "Q4 IRFB4110: ножка 3 (S — правая) → Q4: ветвь к ножке 3 S",
+      "width": 4
+    },
+    {
+      "id": "wire-130",
+      "a": "Q4.SOURCE",
+      "b": "Q4.SLOW",
+      "via": [],
+      "net": "GND",
+      "description": "Q4: ветвь к ножке 3 S → Q4.SLOW",
+      "width": 4
+    },
+    {
+      "id": "wire-131",
+      "a": "Q4.SLOW",
+      "b": "Q4.SRETURN",
+      "via": [],
+      "net": "GND",
+      "description": "Q4.SLOW → Q4.SRETURN",
+      "width": 4
+    },
+    {
+      "id": "wire-132",
+      "a": "Q4.SRETURN",
+      "b": "SSTAR",
+      "via": [],
+      "net": "GND",
+      "description": "Q4.SRETURN → Общая шина S / GND: минус АКБ",
+      "width": 4
+    },
+    {
+      "id": "wire-133",
+      "a": "Q4.2",
+      "b": "Q4.DRAIN",
+      "via": [],
+      "net": "D",
+      "description": "Q4 IRFB4110: ножка 2 (D — средняя) → Q4.DRAIN",
+      "width": 8
+    },
+    {
+      "id": "wire-134",
+      "a": "Q4.DRAIN",
+      "b": "DLEFT",
+      "via": [],
+      "net": "D",
+      "description": "Q4.DRAIN → DLEFT",
+      "width": 8
+    },
+    {
+      "id": "wire-135",
+      "a": "OUTB.BUS",
+      "b": "R4.1",
+      "via": [
+        [
+          3065,
+          1660
+        ],
+        [
+          2950,
+          1660
+        ]
+      ],
+      "net": "OUTB",
+      "description": "Разветвление OUTB к R3/R4 → R4 10 Ом: левый конец",
+      "width": 4
+    },
+    {
+      "id": "wire-136",
+      "a": "TV1.K",
+      "b": "DMAIN",
+      "via": [
+        [
+          3760,
+          1953.7777777777778
+        ],
+        [
+          3760,
+          2100
+        ]
+      ],
+      "net": "D",
+      "description": "TV1 DOWO SM8S33A: маленький контакт K → Общая шина D: минус электролизёра",
+      "width": 8
+    },
+    {
+      "id": "wire-137",
+      "a": "TV1.A",
+      "b": "SEND",
+      "via": [
+        [
+          3610,
+          2300
+        ]
+      ],
+      "net": "GND",
+      "description": "TV1 DOWO SM8S33A: большая нижняя площадка A → Правый конец общей минусовой шины",
+      "width": 4
+    }
+  ],
+  "parts": [
+    {
+      "id": "АКБ",
+      "name": "АКБ 24 В Li-ion",
+      "ports": [
+        "АКБ.P+",
+        "АКБ.P-"
+      ],
+      "xy": [
+        45,
+        155
+      ]
+    },
+    {
+      "id": "F1",
+      "name": "F1 · 80 А",
+      "ports": [
+        "F1.1",
+        "F1.2"
+      ],
+      "xy": [
+        500,
+        195
+      ]
+    },
+    {
+      "id": "S1",
+      "name": "S1 · DC",
+      "ports": [
+        "S1.1",
+        "S1.2"
+      ],
+      "xy": [
+        760,
+        195
+      ]
+    },
+    {
+      "id": "НАГРУЗКА",
+      "name": "ЭЛЕКТРОЛИЗЁР",
+      "ports": [
+        "НАГРУЗКА.+",
+        "НАГРУЗКА.-"
+      ],
+      "xy": [
+        3350,
+        240
+      ]
+    },
+    {
+      "id": "F2",
+      "name": "F2 · 250 мА",
+      "ports": [
+        "F2.1",
+        "F2.2"
+      ],
+      "xy": [
+        140,
+        625
+      ]
+    },
+    {
+      "id": "D1",
+      "name": "D1 · 1N4007",
+      "ports": [
+        "D1.A",
+        "D1.K"
+      ],
+      "xy": [
+        350,
+        650
+      ]
+    },
+    {
+      "id": "R13",
+      "name": "R13 · 100 Ом / 1 Вт",
+      "ports": [
+        "R13.1",
+        "R13.2"
+      ],
+      "xy": [
+        610,
+        650
+      ]
+    },
+    {
+      "id": "U2",
+      "name": "L7812CV",
+      "ports": [
+        "U2.1",
+        "U2.2",
+        "U2.3"
+      ],
+      "xy": [
+        850,
+        430
+      ]
+    },
+    {
+      "id": "D2",
+      "name": "D2 · 1N4007",
+      "ports": [
+        "D2.K",
+        "D2.A"
+      ],
+      "xy": [
+        1110,
+        390
+      ]
+    },
+    {
+      "id": "C4",
+      "name": "C4 · 10 мкФ / 50 В",
+      "ports": [
+        "C4.+",
+        "C4.-"
+      ],
+      "xy": [
+        600,
+        870
+      ]
+    },
+    {
+      "id": "C5",
+      "name": "C5 · 330 нФ / 50 В",
+      "ports": [
+        "C5.+",
+        "C5.-"
+      ],
+      "xy": [
+        780,
+        870
+      ]
+    },
+    {
+      "id": "TV2",
+      "name": "TV2 · 1.5KE24A",
+      "ports": [
+        "TV2.K",
+        "TV2.A"
+      ],
+      "xy": [
+        250,
+        910
+      ]
+    },
+    {
+      "id": "C6",
+      "name": "C6 · 10 мкФ / 25 В",
+      "ports": [
+        "C6.+",
+        "C6.-"
+      ],
+      "xy": [
+        1200,
+        875
+      ]
+    },
+    {
+      "id": "C7",
+      "name": "C7 · 100 нФ / 50 В",
+      "ports": [
+        "C7.+",
+        "C7.-"
+      ],
+      "xy": [
+        1390,
+        875
+      ]
+    },
+    {
+      "id": "C1",
+      "name": "C1 · 1000 мкФ / 63 В",
+      "ports": [
+        "C1.+",
+        "C1.-"
+      ],
+      "xy": [
+        1600,
+        500
+      ]
+    },
+    {
+      "id": "C2",
+      "name": "C2 · 1000 мкФ / 63 В",
+      "ports": [
+        "C2.+",
+        "C2.-"
+      ],
+      "xy": [
+        1810,
+        500
+      ]
+    },
+    {
+      "id": "C3",
+      "name": "C3 · 1 мкФ / 100 В",
+      "ports": [
+        "C3.+",
+        "C3.-"
+      ],
+      "xy": [
+        2020,
+        500
+      ]
+    },
+    {
+      "id": "D3",
+      "name": "MBR60100CT",
+      "ports": [
+        "D3.1",
+        "D3.2",
+        "D3.3"
+      ],
+      "xy": [
+        2470,
+        350
+      ]
+    },
+    {
+      "id": "D4",
+      "name": "MBR60100CT",
+      "ports": [
+        "D4.1",
+        "D4.2",
+        "D4.3"
+      ],
+      "xy": [
+        2890,
+        350
+      ]
+    },
+    {
+      "id": "ESP",
+      "name": "ESP32",
+      "ports": [
+        "ESP.32",
+        "ESP.GND"
+      ],
+      "xy": [
+        80,
+        1240
+      ]
+    },
+    {
+      "id": "U1",
+      "name": "UCC27524DR",
+      "ports": [
+        "U1.1",
+        "U1.2",
+        "U1.3",
+        "U1.4",
+        "U1.5",
+        "U1.6",
+        "U1.7",
+        "U1.8"
+      ],
+      "xy": [
+        900,
+        1200
+      ]
+    },
+    {
+      "id": "R9",
+      "name": "R9 · 100 Ом",
+      "ports": [
+        "R9.1",
+        "R9.2"
+      ],
+      "xy": [
+        500,
+        1520
+      ]
+    },
+    {
+      "id": "R10",
+      "name": "R10 · 10 кОм",
+      "ports": [
+        "R10.1",
+        "R10.2"
+      ],
+      "xy": [
+        540,
+        1770
+      ]
+    },
+    {
+      "id": "C8",
+      "name": "C8 · 47 мкФ / 25 В",
+      "ports": [
+        "C8.+",
+        "C8.-"
+      ],
+      "xy": [
+        1120,
+        1790
+      ]
+    },
+    {
+      "id": "C9",
+      "name": "C9 · 1 мкФ / 25 В",
+      "ports": [
+        "C9.+",
+        "C9.-"
+      ],
+      "xy": [
+        1260,
+        1790
+      ]
+    },
+    {
+      "id": "C10",
+      "name": "C10 · 100 нФ / 50 В",
+      "ports": [
+        "C10.+",
+        "C10.-"
+      ],
+      "xy": [
+        1385,
+        1790
+      ]
+    },
+    {
+      "id": "T1",
+      "name": "NC 70 °C",
+      "ports": [
+        "T1.1",
+        "T1.2"
+      ],
+      "xy": [
+        550,
+        1930
+      ]
+    },
+    {
+      "id": "R11",
+      "name": "R11 · 2,2 кОм",
+      "ports": [
+        "R11.1",
+        "R11.2"
+      ],
+      "xy": [
+        820,
+        2050
+      ]
+    },
+    {
+      "id": "R12",
+      "name": "R12 · 1 кОм",
+      "ports": [
+        "R12.1",
+        "R12.2"
+      ],
+      "xy": [
+        1130,
+        2180
+      ]
+    },
+    {
+      "id": "Q1",
+      "name": "IRFB4110PBF",
+      "ports": [
+        "Q1.1",
+        "Q1.2",
+        "Q1.3"
+      ],
+      "xy": [
+        1915,
+        1080
+      ]
+    },
+    {
+      "id": "R1",
+      "name": "R1 · 10 Ом",
+      "ports": [
+        "R1.1",
+        "R1.2"
+      ],
+      "xy": [
+        1610,
+        1730
+      ]
+    },
+    {
+      "id": "R5",
+      "name": "R5 · 10 кОм",
+      "ports": [
+        "R5.1",
+        "R5.2"
+      ],
+      "xy": [
+        1805,
+        1840
+      ]
+    },
+    {
+      "id": "Z1",
+      "name": "Z1 · BZX55C15",
+      "ports": [
+        "Z1.K",
+        "Z1.A"
+      ],
+      "xy": [
+        1795,
+        1940
+      ]
+    },
+    {
+      "id": "Q2",
+      "name": "IRFB4110PBF",
+      "ports": [
+        "Q2.1",
+        "Q2.2",
+        "Q2.3"
+      ],
+      "xy": [
+        2365,
+        1080
+      ]
+    },
+    {
+      "id": "R2",
+      "name": "R2 · 10 Ом",
+      "ports": [
+        "R2.1",
+        "R2.2"
+      ],
+      "xy": [
+        2060,
+        1730
+      ]
+    },
+    {
+      "id": "R6",
+      "name": "R6 · 10 кОм",
+      "ports": [
+        "R6.1",
+        "R6.2"
+      ],
+      "xy": [
+        2255,
+        1840
+      ]
+    },
+    {
+      "id": "Z2",
+      "name": "Z2 · BZX55C15",
+      "ports": [
+        "Z2.K",
+        "Z2.A"
+      ],
+      "xy": [
+        2245,
+        1940
+      ]
+    },
+    {
+      "id": "Q3",
+      "name": "IRFB4110PBF",
+      "ports": [
+        "Q3.1",
+        "Q3.2",
+        "Q3.3"
+      ],
+      "xy": [
+        2815,
+        1080
+      ]
+    },
+    {
+      "id": "R3",
+      "name": "R3 · 10 Ом",
+      "ports": [
+        "R3.1",
+        "R3.2"
+      ],
+      "xy": [
+        2510,
+        1730
+      ]
+    },
+    {
+      "id": "R7",
+      "name": "R7 · 10 кОм",
+      "ports": [
+        "R7.1",
+        "R7.2"
+      ],
+      "xy": [
+        2705,
+        1840
+      ]
+    },
+    {
+      "id": "Z3",
+      "name": "Z3 · BZX55C15",
+      "ports": [
+        "Z3.K",
+        "Z3.A"
+      ],
+      "xy": [
+        2695,
+        1940
+      ]
+    },
+    {
+      "id": "Q4",
+      "name": "IRFB4110PBF",
+      "ports": [
+        "Q4.1",
+        "Q4.2",
+        "Q4.3"
+      ],
+      "xy": [
+        3265,
+        1080
+      ]
+    },
+    {
+      "id": "R4",
+      "name": "R4 · 10 Ом",
+      "ports": [
+        "R4.1",
+        "R4.2"
+      ],
+      "xy": [
+        2960,
+        1730
+      ]
+    },
+    {
+      "id": "R8",
+      "name": "R8 · 10 кОм",
+      "ports": [
+        "R8.1",
+        "R8.2"
+      ],
+      "xy": [
+        3155,
+        1840
+      ]
+    },
+    {
+      "id": "Z4",
+      "name": "Z4 · BZX55C15",
+      "ports": [
+        "Z4.K",
+        "Z4.A"
+      ],
+      "xy": [
+        3145,
+        1940
+      ]
+    },
+    {
+      "id": "TV1",
+      "name": "DOWO SM8S33A",
+      "ports": [
+        "TV1.K",
+        "TV1.A"
+      ],
+      "xy": [
+        3500,
+        1900
+      ]
+    }
+  ],
+  "inventory": {
+    "Q": 4,
+    "R": 13,
+    "Z": 4,
+    "C": 10,
+    "D": 4,
+    "TV": 2,
+    "U": 2,
+    "T": 1,
+    "F": 2
+  },
+  "instructions": [
+    {
+      "id": "join-1",
+      "a": "АКБ.P+",
+      "b": "F1.1",
+      "edges": [
+        "wire-1"
+      ],
+      "description": "АКБ: плюс P+ после BMS ↔ F1: вход"
+    },
+    {
+      "id": "join-2",
+      "a": "F1.2",
+      "b": "S1.1",
+      "edges": [
+        "wire-2"
+      ],
+      "description": "F1: выход ↔ S1: вход"
+    },
+    {
+      "id": "join-3",
+      "a": "S1.2",
+      "b": "НАГРУЗКА.+",
+      "edges": [
+        "wire-3",
+        "wire-4"
+      ],
+      "description": "S1: выход ↔ Электролизёр: плюс"
+    },
+    {
+      "id": "join-4",
+      "a": "АКБ.P-",
+      "b": "Q1.3",
+      "edges": [
+        "wire-6",
+        "wire-7",
+        "wire-8",
+        "wire-90",
+        "wire-89",
+        "wire-88",
+        "wire-87"
+      ],
+      "description": "АКБ: минус P− после BMS ↔ Q1 IRFB4110: ножка 3 (S — правая)"
+    },
+    {
+      "id": "join-5",
+      "a": "Q1.3",
+      "b": "Q2.3",
+      "edges": [
+        "wire-87",
+        "wire-88",
+        "wire-89",
+        "wire-90",
+        "wire-104",
+        "wire-103",
+        "wire-102",
+        "wire-101"
+      ],
+      "description": "Q1 IRFB4110: ножка 3 (S — правая) ↔ Q2 IRFB4110: ножка 3 (S — правая)"
+    },
+    {
+      "id": "join-6",
+      "a": "Q1.3",
+      "b": "Q3.3",
+      "edges": [
+        "wire-87",
+        "wire-88",
+        "wire-89",
+        "wire-90",
+        "wire-118",
+        "wire-117",
+        "wire-116",
+        "wire-115"
+      ],
+      "description": "Q1 IRFB4110: ножка 3 (S — правая) ↔ Q3 IRFB4110: ножка 3 (S — правая)"
+    },
+    {
+      "id": "join-7",
+      "a": "Q1.3",
+      "b": "Q4.3",
+      "edges": [
+        "wire-87",
+        "wire-88",
+        "wire-89",
+        "wire-90",
+        "wire-132",
+        "wire-131",
+        "wire-130",
+        "wire-129"
+      ],
+      "description": "Q1 IRFB4110: ножка 3 (S — правая) ↔ Q4 IRFB4110: ножка 3 (S — правая)"
+    },
+    {
+      "id": "join-8",
+      "a": "Q1.2",
+      "b": "НАГРУЗКА.-",
+      "edges": [
+        "wire-91",
+        "wire-92",
+        "wire-79",
+        "wire-5"
+      ],
+      "description": "Q1 IRFB4110: ножка 2 (D — средняя) ↔ Электролизёр: минус"
+    },
+    {
+      "id": "join-9",
+      "a": "Q1.2",
+      "b": "Q2.2",
+      "edges": [
+        "wire-91",
+        "wire-92",
+        "wire-106",
+        "wire-105"
+      ],
+      "description": "Q1 IRFB4110: ножка 2 (D — средняя) ↔ Q2 IRFB4110: ножка 2 (D — средняя)"
+    },
+    {
+      "id": "join-10",
+      "a": "Q1.2",
+      "b": "Q3.2",
+      "edges": [
+        "wire-91",
+        "wire-92",
+        "wire-120",
+        "wire-119"
+      ],
+      "description": "Q1 IRFB4110: ножка 2 (D — средняя) ↔ Q3 IRFB4110: ножка 2 (D — средняя)"
+    },
+    {
+      "id": "join-11",
+      "a": "Q1.2",
+      "b": "Q4.2",
+      "edges": [
+        "wire-91",
+        "wire-92",
+        "wire-134",
+        "wire-133"
+      ],
+      "description": "Q1 IRFB4110: ножка 2 (D — средняя) ↔ Q4 IRFB4110: ножка 2 (D — средняя)"
+    },
+    {
+      "id": "join-12",
+      "a": "ESP.32",
+      "b": "R9.1",
+      "edges": [
+        "wire-49"
+      ],
+      "description": "ESP32: контакт с надписью 32 / GPIO32 ↔ R9 100 Ом: левый конец"
+    },
+    {
+      "id": "join-13",
+      "a": "R9.2",
+      "b": "U1.2",
+      "edges": [
+        "wire-50",
+        "wire-51"
+      ],
+      "description": "R9 100 Ом: правый конец ↔ U1 UCC27524: ножка 2 (INA)"
+    },
+    {
+      "id": "join-14",
+      "a": "U1.2",
+      "b": "U1.4",
+      "edges": [
+        "wire-51",
+        "wire-52"
+      ],
+      "description": "U1 UCC27524: ножка 2 (INA) ↔ U1 UCC27524: ножка 4 (INB)"
+    },
+    {
+      "id": "join-15",
+      "a": "U1.2",
+      "b": "R10.2",
+      "edges": [
+        "wire-51",
+        "wire-53"
+      ],
+      "description": "U1 UCC27524: ножка 2 (INA) ↔ R10 10 кОм: правый конец"
+    },
+    {
+      "id": "join-16",
+      "a": "R10.1",
+      "b": "U1.3",
+      "edges": [
+        "wire-54",
+        "wire-56",
+        "wire-58",
+        "wire-57"
+      ],
+      "description": "R10 10 кОм: левый конец ↔ U1 UCC27524: ножка 3 (GND)"
+    },
+    {
+      "id": "join-17",
+      "a": "ESP.GND",
+      "b": "U1.3",
+      "edges": [
+        "wire-55",
+        "wire-56",
+        "wire-58",
+        "wire-57"
+      ],
+      "description": "ESP32: контакт GND ↔ U1 UCC27524: ножка 3 (GND)"
+    },
+    {
+      "id": "join-18",
+      "a": "U1.3",
+      "b": "Q1.3",
+      "edges": [
+        "wire-57",
+        "wire-58",
+        "wire-90",
+        "wire-89",
+        "wire-88",
+        "wire-87"
+      ],
+      "description": "U1 UCC27524: ножка 3 (GND) ↔ Q1 IRFB4110: ножка 3 (S — правая)"
+    },
+    {
+      "id": "join-19",
+      "a": "U2.3",
+      "b": "U1.6",
+      "edges": [
+        "wire-15",
+        "wire-59",
+        "wire-60"
+      ],
+      "description": "U2 L7812: ножка 3 (OUT — 12 В) ↔ U1 UCC27524: ножка 6 (12 В VDD)"
+    },
+    {
+      "id": "join-20",
+      "a": "U2.2",
+      "b": "U1.3",
+      "edges": [
+        "wire-16",
+        "wire-17",
+        "wire-7",
+        "wire-8",
+        "wire-58",
+        "wire-57"
+      ],
+      "description": "U2 L7812: ножка 2 (GND — земля) ↔ U1 UCC27524: ножка 3 (GND)"
+    },
+    {
+      "id": "join-21",
+      "a": "S1.2",
+      "b": "F2.1",
+      "edges": [
+        "wire-3",
+        "wire-10"
+      ],
+      "description": "S1: выход ↔ F2: вход от B+"
+    },
+    {
+      "id": "join-22",
+      "a": "F2.2",
+      "b": "D1.A",
+      "edges": [
+        "wire-11"
+      ],
+      "description": "F2: выход ↔ D1 1N4007: конец без полоски A"
+    },
+    {
+      "id": "join-23",
+      "a": "D1.K",
+      "b": "R13.1",
+      "edges": [
+        "wire-12"
+      ],
+      "description": "D1 1N4007: конец с полоской K ↔ R13 100 Ом / 1 Вт: левый конец"
+    },
+    {
+      "id": "join-24",
+      "a": "R13.2",
+      "b": "U2.1",
+      "edges": [
+        "wire-13",
+        "wire-14"
+      ],
+      "description": "R13 100 Ом / 1 Вт: правый конец ↔ U2 L7812: ножка 1 (IN — вход)"
+    },
+    {
+      "id": "join-25",
+      "a": "U2.1",
+      "b": "TV2.K",
+      "edges": [
+        "wire-14",
+        "wire-20",
+        "wire-21",
+        "wire-22",
+        "wire-23",
+        "wire-28"
+      ],
+      "description": "U2 L7812: ножка 1 (IN — вход) ↔ TV2 1.5KE24A: конец с полоской K"
+    },
+    {
+      "id": "join-26",
+      "a": "TV2.A",
+      "b": "U2.2",
+      "edges": [
+        "wire-29",
+        "wire-16"
+      ],
+      "description": "TV2 1.5KE24A: конец без полоски A ↔ U2 L7812: ножка 2 (GND — земля)"
+    },
+    {
+      "id": "join-27",
+      "a": "D2.K",
+      "b": "U2.1",
+      "edges": [
+        "wire-18",
+        "wire-14"
+      ],
+      "description": "D2 1N4007: конец с полоской K ↔ U2 L7812: ножка 1 (IN — вход)"
+    },
+    {
+      "id": "join-28",
+      "a": "D2.A",
+      "b": "U2.3",
+      "edges": [
+        "wire-19",
+        "wire-15"
+      ],
+      "description": "D2 1N4007: конец без полоски A ↔ U2 L7812: ножка 3 (OUT — 12 В)"
+    },
+    {
+      "id": "join-29",
+      "a": "U1.6",
+      "b": "T1.1",
+      "edges": [
+        "wire-60",
+        "wire-61",
+        "wire-68"
+      ],
+      "description": "U1 UCC27524: ножка 6 (12 В VDD) ↔ T1 NC 70 °C: первый провод (любой)"
+    },
+    {
+      "id": "join-30",
+      "a": "T1.2",
+      "b": "R11.1",
+      "edges": [
+        "wire-69"
+      ],
+      "description": "T1 NC 70 °C: второй провод ↔ R11 2,2 кОм: левый конец"
+    },
+    {
+      "id": "join-31",
+      "a": "R11.2",
+      "b": "U1.1",
+      "edges": [
+        "wire-70",
+        "wire-73"
+      ],
+      "description": "R11 2,2 кОм: правый конец ↔ U1 UCC27524: ножка 1 (ENA)"
+    },
+    {
+      "id": "join-32",
+      "a": "U1.1",
+      "b": "U1.8",
+      "edges": [
+        "wire-73",
+        "wire-74"
+      ],
+      "description": "U1 UCC27524: ножка 1 (ENA) ↔ U1 UCC27524: ножка 8 (ENB)"
+    },
+    {
+      "id": "join-33",
+      "a": "U1.1",
+      "b": "R12.1",
+      "edges": [
+        "wire-73",
+        "wire-71"
+      ],
+      "description": "U1 UCC27524: ножка 1 (ENA) ↔ R12 1 кОм: левый конец"
+    },
+    {
+      "id": "join-34",
+      "a": "R12.2",
+      "b": "U1.3",
+      "edges": [
+        "wire-72",
+        "wire-58",
+        "wire-57"
+      ],
+      "description": "R12 1 кОм: правый конец ↔ U1 UCC27524: ножка 3 (GND)"
+    },
+    {
+      "id": "join-35",
+      "a": "TV1.K",
+      "b": "Q1.2",
+      "edges": [
+        "wire-136",
+        "wire-79",
+        "wire-92",
+        "wire-91"
+      ],
+      "description": "TV1 DOWO SM8S33A: маленький контакт K ↔ Q1 IRFB4110: ножка 2 (D — средняя)"
+    },
+    {
+      "id": "join-36",
+      "a": "TV1.A",
+      "b": "Q1.3",
+      "edges": [
+        "wire-137",
+        "wire-9",
+        "wire-90",
+        "wire-89",
+        "wire-88",
+        "wire-87"
+      ],
+      "description": "TV1 DOWO SM8S33A: большая нижняя площадка A ↔ Q1 IRFB4110: ножка 3 (S — правая)"
+    },
+    {
+      "id": "join-37",
+      "a": "U1.7",
+      "b": "R1.1",
+      "edges": [
+        "wire-75",
+        "wire-93"
+      ],
+      "description": "U1 UCC27524: ножка 7 (OUTA) ↔ R1 10 Ом: левый конец"
+    },
+    {
+      "id": "join-38",
+      "a": "R1.2",
+      "b": "Q1.1",
+      "edges": [
+        "wire-80",
+        "wire-81"
+      ],
+      "description": "R1 10 Ом: правый конец ↔ Q1 IRFB4110: ножка 1 (G — левая)"
+    },
+    {
+      "id": "join-39",
+      "a": "Q1.1",
+      "b": "R5.1",
+      "edges": [
+        "wire-81",
+        "wire-83"
+      ],
+      "description": "Q1 IRFB4110: ножка 1 (G — левая) ↔ R5 10 кОм: левый конец"
+    },
+    {
+      "id": "join-40",
+      "a": "Q1.3",
+      "b": "R5.2",
+      "edges": [
+        "wire-87",
+        "wire-88",
+        "wire-84"
+      ],
+      "description": "Q1 IRFB4110: ножка 3 (S — правая) ↔ R5 10 кОм: правый конец"
+    },
+    {
+      "id": "join-41",
+      "a": "Q1.1",
+      "b": "Z1.K",
+      "edges": [
+        "wire-81",
+        "wire-82",
+        "wire-85"
+      ],
+      "description": "Q1 IRFB4110: ножка 1 (G — левая) ↔ Z1 BZX55C15: конец с полоской K"
+    },
+    {
+      "id": "join-42",
+      "a": "Q1.3",
+      "b": "Z1.A",
+      "edges": [
+        "wire-87",
+        "wire-88",
+        "wire-86"
+      ],
+      "description": "Q1 IRFB4110: ножка 3 (S — правая) ↔ Z1 BZX55C15: конец без полоски A"
+    },
+    {
+      "id": "join-43",
+      "a": "U1.7",
+      "b": "R2.1",
+      "edges": [
+        "wire-75",
+        "wire-76",
+        "wire-107"
+      ],
+      "description": "U1 UCC27524: ножка 7 (OUTA) ↔ R2 10 Ом: левый конец"
+    },
+    {
+      "id": "join-44",
+      "a": "R2.2",
+      "b": "Q2.1",
+      "edges": [
+        "wire-94",
+        "wire-95"
+      ],
+      "description": "R2 10 Ом: правый конец ↔ Q2 IRFB4110: ножка 1 (G — левая)"
+    },
+    {
+      "id": "join-45",
+      "a": "Q2.1",
+      "b": "R6.1",
+      "edges": [
+        "wire-95",
+        "wire-97"
+      ],
+      "description": "Q2 IRFB4110: ножка 1 (G — левая) ↔ R6 10 кОм: левый конец"
+    },
+    {
+      "id": "join-46",
+      "a": "Q2.3",
+      "b": "R6.2",
+      "edges": [
+        "wire-101",
+        "wire-102",
+        "wire-98"
+      ],
+      "description": "Q2 IRFB4110: ножка 3 (S — правая) ↔ R6 10 кОм: правый конец"
+    },
+    {
+      "id": "join-47",
+      "a": "Q2.1",
+      "b": "Z2.K",
+      "edges": [
+        "wire-95",
+        "wire-96",
+        "wire-99"
+      ],
+      "description": "Q2 IRFB4110: ножка 1 (G — левая) ↔ Z2 BZX55C15: конец с полоской K"
+    },
+    {
+      "id": "join-48",
+      "a": "Q2.3",
+      "b": "Z2.A",
+      "edges": [
+        "wire-101",
+        "wire-102",
+        "wire-100"
+      ],
+      "description": "Q2 IRFB4110: ножка 3 (S — правая) ↔ Z2 BZX55C15: конец без полоски A"
+    },
+    {
+      "id": "join-49",
+      "a": "U1.5",
+      "b": "R3.1",
+      "edges": [
+        "wire-77",
+        "wire-121"
+      ],
+      "description": "U1 UCC27524: ножка 5 (OUTB) ↔ R3 10 Ом: левый конец"
+    },
+    {
+      "id": "join-50",
+      "a": "R3.2",
+      "b": "Q3.1",
+      "edges": [
+        "wire-108",
+        "wire-109"
+      ],
+      "description": "R3 10 Ом: правый конец ↔ Q3 IRFB4110: ножка 1 (G — левая)"
+    },
+    {
+      "id": "join-51",
+      "a": "Q3.1",
+      "b": "R7.1",
+      "edges": [
+        "wire-109",
+        "wire-111"
+      ],
+      "description": "Q3 IRFB4110: ножка 1 (G — левая) ↔ R7 10 кОм: левый конец"
+    },
+    {
+      "id": "join-52",
+      "a": "Q3.3",
+      "b": "R7.2",
+      "edges": [
+        "wire-115",
+        "wire-116",
+        "wire-112"
+      ],
+      "description": "Q3 IRFB4110: ножка 3 (S — правая) ↔ R7 10 кОм: правый конец"
+    },
+    {
+      "id": "join-53",
+      "a": "Q3.1",
+      "b": "Z3.K",
+      "edges": [
+        "wire-109",
+        "wire-110",
+        "wire-113"
+      ],
+      "description": "Q3 IRFB4110: ножка 1 (G — левая) ↔ Z3 BZX55C15: конец с полоской K"
+    },
+    {
+      "id": "join-54",
+      "a": "Q3.3",
+      "b": "Z3.A",
+      "edges": [
+        "wire-115",
+        "wire-116",
+        "wire-114"
+      ],
+      "description": "Q3 IRFB4110: ножка 3 (S — правая) ↔ Z3 BZX55C15: конец без полоски A"
+    },
+    {
+      "id": "join-55",
+      "a": "U1.5",
+      "b": "R4.1",
+      "edges": [
+        "wire-77",
+        "wire-78",
+        "wire-135"
+      ],
+      "description": "U1 UCC27524: ножка 5 (OUTB) ↔ R4 10 Ом: левый конец"
+    },
+    {
+      "id": "join-56",
+      "a": "R4.2",
+      "b": "Q4.1",
+      "edges": [
+        "wire-122",
+        "wire-123"
+      ],
+      "description": "R4 10 Ом: правый конец ↔ Q4 IRFB4110: ножка 1 (G — левая)"
+    },
+    {
+      "id": "join-57",
+      "a": "Q4.1",
+      "b": "R8.1",
+      "edges": [
+        "wire-123",
+        "wire-125"
+      ],
+      "description": "Q4 IRFB4110: ножка 1 (G — левая) ↔ R8 10 кОм: левый конец"
+    },
+    {
+      "id": "join-58",
+      "a": "Q4.3",
+      "b": "R8.2",
+      "edges": [
+        "wire-129",
+        "wire-130",
+        "wire-126"
+      ],
+      "description": "Q4 IRFB4110: ножка 3 (S — правая) ↔ R8 10 кОм: правый конец"
+    },
+    {
+      "id": "join-59",
+      "a": "Q4.1",
+      "b": "Z4.K",
+      "edges": [
+        "wire-123",
+        "wire-124",
+        "wire-127"
+      ],
+      "description": "Q4 IRFB4110: ножка 1 (G — левая) ↔ Z4 BZX55C15: конец с полоской K"
+    },
+    {
+      "id": "join-60",
+      "a": "Q4.3",
+      "b": "Z4.A",
+      "edges": [
+        "wire-129",
+        "wire-130",
+        "wire-128"
+      ],
+      "description": "Q4 IRFB4110: ножка 3 (S — правая) ↔ Z4 BZX55C15: конец без полоски A"
+    },
+    {
+      "id": "join-61",
+      "a": "НАГРУЗКА.+",
+      "b": "C1.+",
+      "edges": [
+        "wire-4",
+        "wire-34",
+        "wire-36"
+      ],
+      "description": "Электролизёр: плюс ↔ C1 1000 мкФ / 63 В: плюс"
+    },
+    {
+      "id": "join-62",
+      "a": "Q1.3",
+      "b": "C1.-",
+      "edges": [
+        "wire-87",
+        "wire-88",
+        "wire-89",
+        "wire-90",
+        "wire-8",
+        "wire-7",
+        "wire-35",
+        "wire-37"
+      ],
+      "description": "Q1 IRFB4110: ножка 3 (S — правая) ↔ C1 1000 мкФ / 63 В: минус, полоса «−»"
+    },
+    {
+      "id": "join-63",
+      "a": "НАГРУЗКА.+",
+      "b": "C2.+",
+      "edges": [
+        "wire-4",
+        "wire-34",
+        "wire-38"
+      ],
+      "description": "Электролизёр: плюс ↔ C2 1000 мкФ / 63 В: плюс"
+    },
+    {
+      "id": "join-64",
+      "a": "Q1.3",
+      "b": "C2.-",
+      "edges": [
+        "wire-87",
+        "wire-88",
+        "wire-89",
+        "wire-90",
+        "wire-8",
+        "wire-7",
+        "wire-35",
+        "wire-39"
+      ],
+      "description": "Q1 IRFB4110: ножка 3 (S — правая) ↔ C2 1000 мкФ / 63 В: минус, полоса «−»"
+    },
+    {
+      "id": "join-65",
+      "a": "НАГРУЗКА.+",
+      "b": "C3.+",
+      "edges": [
+        "wire-4",
+        "wire-34",
+        "wire-40"
+      ],
+      "description": "Электролизёр: плюс ↔ C3 1 мкФ / 100 В: первый вывод"
+    },
+    {
+      "id": "join-66",
+      "a": "Q1.3",
+      "b": "C3.-",
+      "edges": [
+        "wire-87",
+        "wire-88",
+        "wire-89",
+        "wire-90",
+        "wire-8",
+        "wire-7",
+        "wire-35",
+        "wire-41"
+      ],
+      "description": "Q1 IRFB4110: ножка 3 (S — правая) ↔ C3 1 мкФ / 100 В: второй вывод"
+    },
+    {
+      "id": "join-67",
+      "a": "U2.1",
+      "b": "C4.+",
+      "edges": [
+        "wire-14",
+        "wire-20",
+        "wire-21",
+        "wire-22",
+        "wire-24"
+      ],
+      "description": "U2 L7812: ножка 1 (IN — вход) ↔ C4 10 мкФ / 50 В: плюс"
+    },
+    {
+      "id": "join-68",
+      "a": "U2.2",
+      "b": "C4.-",
+      "edges": [
+        "wire-16",
+        "wire-26"
+      ],
+      "description": "U2 L7812: ножка 2 (GND — земля) ↔ C4 10 мкФ / 50 В: минус, полоса «−»"
+    },
+    {
+      "id": "join-69",
+      "a": "U2.1",
+      "b": "C5.+",
+      "edges": [
+        "wire-14",
+        "wire-20",
+        "wire-21",
+        "wire-25"
+      ],
+      "description": "U2 L7812: ножка 1 (IN — вход) ↔ C5 330 нФ / 50 В: первый вывод"
+    },
+    {
+      "id": "join-70",
+      "a": "U2.2",
+      "b": "C5.-",
+      "edges": [
+        "wire-16",
+        "wire-27"
+      ],
+      "description": "U2 L7812: ножка 2 (GND — земля) ↔ C5 330 нФ / 50 В: второй вывод"
+    },
+    {
+      "id": "join-71",
+      "a": "U2.3",
+      "b": "C6.+",
+      "edges": [
+        "wire-15",
+        "wire-30"
+      ],
+      "description": "U2 L7812: ножка 3 (OUT — 12 В) ↔ C6 10 мкФ / 25 В: плюс"
+    },
+    {
+      "id": "join-72",
+      "a": "U2.2",
+      "b": "C6.-",
+      "edges": [
+        "wire-16",
+        "wire-32"
+      ],
+      "description": "U2 L7812: ножка 2 (GND — земля) ↔ C6 10 мкФ / 25 В: минус, полоса «−»"
+    },
+    {
+      "id": "join-73",
+      "a": "U2.3",
+      "b": "C7.+",
+      "edges": [
+        "wire-15",
+        "wire-31"
+      ],
+      "description": "U2 L7812: ножка 3 (OUT — 12 В) ↔ C7 100 нФ / 50 В: первый вывод"
+    },
+    {
+      "id": "join-74",
+      "a": "U2.2",
+      "b": "C7.-",
+      "edges": [
+        "wire-16",
+        "wire-33"
+      ],
+      "description": "U2 L7812: ножка 2 (GND — земля) ↔ C7 100 нФ / 50 В: второй вывод"
+    },
+    {
+      "id": "join-75",
+      "a": "U1.6",
+      "b": "C8.+",
+      "edges": [
+        "wire-60",
+        "wire-61",
+        "wire-62"
+      ],
+      "description": "U1 UCC27524: ножка 6 (12 В VDD) ↔ C8 47 мкФ / 25 В: плюс"
+    },
+    {
+      "id": "join-76",
+      "a": "U1.3",
+      "b": "C8.-",
+      "edges": [
+        "wire-57",
+        "wire-63"
+      ],
+      "description": "U1 UCC27524: ножка 3 (GND) ↔ C8 47 мкФ / 25 В: минус, полоса «−»"
+    },
+    {
+      "id": "join-77",
+      "a": "U1.6",
+      "b": "C9.+",
+      "edges": [
+        "wire-60",
+        "wire-61",
+        "wire-64"
+      ],
+      "description": "U1 UCC27524: ножка 6 (12 В VDD) ↔ C9 1 мкФ / 25 В: первый вывод"
+    },
+    {
+      "id": "join-78",
+      "a": "U1.3",
+      "b": "C9.-",
+      "edges": [
+        "wire-57",
+        "wire-65"
+      ],
+      "description": "U1 UCC27524: ножка 3 (GND) ↔ C9 1 мкФ / 25 В: второй вывод"
+    },
+    {
+      "id": "join-79",
+      "a": "U1.6",
+      "b": "C10.+",
+      "edges": [
+        "wire-60",
+        "wire-61",
+        "wire-66"
+      ],
+      "description": "U1 UCC27524: ножка 6 (12 В VDD) ↔ C10 100 нФ / 50 В: первый вывод"
+    },
+    {
+      "id": "join-80",
+      "a": "U1.3",
+      "b": "C10.-",
+      "edges": [
+        "wire-57",
+        "wire-67"
+      ],
+      "description": "U1 UCC27524: ножка 3 (GND) ↔ C10 100 нФ / 50 В: второй вывод"
+    },
+    {
+      "id": "join-81",
+      "a": "D3.1",
+      "b": "D3.3",
+      "edges": [
+        "wire-43",
+        "wire-44"
+      ],
+      "description": "D3 MBR60100CT: ножка 1 ↔ D3 MBR60100CT: ножка 3"
+    },
+    {
+      "id": "join-82",
+      "a": "D3.1",
+      "b": "Q1.2",
+      "edges": [
+        "wire-43",
+        "wire-42",
+        "wire-79",
+        "wire-92",
+        "wire-91"
+      ],
+      "description": "D3 MBR60100CT: ножка 1 ↔ Q1 IRFB4110: ножка 2 (D — средняя)"
+    },
+    {
+      "id": "join-83",
+      "a": "D3.2",
+      "b": "НАГРУЗКА.+",
+      "edges": [
+        "wire-45",
+        "wire-34",
+        "wire-4"
+      ],
+      "description": "D3 MBR60100CT: ножка 2 ↔ Электролизёр: плюс"
+    },
+    {
+      "id": "join-84",
+      "a": "D4.1",
+      "b": "D4.3",
+      "edges": [
+        "wire-46",
+        "wire-47"
+      ],
+      "description": "D4 MBR60100CT: ножка 1 ↔ D4 MBR60100CT: ножка 3"
+    },
+    {
+      "id": "join-85",
+      "a": "D4.1",
+      "b": "Q1.2",
+      "edges": [
+        "wire-46",
+        "wire-42",
+        "wire-79",
+        "wire-92",
+        "wire-91"
+      ],
+      "description": "D4 MBR60100CT: ножка 1 ↔ Q1 IRFB4110: ножка 2 (D — средняя)"
+    },
+    {
+      "id": "join-86",
+      "a": "D4.2",
+      "b": "НАГРУЗКА.+",
+      "edges": [
+        "wire-48",
+        "wire-34",
+        "wire-4"
+      ],
+      "description": "D4 MBR60100CT: ножка 2 ↔ Электролизёр: плюс"
+    }
+  ]
+}

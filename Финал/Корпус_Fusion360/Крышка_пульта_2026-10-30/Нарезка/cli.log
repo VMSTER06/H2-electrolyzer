@@ -1,0 +1,178 @@
+cli mode, Current OrcaSlicer Version 2.4.2
+Will start to read model file now, file count :1
+allow_multicolor_oneplate 1, allow_rotations 1 skip_modified_gcodes 0 avoid_extrusion_cali_region 0 loaded_filament_ids size 0, clone_objects size 0, skip_useless_pick 0, allow_newer_file 0, allow_mix_temp 0
+plate_to_slice=0, normative_check=1, use_first_fila_as_default=0
+read model file:S:\Projects\1Electrolizer\Финал\Корпус_Fusion360\Крышка_пульта_2026-10-30\Нарезка\geometry.3mf
+model 00000047BBCC27A0, id 3, backup_path empty, set to C:\Users\vladm\AppData\Local\Temp/orcaslicer_model/Fri_Oct_30/17_46_14#12004#3
+create /3D/Objects in "C:\Users\vladm\AppData\Local\Temp/orcaslicer_model/Fri_Oct_30/17_46_14#12004#3"
+create /Metadata in "C:\Users\vladm\AppData\Local\Temp/orcaslicer_model/Fri_Oct_30/17_46_14#12004#3"
+create /lock.txt in "C:\Users\vladm\AppData\Local\Temp/orcaslicer_model/Fri_Oct_30/17_46_14#12004#3"
+Slic3r::_BBS_3MF_Importer::_load_model_from_file:1699import 3mf IMPORT_STAGE_OPEN, m_load_restore=0
+Slic3r::_BBS_3MF_Importer::_load_model_from_file:1735import 3mf IMPORT_STAGE_READ_FILES
+Slic3r::_BBS_3MF_Importer::_load_model_from_file:1886extract 1th file [Content_Types].xml, total=3
+Slic3r::_BBS_3MF_Importer::_load_model_from_file:1991, [Content_Types].xml skipped, already parsed or a directory or not supported
+Slic3r::_BBS_3MF_Importer::_load_model_from_file:1886extract 2th file _rels/.rels, total=3
+Slic3r::_BBS_3MF_Importer::_load_model_from_file:1991, _rels/.rels skipped, already parsed or a directory or not supported
+Slic3r::_BBS_3MF_Importer::_load_model_from_file:1886extract 3th file 3D/3dmodel.model, total=3
+Slic3r::_BBS_3MF_Importer::_load_model_from_file:1991, 3D/3dmodel.model skipped, already parsed or a directory or not supported
+Slic3r::_BBS_3MF_Importer::_load_model_from_file:2001, found 3mf from other vendor, split as instance
+Slic3r::_BBS_3MF_Importer::_load_model_from_file:2043, process group colors, size 0
+Slic3r::_BBS_3MF_Importer::_load_model_from_file:2058, begin to assemble objects, size 1
+Slic3r::_BBS_3MF_Importer::_generate_volumes_new: line 4958, subobject_id 1, shared_mesh_id 1
+Slic3r::_BBS_3MF_Importer::_load_model_from_file:2258import 3mf IMPORT_STAGE_LOADING_PLATES, m_plater_data size 0, m_backup_path C:\Users\vladm\AppData\Local\Temp/orcaslicer_model/Fri_Oct_30/17_46_14#12004#3
+Slic3r::_BBS_3MF_Importer::_load_model_from_file:2367import 3mf IMPORT_STAGE_FINISH
+object Lid_1p6_no_supports_no_standoffs, id :5, from stl or other 3mf
+Slic3r::CLI::run:before load settings, file count=2
+Slic3r::CLI::run::<lambda_e4e3d71a1f1ff4e2a068f554347fe46d>::operator ():load setting file S:\fusion_enclosure\supports_2026-10-19\machine_flat.json, with rule 1
+no substitutions performed from file S:\fusion_enclosure\supports_2026-10-19\machine_flat.json
+loaded machine config S:\fusion_enclosure\supports_2026-10-19\machine_flat.json, type Creality K1 Max (0.4 nozzle), name system, inherits Creality K1 Max (0.4 nozzle), printer_model_id 
+Slic3r::CLI::run::<lambda_e4e3d71a1f1ff4e2a068f554347fe46d>::operator ():load setting file S:\Projects\1Electrolizer\Финал\Корпус_Fusion360\Крышка_пульта_2026-10-30\Нарезка\process.json, with rule 1
+no substitutions performed from file S:\Projects\1Electrolizer\Финал\Корпус_Fusion360\Крышка_пульта_2026-10-30\Нарезка\process.json
+loaded process config S:\Projects\1Electrolizer\Финал\Корпус_Fusion360\Крышка_пульта_2026-10-30\Нарезка\process.json, type Pult lid clips 1.6 no supports, name User, inherits 
+Slic3r::CLI::run::<lambda_e4e3d71a1f1ff4e2a068f554347fe46d>::operator ():load setting file S:\fusion_enclosure\supports_2026-10-19\filament_flat.json, with rule 1
+no substitutions performed from file S:\fusion_enclosure\supports_2026-10-19\filament_flat.json
+loaded filament 1 from file S:\fusion_enclosure\supports_2026-10-19\filament_flat.json, type User, name NIT PETG @System, inherits 
+current printer , new printer Creality K1 Max (0.4 nozzle), current process , new process Pult lid clips 1.6 no supports
+current printer inherits , new printer inherits Creality K1 Max (0.4 nozzle), current process inherits , new process inherits 
+index 0, new print compatible printer Creality K1 Max (0.4 nozzle)
+new printer Creality K1 Max (0.4 nozzle), inherited from Creality K1 Max (0.4 nozzle), new process Pult lid clips 1.6 no supports, inherited from  ,compatible 1
+update printer config to newest, different size 0, different_settings: 
+update_full_config: config keys count 101
+load a new printer, update all the keys, different_settings: 
+check printer cli safe params, current_printer_name , new_printer_name Creality K1 Max (0.4 nozzle), printer_model Creality K1 Max
+line 2877 , will parse file C:\Program Files\OrcaSlicer\resources/profiles/BBL/cli_config.json
+can not find key Creality K1 Max in the file
+update process config to newest, different size 0, different_settings: 
+update_full_config: config keys count 265
+load a new process, update all the keys, different_settings: 
+update filament 1's config to newest, different size 0, name NIT PETG @System, different_settings 
+skip scalar option inherits from filament 1: NIT PETG @System
+no filament colors found in projects
+total 1 models, 0 objects
+3657, remove_wrapping_detect 0, old value 0
+translate_old 0, shrink_to_new_bed 0, old bed size {300, 300, 300}
+Slic3r::GUI::PartPlateList::reset_size:before size: plate_width 0, plate_depth 0, plate_height 0
+Slic3r::GUI::PartPlateList::reset_size:after size: plate_width 300, plate_depth 300, plate_height 300
+Slic3r::GUI::PartPlate::set_pos_and_size: plate_id 0, before, origin {0,0,0}, plate_width 0, plate_depth 0, plate_height 0
+Slic3r::GUI::PartPlate::set_pos_and_size: with_instance_move 0, after, origin {0,0,0}, plate_width 300, plate_depth 300, plate_height 300
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 0 , update slice result from 0 to 0
+Slic3r::GUI::PartPlate::set_pos_and_size: plate_id 1, before, origin {0,0,0}, plate_width 0, plate_depth 0, plate_height 0
+Slic3r::GUI::PartPlate::set_pos_and_size: with_instance_move 0, after, origin {360,0,0}, plate_width 300, plate_depth 300, plate_height 300
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 1 , update slice result from 0 to 0
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 0 , update slice result from 0 to 0
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 1 , update slice result from 0 to 0
+will start transforms, commands count 0
+finished model pre-process commands
+before arrange, need_arrange=1, duplicate_count 0, filament_color_changed 0
+Arrange full params: {"min_obj_distance":0,"accuracy":1.000000,"parallel":1,"allow_rotations":1,"do_final_align":1,"allow_multi_materials_on_same_plate":1,"avoid_extrusion_cali_region":0,"is_seq_print":0,"bed_shrink_x":1.000000,"bed_shrink_y":1.000000,"brim_skirt_distance":0.000000,"clearance_height_to_rod":45.000000,"clearance_height_to_lid":101.000000,"clearance_radius":65.000000,"printable_height":300.000000,
+arrange: items selected before arranging: 1
+arrange: items unselected before arranging: 0
+start 1 th arranging...
+finished 1 th arranging...
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 0 , update slice result from 0 to 0
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 1 , update slice result from 0 to 0
+Slic3r::GUI::PartPlateList::rebuild_plates_after_arrangement:before rebuild, plates count 1, recycle_plates 1
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 0 , update slice result from 0 to 0
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 1 , update slice result from 0 to 0
+Slic3r::GUI::PartPlate::add_instance: plate 0 , m_ready_for_slice changes to 1
+Slic3r::GUI::PartPlateList::rebuild_plates_after_arrangement:after rebuild, plates count 1
+Need to slice for plate 0, total plate count 1 partplates!
+Plate 1: pre_check 1, start
+Slic3r::Model::update_print_volume_state, print_volume {0, 0, 0} to {300, 300, 300}, got 1 printable istances
+plate 1: load cached data success, go on.
+Slic3r::Print::apply, Line 1120: enter
+Slic3r::Print::apply, has_scarf_joint_seam:false
+Slic3r::Print::apply, got print_diff 98, object_diff 35, region_diff 28, set status to APPLY_STATUS_CHANGED
+Slic3r::Print::apply 1260: found full_config_diff changed.
+Slic3r::Print::apply 1590: found print object changed.
+Slic3r::Print::apply 1787: finished,  this 000002184DA79AE0, m_modified_count 1, apply_status 1, m_support_used 0
+set no_check to 0:
+printer_model_string: Creality K1 Max, is_bbl_vendor_preset 0
+start Print::process for partplate 1
+set print's callback to default_status_callback.
+Slic3r::Print::process: this=000002184DA79AE0, enter, use_cache=0, object size=1
+Slic3r::Print::process: total object counts 1 in current print, need to slice 1
+Starting the slicing process. WorkingSet: 78MB; PrivateBytes: 68MB; Pagefile(peak): 68MB(68MB)
+Slicing volumes... WorkingSet: 78MB; PrivateBytes: 68MB; Pagefile(peak): 68MB(68MB)
+Make overhang printable...
+angle 0.959931 maxHoleArea 0 tan_angle 1.42815
+layer_thickness 0.2 max_dist_from_lower_layer 0.28563
+Generating walls... WorkingSet: 97MB; PrivateBytes: 97MB; Pagefile(peak): 97MB(97MB)
+Detecting solid surfaces... WorkingSet: 117MB; PrivateBytes: 114MB; Pagefile(peak): 114MB(118MB)
+Preparing fill surfaces... WorkingSet: 121MB; PrivateBytes: 123MB; Pagefile(peak): 123MB(123MB)
+Discovering vertical shells... WorkingSet: 121MB; PrivateBytes: 123MB; Pagefile(peak): 123MB(123MB)
+Processing external surfaces... WorkingSet: 124MB; PrivateBytes: 123MB; Pagefile(peak): 123MB(123MB)
+Bridge over infill - Start WorkingSet: 124MB; PrivateBytes: 123MB; Pagefile(peak): 123MB(123MB)
+Bridge over infill - Directions and expanded surfaces computed WorkingSet: 124MB; PrivateBytes: 123MB; Pagefile(peak): 123MB(123MB)
+Bridge over infill - End WorkingSet: 124MB; PrivateBytes: 123MB; Pagefile(peak): 123MB(123MB)
+max_cantilever_dist=0
+is_support_necessary takes 0 secs.
+gcode path conflicts check takes 0 secs.
+Slicing process finished. WorkingSet: 132MB; PrivateBytes: 126MB; Pagefile(peak): 126MB(126MB)
+print::process: first time_using_cache is 0 secs.
+process finished, will export gcode temporarily to S:\Projects\1Electrolizer\Финал\Корпус_Fusion360\Крышка_пульта_2026-10-30\Нарезка/plate_1.gcode
+Slic3r::GCodeProcessorResult::reset 1688: this=00000047BBCC23E0 reset finished
+Will export G-code to S:\Projects\1Electrolizer\Финал\Корпус_Fusion360\Крышка_пульта_2026-10-30\Нарезка/plate_1.gcode soon
+Exporting G-code... WorkingSet: 133MB; PrivateBytes: 126MB; Pagefile(peak): 126MB(126MB)
+Slic3r::GCodeProcessorResult::reset 1688: this=00000047BBCC23E0 reset finished
+rename_file from S:\Projects\1Electrolizer\Финал\Корпус_Fusion360\Крышка_пульта_2026-10-30\Нарезка/plate_1.gcode.tmp to S:\Projects\1Electrolizer\Финал\Корпус_Fusion360\Крышка_пульта_2026-10-30\Нарезка/plate_1.gcode successfully
+Exporting G-code finished WorkingSet: 146MB; PrivateBytes: 140MB; Pagefile(peak): 140MB(140MB)
+export_gcode finished: time_using_cache update to 1 secs.
+Slicing result exported to S:\Projects\1Electrolizer\Финал\Корпус_Fusion360\Крышка_пульта_2026-10-30\Нарезка/plate_1.gcode
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 0 , update slice result from 0 to 1
+Slic3r::GUI::PartPlateList::store_to_3mf_structure: plate 1 before load, width 0, height 0, size 0!
+Slic3r::GUI::PartPlateList::store_to_3mf_structure: plate 1 after load, width 0, height 0, size 0!
+Slic3r::GUI::PartPlateList::store_to_3mf_structure: plate 0, gcode_filename=S:\Projects\1Electrolizer\Финал\Корпус_Fusion360\Крышка_пульта_2026-10-30\Нарезка/plate_1.gcode, with_slice_info=1, slice_valid 1, object item count 1.
+Slic3r::GUI::PartPlateList::store_to_3mf_structure:stored 1 plates!
+thumbnails stage: plate 1's thumbnail data is invalid, check the file  exist or not
+thumbnails stage: plate 1's thumbnail file also not there, need to regenerate
+thumbnails stage: plate 1's no_light_thumbnail_file  also not there, need to regenerate
+thumbnails stage: plate 1's top_file  also not there, need to regenerate
+opengl version 3.4.0
+glfwInit Success.
+error_code 65540, description: Invalid OpenGL version 3.4
+Failed to create GLFW window; skipping thumbnail rendering for CLI export
+OpenGL context unavailable; skip thumbnail generating
+plate 1 bed type: Textured PEI Plate, set from global
+will export 3mf to S:\Projects\1Electrolizer\Финал\Корпус_Fusion360\Крышка_пульта_2026-10-30\Нарезка/lid_verified.3mf
+Slic3r::_BBS_3MF_Exporter::_save_model_to_file:6050,before open zip writer, m_skip_static 0, m_save_gcode 1, m_use_loaded_id 1
+Slic3r::_BBS_3MF_Exporter::_save_model_to_file:6078, before add _add_content_types_file_to_archive
+Slic3r::_BBS_3MF_Exporter::_save_model_to_file:6092,before add thumbnails, count 0
+Slic3r::_BBS_3MF_Exporter::_save_model_to_file:6093,top&&pick thumbnails, count 0
+Slic3r::_BBS_3MF_Exporter::_save_model_to_file:6231,before add calibration thumbnails, count 0
+Slic3r::_BBS_3MF_Exporter::_save_model_to_file:6253,before add calibration boundingbox, count 1
+Slic3r::_BBS_3MF_Exporter::_save_model_to_file:6269, before add models
+Slic3r::_BBS_3MF_Exporter::_add_model_file_to_archive:6742, filename S:\Projects\1Electrolizer\Финал\Корпус_Fusion360\Крышка_пульта_2026-10-30\Нарезка/lid_verified.3mf.tmp, m_split_model 1,  sub_model 0
+bbs_3mf: save key= Application, value = BambuStudio-02.06.00.51
+bbs_3mf: save key= BambuStudio:3mfVersion, value = 1
+bbs_3mf: save key= Copyright, value = 
+bbs_3mf: save key= CreationDate, value = 
+bbs_3mf: save key= Description, value = 
+bbs_3mf: save key= Designer, value = 
+bbs_3mf: save key= DesignerCover, value = 
+bbs_3mf: save key= DesignerUserId, value = 
+bbs_3mf: save key= License, value = 
+bbs_3mf: save key= ModificationDate, value = 
+bbs_3mf: save key= Origin, value = 
+bbs_3mf: save key= Title, value = 
+Slic3r::_BBS_3MF_Exporter::_add_model_file_to_archive:6742, filename 3D/Objects/Lid_1p6_no_supports_no_standoffs_1.model, m_split_model 1,  sub_model 1
+bbs_3mf: save key= BambuStudio:3mfVersion, value = 1
+Slic3r::_BBS_3MF_Exporter::_save_model_to_file:6332, before add custom gcodes
+Slic3r::_BBS_3MF_Exporter::_save_model_to_file:6343, before add project_settings
+Slic3r::ConfigBase::save_to_json:1504, saved config to C:\Users\vladm\AppData\Local\Temp/orcaslicer_model/Fri_Oct_30/17_46_14#12004#3/_temp_1.config
+Slic3r::_BBS_3MF_Exporter::_add_file_to_archive:6517, add file C:\Users\vladm\AppData\Local\Temp/orcaslicer_model/Fri_Oct_30/17_46_14#12004#3/_temp_1.config to archive Metadata/project_settings.config
+Slic3r::_BBS_3MF_Exporter::_save_model_to_file:6358, before add project embedded settings
+Slic3r::_BBS_3MF_Exporter::_add_gcode_file_to_archive::<lambda_f5e548ca6de0f260a4cb09fd87416112>::operator ():8456, store  S:\Projects\1Electrolizer\Финал\Корпус_Fusion360\Крышка_пульта_2026-10-30\Нарезка/plate_1.gcode to 3mf Metadata/plate_1.gcode
+Slic3r::_BBS_3MF_Exporter::_save_model_to_file:6433, before add sliced info to 3mf
+Slic3r::_BBS_3MF_Exporter::_save_model_to_file:6453, before add auxiliary dir to 3mf
+create missing sub_pathC:\Users\vladm\AppData\Local\Temp/orcaslicer_model/Fri_Oct_30/17_46_14#12004#3/Auxiliaries
+Slic3r::_BBS_3MF_Exporter::_save_model_to_file:6466, before add relation file to 3mf
+Slic3r::_BBS_3MF_Exporter::_save_model_to_file:6488, finished exporting 3mf
+Project exported to S:\Projects\1Electrolizer\Финал\Корпус_Fusion360\Крышка_пульта_2026-10-30\Нарезка/lid_verified.3mf
+Slic3r::Model::remove_backup_path_if_existmodel 000002184D675D40, id 3 remove backup_path C:\Users\vladm\AppData\Local\Temp/orcaslicer_model/Fri_Oct_30/17_46_14#12004#3
+Slic3r::CLI::run, Finished
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 0 , update slice result from 1 to 0
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 0 , update slice result from 0 to 0
+Slic3r::PrintObject::~PrintObject: this=000002184D94F380, m_shared_object 0000000000000000
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 1 , update slice result from 0 to 0
+Slic3r::GUI::PartPlate::update_slice_result_valid_state: plate 1 , update slice result from 0 to 0

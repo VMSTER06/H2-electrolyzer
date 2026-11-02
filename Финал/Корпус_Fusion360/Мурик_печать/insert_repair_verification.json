@@ -1,0 +1,86 @@
+{
+  "date": "2026-10-18",
+  "scope": "Fits V3 nominal carrier and plungers; physical boards and fan unmeasured",
+  "output": "S:\\Projects\\1Electrolizer\\Финал\\Корпус_Fusion360\\Мурик_печать\\Проверено_2026-10-18\\Вставка_кнопки_LED_исправленная.stl",
+  "sha256": "9056394802ff09be77844e7a45ab7e698a2643572834d045b4ad11f3b21fe57e",
+  "size_mm": [
+    64.0,
+    50.0,
+    20.5
+  ],
+  "watertight": true,
+  "volume_mm3": 8496.392326694993,
+  "guide_holes": [
+    {
+      "center_mm": [
+        62.38000015776278,
+        52.999999999999986
+      ],
+      "size_mm": [
+        6.299999237060547,
+        6.3000030517578125
+      ]
+    },
+    {
+      "center_mm": [
+        70.00000000000013,
+        53.000000000000036
+      ],
+      "size_mm": [
+        6.3000030517578125,
+        6.3000030517578125
+      ]
+    },
+    {
+      "center_mm": [
+        77.61999975033338,
+        52.999999999999986
+      ],
+      "size_mm": [
+        6.299995422363281,
+        6.3000030517578125
+      ]
+    }
+  ],
+  "led_window_bounds_mm": [
+    59.0,
+    35.0,
+    81.0,
+    43.0
+  ],
+  "projected_led_edge_clearance_mm": [
+    2.5,
+    2.5,
+    2.5
+  ],
+  "checks": [
+    {
+      "part": "control_carrier",
+      "old_overlap_mm3": 0.0,
+      "new_overlap_mm3": 0.0
+    },
+    {
+      "part": "plunger_1",
+      "old_overlap_mm3": 30.550200810503156,
+      "new_overlap_mm3": 0.0
+    },
+    {
+      "part": "plunger_2",
+      "old_overlap_mm3": 14.973906142477063,
+      "new_overlap_mm3": 0.0
+    },
+    {
+      "part": "plunger_3",
+      "old_overlap_mm3": 34.92521621985361,
+      "new_overlap_mm3": 0.0
+    },
+    {
+      "part": "Корпус_крышка.stl",
+      "new_overlap_mm3": 0.0
+    },
+    {
+      "part": "Корпус_основание.stl",
+      "new_overlap_mm3": 0.0
+    }
+  ]
+}

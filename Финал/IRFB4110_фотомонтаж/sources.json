@@ -1,0 +1,145 @@
+{
+  "date": "2026-10-23",
+  "photos": {
+    "mos": [
+      "irfb4110.jpg",
+      4000,
+      4000,
+      "https://cdn.promelec.ru/upload/items/2021/06/03/IMG_8151.JPG"
+    ],
+    "u1": [
+      "so8b.jpg",
+      480,
+      480,
+      "https://belchip.by/product/?selected_product=54781"
+    ],
+    "regulator": [
+      "l7812-front.jpg",
+      600,
+      600,
+      "https://tienda.bricogeek.com/reguladores/654-regulador-de-tension-12v-lm7812.html"
+    ],
+    "adapter": [
+      "adapter.jpg",
+      1000,
+      667,
+      "https://learn.sparkfun.com/tutorials/8-pin-soic-to-dip-adapter-hookup-guide/all"
+    ],
+    "resistor": [
+      "resistor.jpg",
+      480,
+      480,
+      "https://belchip.by/product/?selected_product=55370"
+    ],
+    "zener": [
+      "zener-glass.jpg",
+      480,
+      480,
+      "https://belchip.by/product/?selected_product=01823"
+    ],
+    "diode": [
+      "1n4007.jpg",
+      350,
+      350,
+      "https://belchip.by/product/?selected_product=05023"
+    ],
+    "tvs24": [
+      "tvs24.jpg",
+      800,
+      800,
+      "https://belchip.by/product/?selected_product=s20_04564"
+    ],
+    "tvs33": [
+      "sm8s33a-front.jpg",
+      900,
+      900,
+      "https://www.lcsc.com/product-detail/C312613.html"
+    ],
+    "tvs33back": [
+      "sm8s33a-back.jpg",
+      900,
+      900,
+      "https://www.lcsc.com/product-detail/C312613.html"
+    ],
+    "mbr": [
+      "mbr60100ct.jpg",
+      800,
+      800,
+      "https://www.chatchaielec.com/shop/diode/2066-mbr60100ct-to-220.html"
+    ],
+    "thermostat": [
+      "thermostat.jpg",
+      480,
+      480,
+      "https://belchip.by/product/?selected_product=46939"
+    ],
+    "heatsink": [
+      "heatsink.jpg",
+      330,
+      330,
+      "https://belchip.by/product/?selected_product=34424"
+    ],
+    "esp": [
+      "../H2_board_pinout.png",
+      4480,
+      4844,
+      "Местное фото пользователя: H2_board_pinout.png"
+    ]
+  },
+  "evidence": [
+    "Part pin assignments checked against Infineon IRFB4110, TI UCC27524, ST L78 and DOWO SM8S datasheets.",
+    "Internet package photos are illustrative, not evidence of authenticity or purchased resistance value.",
+    "All crop/rotation transforms are SVG layout. Original image files are retained unchanged.",
+    "No copper layout or current/thermal validation is claimed."
+  ],
+  "sheets": [
+    {
+      "id": 1,
+      "title": "Один IRFB4110PBF: куда паять три ножки",
+      "width": 1400,
+      "height": 840
+    },
+    {
+      "id": 2,
+      "title": "UCC27524DR: реальные ножки и точки пайки",
+      "width": 1400,
+      "height": 850
+    },
+    {
+      "id": 3,
+      "title": "ESP32 → вход драйвера",
+      "width": 1400,
+      "height": 830
+    },
+    {
+      "id": 4,
+      "title": "Четыре транзистора → две силовые шины",
+      "width": 1400,
+      "height": 900
+    },
+    {
+      "id": 5,
+      "title": "Из аккумуляторных 24 В получаем 12 В для драйвера",
+      "width": 1400,
+      "height": 960
+    },
+    {
+      "id": 6,
+      "title": "Термостат и конденсаторы возле драйвера",
+      "width": 1400,
+      "height": 940
+    },
+    {
+      "id": 7,
+      "title": "Защитные диоды: не перепутай с транзисторами",
+      "width": 1400,
+      "height": 920
+    },
+    {
+      "id": 8,
+      "title": "Конденсаторы силовой шины и крепление радиатора",
+      "width": 1400,
+      "height": 900
+    }
+  ]
+}

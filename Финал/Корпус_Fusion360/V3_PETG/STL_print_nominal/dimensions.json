@@ -1,0 +1,227 @@
+[
+  {
+    "file": "base.stl",
+    "triangles": 5034,
+    "bed_dimensions_mm": [
+      140.0,
+      180.0,
+      64.0
+    ],
+    "xy_scale": [
+      1.0,
+      1.0
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  },
+  {
+    "file": "control_carrier.stl",
+    "triangles": 688,
+    "bed_dimensions_mm": [
+      60.0,
+      35.5,
+      7.5
+    ],
+    "xy_scale": [
+      1.0,
+      1.0
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  },
+  {
+    "file": "control_fascia.stl",
+    "triangles": 2340,
+    "bed_dimensions_mm": [
+      64.0,
+      50.0,
+      20.5
+    ],
+    "xy_scale": [
+      1.0,
+      1.0
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": true
+  },
+  {
+    "file": "lid.stl",
+    "triangles": 11740,
+    "bed_dimensions_mm": [
+      140.0,
+      180.0,
+      15.8
+    ],
+    "xy_scale": [
+      1.0,
+      1.0
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": true
+  },
+  {
+    "file": "main_clamp_1.stl",
+    "triangles": 448,
+    "bed_dimensions_mm": [
+      12.5,
+      10.0,
+      2.5
+    ],
+    "xy_scale": [
+      1.0,
+      1.0
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  },
+  {
+    "file": "main_clamp_2.stl",
+    "triangles": 448,
+    "bed_dimensions_mm": [
+      12.5,
+      10.0,
+      2.5
+    ],
+    "xy_scale": [
+      1.0,
+      1.0
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  },
+  {
+    "file": "main_clamp_3.stl",
+    "triangles": 448,
+    "bed_dimensions_mm": [
+      12.5,
+      10.0,
+      2.5
+    ],
+    "xy_scale": [
+      1.0,
+      1.0
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  },
+  {
+    "file": "main_clamp_4.stl",
+    "triangles": 448,
+    "bed_dimensions_mm": [
+      12.5,
+      10.0,
+      2.5
+    ],
+    "xy_scale": [
+      1.0,
+      1.0
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  },
+  {
+    "file": "plunger_1.stl",
+    "triangles": 1034,
+    "bed_dimensions_mm": [
+      7.0,
+      6.99533,
+      11.15
+    ],
+    "xy_scale": [
+      1.0,
+      1.0
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": true
+  },
+  {
+    "file": "plunger_2.stl",
+    "triangles": 1034,
+    "bed_dimensions_mm": [
+      7.0,
+      6.99533,
+      11.15
+    ],
+    "xy_scale": [
+      1.0,
+      1.0
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": true
+  },
+  {
+    "file": "plunger_3.stl",
+    "triangles": 1034,
+    "bed_dimensions_mm": [
+      7.0,
+      6.99533,
+      11.15
+    ],
+    "xy_scale": [
+      1.0,
+      1.0
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": true
+  },
+  {
+    "file": "relay_clamp_1.stl",
+    "triangles": 432,
+    "bed_dimensions_mm": [
+      14.0,
+      10.0,
+      3.0
+    ],
+    "xy_scale": [
+      1.0,
+      1.0
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  },
+  {
+    "file": "relay_clamp_2.stl",
+    "triangles": 432,
+    "bed_dimensions_mm": [
+      14.0,
+      10.0,
+      3.0
+    ],
+    "xy_scale": [
+      1.0,
+      1.0
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  },
+  {
+    "file": "relay_clamp_3.stl",
+    "triangles": 432,
+    "bed_dimensions_mm": [
+      14.0,
+      10.0,
+      3.0
+    ],
+    "xy_scale": [
+      1.0,
+      1.0
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  },
+  {
+    "file": "relay_clamp_4.stl",
+    "triangles": 432,
+    "bed_dimensions_mm": [
+      14.0,
+      10.0,
+      3.0
+    ],
+    "xy_scale": [
+      1.0,
+      1.0
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  }
+]

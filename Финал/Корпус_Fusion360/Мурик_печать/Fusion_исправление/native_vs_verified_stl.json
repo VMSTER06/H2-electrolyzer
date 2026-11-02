@@ -1,0 +1,62 @@
+[
+  {
+    "part": "base",
+    "watertight": true,
+    "bounds_mm": [
+      [
+        -1.4432899320127035e-14,
+        -5.551115123125783e-16,
+        0.0
+      ],
+      [
+        140.0,
+        180.0,
+        64.0
+      ]
+    ],
+    "native_volume_mm3": 211765.6091744931,
+    "reference_volume_mm3": 211765.6091744929,
+    "symmetric_difference_mm3": 6.658673612491839e-12,
+    "native_triangles": 252864
+  },
+  {
+    "part": "lid",
+    "watertight": true,
+    "bounds_mm": [
+      [
+        -1.4432899320127035e-14,
+        0.0,
+        51.20000076293945
+      ],
+      [
+        140.0,
+        180.0,
+        67.0
+      ]
+    ],
+    "native_volume_mm3": 64130.63292546155,
+    "reference_volume_mm3": 64130.63426634014,
+    "symmetric_difference_mm3": 0.001992884706927119,
+    "native_triangles": 262000
+  },
+  {
+    "part": "fascia",
+    "watertight": true,
+    "bounds_mm": [
+      [
+        38.0,
+        22.0,
+        49.0
+      ],
+      [
+        102.0,
+        72.0,
+        69.5
+      ]
+    ],
+    "native_volume_mm3": 8496.29925976063,
+    "reference_volume_mm3": 8496.392326694993,
+    "symmetric_difference_mm3": 0.09376701187549467,
+    "native_triangles": 76444
+  }
+]

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:ns1="http://schemas.android.com/tools">
+    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar" ns1:targetApi="27">false</item>
+        <item name="android:statusBarColor">#171A18</item>
+        <item name="android:navigationBarColor">#171A18</item>
+        <item name="android:windowBackground">#171A18</item>
+        <item name="android:colorAccent">#E95C26</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+</resources>

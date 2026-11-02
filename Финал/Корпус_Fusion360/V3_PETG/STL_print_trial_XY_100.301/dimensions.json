@@ -1,0 +1,227 @@
+[
+  {
+    "file": "base.stl",
+    "triangles": 5034,
+    "bed_dimensions_mm": [
+      140.42126,
+      180.54162,
+      64.0
+    ],
+    "xy_scale": [
+      1.0030090270812437,
+      1.0030090270812437
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  },
+  {
+    "file": "control_carrier.stl",
+    "triangles": 688,
+    "bed_dimensions_mm": [
+      60.18054,
+      35.60682,
+      7.5
+    ],
+    "xy_scale": [
+      1.0030090270812437,
+      1.0030090270812437
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  },
+  {
+    "file": "control_fascia.stl",
+    "triangles": 2340,
+    "bed_dimensions_mm": [
+      64.19258,
+      50.15045,
+      20.5
+    ],
+    "xy_scale": [
+      1.0030090270812437,
+      1.0030090270812437
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": true
+  },
+  {
+    "file": "lid.stl",
+    "triangles": 11740,
+    "bed_dimensions_mm": [
+      140.42126,
+      180.54162,
+      15.8
+    ],
+    "xy_scale": [
+      1.0030090270812437,
+      1.0030090270812437
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": true
+  },
+  {
+    "file": "main_clamp_1.stl",
+    "triangles": 448,
+    "bed_dimensions_mm": [
+      12.53761,
+      10.03009,
+      2.5
+    ],
+    "xy_scale": [
+      1.0030090270812437,
+      1.0030090270812437
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  },
+  {
+    "file": "main_clamp_2.stl",
+    "triangles": 448,
+    "bed_dimensions_mm": [
+      12.53761,
+      10.03009,
+      2.5
+    ],
+    "xy_scale": [
+      1.0030090270812437,
+      1.0030090270812437
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  },
+  {
+    "file": "main_clamp_3.stl",
+    "triangles": 448,
+    "bed_dimensions_mm": [
+      12.53761,
+      10.03009,
+      2.5
+    ],
+    "xy_scale": [
+      1.0030090270812437,
+      1.0030090270812437
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  },
+  {
+    "file": "main_clamp_4.stl",
+    "triangles": 448,
+    "bed_dimensions_mm": [
+      12.53761,
+      10.03009,
+      2.5
+    ],
+    "xy_scale": [
+      1.0030090270812437,
+      1.0030090270812437
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  },
+  {
+    "file": "plunger_1.stl",
+    "triangles": 1034,
+    "bed_dimensions_mm": [
+      7.02106,
+      7.01638,
+      11.15
+    ],
+    "xy_scale": [
+      1.0030090270812437,
+      1.0030090270812437
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": true
+  },
+  {
+    "file": "plunger_2.stl",
+    "triangles": 1034,
+    "bed_dimensions_mm": [
+      7.02106,
+      7.01638,
+      11.15
+    ],
+    "xy_scale": [
+      1.0030090270812437,
+      1.0030090270812437
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": true
+  },
+  {
+    "file": "plunger_3.stl",
+    "triangles": 1034,
+    "bed_dimensions_mm": [
+      7.02106,
+      7.01638,
+      11.15
+    ],
+    "xy_scale": [
+      1.0030090270812437,
+      1.0030090270812437
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": true
+  },
+  {
+    "file": "relay_clamp_1.stl",
+    "triangles": 432,
+    "bed_dimensions_mm": [
+      14.04213,
+      10.03009,
+      3.0
+    ],
+    "xy_scale": [
+      1.0030090270812437,
+      1.0030090270812437
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  },
+  {
+    "file": "relay_clamp_2.stl",
+    "triangles": 432,
+    "bed_dimensions_mm": [
+      14.04213,
+      10.03009,
+      3.0
+    ],
+    "xy_scale": [
+      1.0030090270812437,
+      1.0030090270812437
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  },
+  {
+    "file": "relay_clamp_3.stl",
+    "triangles": 432,
+    "bed_dimensions_mm": [
+      14.04213,
+      10.03009,
+      3.0
+    ],
+    "xy_scale": [
+      1.0030090270812437,
+      1.0030090270812437
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  },
+  {
+    "file": "relay_clamp_4.stl",
+    "triangles": 432,
+    "bed_dimensions_mm": [
+      14.04213,
+      10.03009,
+      3.0
+    ],
+    "xy_scale": [
+      1.0030090270812437,
+      1.0030090270812437
+    ],
+    "z_scale": 1.0,
+    "flipped_about_x": false
+  }
+]

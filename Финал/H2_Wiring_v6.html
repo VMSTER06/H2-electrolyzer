@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>H2 PRO v6 — схема подключения мозга и пульта</title>
+<style>
+  :root{--bg:#f4f7fb;--paper:#fff;--ink:#152235;--muted:#53647a;--line:#ced9e6;--brain:#1762a4;--remote:#7650a8;--power:#bd6620;--safe:#277354;--danger:#a82e38}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,"Segoe UI",Arial,sans-serif}
+  main{max-width:1240px;margin:auto;padding:26px 26px 60px} h1{font-size:30px;line-height:1.15;margin:0 0 6px} h2{font-size:22px;margin:0 0 12px} h3{font-size:17px;margin:22px 0 8px}
+  p{margin:8px 0} .lead{color:var(--muted);margin-bottom:20px}.version{display:inline-block;font-size:13px;font-weight:700;color:#fff;background:var(--brain);padding:3px 9px;border-radius:12px;vertical-align:middle;margin-left:8px}
+  .notice{background:#fff5f5;border:2px solid #df9da5;border-left:7px solid var(--danger);padding:13px 16px;border-radius:9px;margin:16px 0 20px}.notice strong{color:var(--danger)}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin:18px 0;box-shadow:0 3px 14px #1e42600c}
+  .tag{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 8px;border-radius:6px;color:#fff;vertical-align:3px;margin-right:7px}.tag.brain{background:var(--brain)}.tag.remote{background:var(--remote)}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}.small{font-size:13px;color:var(--muted)}
+  .diagram{width:100%;height:auto;display:block;background:#fbfdff;border:1px solid var(--line);border-radius:10px}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:8px 0 12px} th{background:#e9f0f7;text-align:left} th,td{border:1px solid var(--line);padding:7px 9px;vertical-align:top} td:first-child{font-family:Consolas,monospace;font-weight:700;white-space:nowrap;width:110px} td:nth-child(2){width:230px} tr:nth-child(even) td{background:#fafcfe}
+  .steps{margin:5px 0 0;padding-left:21px}.steps li{margin:5px 0}.circuit{background:#f7faff;border:1px solid var(--line);border-radius:10px;padding:12px 15px;margin:10px 0}.circuit b{color:var(--brain)}
+  code{font-family:Consolas,monospace;background:#eef3f8;padding:1px 4px;border-radius:4px}.legend{font-size:12px;color:var(--muted);margin-top:6px}.warn{color:var(--danger);font-weight:700}
+  .footer{font-size:12px;color:var(--muted);padding:10px 0}
+  @media(max-width:850px){main{padding:16px}.cols{grid-template-columns:1fr}.card{padding:15px}table{font-size:12px}th,td{padding:5px}td:first-child{width:auto}}
+  @media print{@page{size:A4 portrait;margin:11mm}body{background:#fff;font-size:11px}main{padding:0;max-width:none}.card{box-shadow:none;break-inside:avoid;margin:10px 0;padding:12px}.cols{gap:10px}h1{font-size:23px}h2{font-size:17px}h3{font-size:13px}table{font-size:10px}th,td{padding:4px 5px}.notice{padding:7px 9px}.print-break{break-before:page}.diagram{max-height:190mm}}
+</style>
+</head>
+<body><main>
+  <h1>H2 PRO — схема подключения <span class="version">v6 + восьмая кнопка</span></h1>
+  <p class="lead">Основана на текущих прошивках <code>H2_Brain_v5</code> и <code>H2_Remote_v5</code>. Одинаковые номера GPIO мозга и пульта относятся к разным ESP32.</p>
+  <div class="notice"><strong>Перед подачей силового питания:</strong> уберите электролизёр со старого реле GPIO 25. Теперь GPIO 25 включает выводной вентилятор; электролизёр работает через MOSFET на GPIO 32. Корпусный вентилятор питается напрямую и не управляется ESP32. При неисправном датчике температуры выводной вентилятор включается автоматически.</div>
+
+  <section class="card">
+    <h2><span class="tag brain">Мозг</span> ESP32 DevKit v1</h2>
+    <svg class="diagram" viewBox="0 0 1120 595" role="img" aria-label="Блок схема подключения мозга v6">
+      <defs><style>.box{fill:#fff;stroke:#aebed0;stroke-width:2}.esp{fill:#e5f1fb;stroke:#1762a4;stroke-width:3}.wire{fill:none;stroke-width:3}.sig{stroke:#1762a4}.load{stroke:#bd6620}.data{stroke:#277354}.label{font:17px system-ui,Arial;fill:#152235}.sub{font:13px system-ui,Arial;fill:#53647a}.pin{font:bold 14px Consolas,monospace;fill:#1762a4}.title{font:bold 21px system-ui,Arial;fill:#152235}</style></defs>
+      <rect class="esp" x="430" y="36" width="260" height="520" rx="18"/><text class="title" x="560" y="76" text-anchor="middle">ESP32 МОЗГ</text><text class="sub" x="560" y="99" text-anchor="middle">общая земля для всех цепей</text>
+      <rect class="box" x="28" y="35" width="255" height="94" rx="10"/><text class="label" x="45" y="67">nRF24L01+</text><text class="sub" x="45" y="91">GPIO 4, 5, 18, 19, 23</text><text class="sub" x="45" y="112">3,3 В · 470 мкФ</text><path class="wire data" d="M283 80 H430"/>
+      <rect class="box" x="28" y="165" width="255" height="90" rx="10"/><text class="label" x="45" y="195">OLED + MPU6050</text><text class="sub" x="45" y="219">GPIO 21 SDA · 22 SCL</text><text class="sub" x="45" y="239">3,3 В · общая I²C-шина</text><path class="wire data" d="M283 210 H430"/>
+      <rect class="box" x="28" y="288" width="255" height="83" rx="10"/><text class="label" x="45" y="318">GPIO 36 · Давление</text><text class="sub" x="45" y="342">0,5–4,5 В через делитель</text><path class="wire data" d="M283 330 H430"/>
+      <rect class="box" x="28" y="405" width="255" height="112" rx="10"/><text class="label" x="45" y="434">Температура</text><text class="sub" x="45" y="459">GPIO 15 · DS18B20</text><text class="sub" x="45" y="481">GPIO 34 · NTC (вариант)</text><path class="wire data" d="M283 460 H430"/>
+      <rect class="box" x="830" y="35" width="263" height="91" rx="10"/><text class="label" x="849" y="67">GPIO 32 · Электролизёр</text><text class="sub" x="849" y="91">MOSFET · затвор 10 кОм к GND</text><path class="wire load" d="M690 81 H830"/>
+      <rect class="box" x="830" y="156" width="263" height="93" rx="10"/><text class="label" x="849" y="188">GPIO 25 · Выводной</text><text class="sub" x="849" y="212">вентилятор · реле COM–NO</text><path class="wire load" d="M690 202 H830"/>
+      <rect class="box" x="830" y="277" width="263" height="93" rx="10"/><text class="label" x="849" y="309">Вентилятор корпуса</text><text class="sub" x="849" y="333">питание напрямую · без GPIO</text>
+      <rect class="box" x="830" y="398" width="263" height="89" rx="10"/><text class="label" x="849" y="428">GPIO 16 · Зуммер</text><text class="sub" x="849" y="452">пассивный · NPN · база 1 кОм</text><path class="wire load" d="M690 442 H830"/>
+      <text class="pin" x="458" y="159">26 → реле клапана</text><text class="pin" x="458" y="185">27 → реле поджига</text><text class="pin" x="458" y="256">13 → POWER</text><text class="pin" x="458" y="280">14 → LOCK</text><text class="pin" x="458" y="304">33 → PURGE</text><text class="pin" x="458" y="369">17 → LED POWER</text><text class="pin" x="458" y="393">12 → LED LOCK</text><text class="pin" x="458" y="417">2 → LED MODE</text><text class="sub" x="443" y="525">GPIO 0 свободен, не используется</text>
+    </svg>
+    <p class="legend">Синие линии — сигналы ESP32; зелёные — датчики и шины; оранжевые — силовые исполнительные цепи. Линии показывают назначения сигналов, подробные цепи питания приведены ниже.</p>
+    <table><thead><tr><th>GPIO</th><th>Что подключить</th><th>Важная деталь</th></tr></thead><tbody>
+      <tr><td>32</td><td>MOSFET электролизёра</td><td>Активный HIGH; затвор через 100 Ом, 10 кОм затвор–GND. Электролизёр не подключать к реле GPIO 25.</td></tr>
+      <tr><td>25</td><td>Реле выводного вентилятора</td><td>Контакты COM–NO коммутируют питание выводного вентилятора. Корпусный питается напрямую.</td></tr>
+      <tr><td>26 / 27</td><td>Реле клапана / пьезоподжига</td><td>Сохранены с v5. Полярность всех реле задана <code>RELAY_ACTIVE_LOW</code> (сейчас <code>false</code>).</td></tr>
+      <tr><td>16</td><td>Пассивный зуммер</td><td>Через NPN-ключ и резистор базы 1 кОм; ток зуммера не пускать через GPIO.</td></tr>
+      <tr><td>17</td><td>LED POWER</td><td>Прежнее подключение: GPIO 17 → 220 Ом → анод LED, катод → GND. Перепаивать не нужно.</td></tr>
+      <tr><td>12 / 2</td><td>LED LOCK / LED MODE</td><td>GPIO → 220 Ом → анод LED; катод → GND. GPIO 12 и 2 влияют на загрузку ESP32.</td></tr>
+      <tr><td>13 / 14 / 33</td><td>Кнопки POWER / LOCK / PURGE</td><td>Второй контакт каждой на GND, внутренняя подтяжка включена в прошивке.</td></tr>
+      <tr><td>36</td><td>Выход датчика давления</td><td>Для выхода 0,5–4,5 В: сигнал → 10 кОм → GPIO 36 → 20 кОм → GND; затем калибровка в вебе.</td></tr>
+      <tr><td>15 / 34</td><td>DS18B20 / NTC</td><td>Выбирается один тип в прошивке. Сейчас выбран DS18B20: DATA GPIO 15, подтяжка 4,7 кОм к 3,3 В.</td></tr>
+      <tr><td>4 / 5 / 18 / 19 / 23</td><td>nRF24 CE / CSN / SCK / MISO / MOSI</td><td>Только 3,3 В; конденсатор 470 мкФ у радиомодуля.</td></tr>
+      <tr><td>21 / 22</td><td>OLED и MPU6050 SDA / SCL</td><td>Общая шина I²C, питание модулей от 3,3 В.</td></tr>
+    </tbody></table>
+  </section>
+
+  <section class="card print-break">
+    <h2><span class="tag remote">Пульт</span> ESP32 DevKit v1</h2>
+    <svg class="diagram" viewBox="0 0 1120 478" role="img" aria-label="Блок схема подключения пульта v6">
+      <defs><style>.box{fill:#fff;stroke:#aebed0;stroke-width:2}.esp{fill:#f1eafa;stroke:#7650a8;stroke-width:3}.wire{fill:none;stroke-width:3;stroke:#7650a8}.data{stroke:#277354}.label{font:18px system-ui,Arial;fill:#152235}.sub{font:13px system-ui,Arial;fill:#53647a}.pin{font:bold 15px Consolas,monospace;fill:#7650a8}.title{font:bold 21px system-ui,Arial;fill:#152235}</style></defs>
+      <rect class="esp" x="416" y="28" width="288" height="416" rx="18"/><text class="title" x="560" y="68" text-anchor="middle">ESP32 ПУЛЬТ</text><text class="sub" x="560" y="91" text-anchor="middle">восемь физических кнопок</text>
+      <rect class="box" x="30" y="37" width="255" height="90" rx="10"/><text class="label" x="46" y="69">nRF24L01+</text><text class="sub" x="46" y="95">GPIO 4, 5, 18, 19, 23</text><text class="sub" x="46" y="114">3,3 В · 470 мкФ</text><path class="wire data" d="M285 82 H416"/>
+      <rect class="box" x="30" y="165" width="255" height="87" rx="10"/><text class="label" x="46" y="198">OLED SSD1306</text><text class="sub" x="46" y="222">GPIO 21 SDA · 22 SCL</text><text class="sub" x="46" y="240">3,3 В · адрес 0x3C</text><path class="wire data" d="M285 208 H416"/>
+      <rect class="box" x="30" y="301" width="255" height="110" rx="10"/><text class="label" x="46" y="332">Семь старых кнопок</text><text class="sub" x="46" y="358">16, 17, 25, 26, 27, 32, 33</text><text class="sub" x="46" y="380">вторые контакты → GND</text><path class="wire" d="M285 355 H416"/>
+      <rect class="box" x="832" y="37" width="258" height="91" rx="10"/><text class="label" x="848" y="69">GPIO 34 · МЕЛОДИЯ</text><text class="sub" x="848" y="96">10 кОм к 3,3 В; кнопка на GND</text><path class="wire" d="M704 82 H832"/>
+      <rect class="box" x="832" y="162" width="258" height="93" rx="10"/><text class="label" x="848" y="194">GPIO 12 · LED СТАТУС</text><text class="sub" x="848" y="222">220 Ом → LED → GND</text><path class="wire" d="M704 208 H832"/>
+      <rect class="box" x="832" y="288" width="258" height="94" rx="10"/><text class="label" x="848" y="320">GPIO 2 · Зуммер</text><text class="sub" x="848" y="348">NPN · база через 1 кОм</text><path class="wire" d="M704 334 H832"/>
+      <text class="pin" x="445" y="154">14 → LED TX</text><text class="pin" x="445" y="183">13 → LED питания</text><text class="sub" x="560" y="415" text-anchor="middle">GPIO 33 TARGET−: выход из сна</text>
+    </svg>
+    <table><thead><tr><th>GPIO</th><th>Что подключить</th><th>Важная деталь</th></tr></thead><tbody>
+      <tr><td>34</td><td>Новая кнопка МЕЛОДИЯ</td><td>Один контакт → GPIO 34, второй → GND; <strong>внешний</strong> резистор 10 кОм между GPIO 34 и 3,3 В. Внутренней подтяжки у GPIO 34 нет.</td></tr>
+      <tr><td>16 / 17 / 25 / 26</td><td>POWER / LOCK / РЕПУЛЬСОР / ручная подача</td><td>Кнопки замыкают вывод на GND; внутренняя подтяжка включена.</td></tr>
+      <tr><td>27 / 32 / 33</td><td>Поджиг / цель +0,5 / цель −0,5</td><td>GPIO 33 — единственная кнопка пробуждения из глубокого сна.</td></tr>
+      <tr><td>12</td><td>Новый LED статуса</td><td>GPIO 12 → 220 Ом → анод LED, катод → GND. Не подтягивать GPIO 12 к 3,3 В при загрузке.</td></tr>
+      <tr><td>2</td><td>Пассивный зуммер</td><td>Через NPN-ключ, как у мозга. Встроенный синий LED платы может мигать в такт звуку.</td></tr>
+      <tr><td>14 / 13</td><td>LED передачи / питания</td><td>GPIO → 220 Ом → LED → GND.</td></tr>
+      <tr><td>4 / 5 / 18 / 19 / 23</td><td>nRF24 CE / CSN / SCK / MISO / MOSI</td><td>Только 3,3 В; конденсатор 470 мкФ у радиомодуля.</td></tr>
+      <tr><td>21 / 22</td><td>OLED SDA / SCL</td><td>Питание OLED от 3,3 В.</td></tr>
+    </tbody></table>
+  </section>
+
+  <section class="card">
+    <h2>Точные цепи новых узлов</h2>
+    <div class="cols">
+      <div class="circuit"><h3>MOSFET электролизёра</h3><p><code>GPIO 32 → 100 Ом → затвор</code><br><code>затвор → 10 кОм → GND</code><br><code>исток → GND силового источника</code><br><code>сток → минус электролизёра</code><br><code>плюс электролизёра → + питания через предохранитель</code></p><p class="small">Использовать логический MOSFET, полностью открывающийся от 3,3 В. Земля источника и ESP32 общая. Силовой ток не пропускать через плату ESP32.</p></div>
+      <div class="circuit"><h3>Два вентилятора</h3><p><code>Корпусный: + → + питания, − → GND источника</code><br><code>GPIO 25 → IN реле выводного</code><br><code>+12 В → COM → NO → плюс выводного</code><br><code>минус выводного → GND 12 В</code></p><p class="small">Подавать на корпусный вентилятор напряжение по его паспорту. Модуль реле питается по своему паспорту (для модуля 5 В — от 5 В), земля управления общая с ESP32. Реле активно уровнем HIGH (<code>RELAY_ACTIVE_LOW false</code>).</p></div>
+      <div class="circuit"><h3>Зуммер мозга и пульта</h3><p><code>GPIO 16 (мозг) / GPIO 2 (пульт) → 1 кОм → база NPN</code><br><code>эмиттер NPN → GND</code><br><code>коллектор NPN → минус зуммера</code><br><code>плюс зуммера → питание по паспорту зуммера</code></p><p class="small">Для магнитного зуммера: диод 1N4148 параллельно зуммеру, катод к плюсу. Для мелодий нужен пассивный зуммер.</p></div>
+      <div class="circuit"><h3>Новая кнопка пульта</h3><p><code>3,3 В → 10 кОм → GPIO 34 → кнопка → GND</code></p><p class="small">При отпускании на входе HIGH; при нажатии LOW. Первое нажатие запускает на пульте телефонную тему «Мобильник» из «Бумера» по кругу, повторное останавливает. Мозг и загрузка файла для этой кнопки не нужны.</p></div>
+    </div>
+    <p class="warn">Примечание: если DS18B20 не подключён или неисправен, выводной вентилятор в режимах «Авто» и «При работе» включается для безопасного охлаждения. Корпусный работает всегда при поданном питании. Пока GPIO 25 занят старым реле электролизёра, силовое питание включать нельзя.</p>
+  </section>
+  <p class="footer">Схема сверена с текущими определениями GPIO в прошивках. Веб-интерфейс мозга: 192.168.4.1. Оба устройства должны быть прошиты совместимым протоколом v6.</p>
+</main></body></html>

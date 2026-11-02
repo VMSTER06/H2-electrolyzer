@@ -1,0 +1,82 @@
+[
+  {
+    "name": "01 BASE - PCB at bottom",
+    "file": "C:\\Users\\vladm\\AppData\\Local\\Temp\\murik_native_fix_20261018\\breps\\BREP.931f02f8-215b-4d47-8d7f-e05df596bb93.smb",
+    "blob": "BREP.931f02f8-215b-4d47-8d7f-e05df596bb93.smbh"
+  },
+  {
+    "name": "02 LID - LCD buttons LEDs",
+    "file": "C:\\Users\\vladm\\AppData\\Local\\Temp\\murik_native_fix_20261018\\breps\\BREP.1fbde602-fdd2-488c-ad85-30080d6ac6da.smb",
+    "blob": "BREP.1fbde602-fdd2-488c-ad85-30080d6ac6da.smbh"
+  },
+  {
+    "name": "V2 MAIN clamp 1",
+    "file": "C:\\Users\\vladm\\AppData\\Local\\Temp\\murik_native_fix_20261018\\breps\\BREP.d3609cf9-e833-47d5-ab78-ba1ee6eada64.smb",
+    "blob": "BREP.d3609cf9-e833-47d5-ab78-ba1ee6eada64.smbh"
+  },
+  {
+    "name": "V2 MAIN clamp 2",
+    "file": "C:\\Users\\vladm\\AppData\\Local\\Temp\\murik_native_fix_20261018\\breps\\BREP.821de9cc-f5c4-404a-b1dc-618349af8e14.smb",
+    "blob": "BREP.821de9cc-f5c4-404a-b1dc-618349af8e14.smbh"
+  },
+  {
+    "name": "V2 MAIN clamp 3",
+    "file": "C:\\Users\\vladm\\AppData\\Local\\Temp\\murik_native_fix_20261018\\breps\\BREP.356b0f81-d16a-407a-953a-7add6f92d866.smb",
+    "blob": "BREP.356b0f81-d16a-407a-953a-7add6f92d866.smbh"
+  },
+  {
+    "name": "V2 MAIN clamp 4",
+    "file": "C:\\Users\\vladm\\AppData\\Local\\Temp\\murik_native_fix_20261018\\breps\\BREP.f2fa6639-315f-47e2-bc38-17fd5b88494c.smb",
+    "blob": "BREP.f2fa6639-315f-47e2-bc38-17fd5b88494c.smbh"
+  },
+  {
+    "name": "V2 removable control fascia",
+    "file": "C:\\Users\\vladm\\AppData\\Local\\Temp\\murik_native_fix_20261018\\breps\\BREP.cc7675d2-31e2-4165-877f-16e6b7b35efc.smb",
+    "blob": "BREP.cc7675d2-31e2-4165-877f-16e6b7b35efc.smbh"
+  },
+  {
+    "name": "V2 control PCB removable carrier",
+    "file": "C:\\Users\\vladm\\AppData\\Local\\Temp\\murik_native_fix_20261018\\breps\\BREP.f238745e-2da1-4d9b-8da6-c25c45004b27.smb",
+    "blob": "BREP.f238745e-2da1-4d9b-8da6-c25c45004b27.smbh"
+  },
+  {
+    "name": "REF main board 90x80x20 - photo estimate",
+    "file": "C:\\Users\\vladm\\AppData\\Local\\Temp\\murik_native_fix_20261018\\breps\\BREP.4ad3ea80-6df1-4c74-ac02-67f9e854b880.smb",
+    "blob": "BREP.4ad3ea80-6df1-4c74-ac02-67f9e854b880.smbh"
+  },
+  {
+    "name": "REF actual combined buttons LEDs PCB - estimated",
+    "file": "C:\\Users\\vladm\\AppData\\Local\\Temp\\murik_native_fix_20261018\\breps\\BREP.247e1023-cefc-4b22-b7e5-d272e6c0d5ec.smb",
+    "blob": "BREP.247e1023-cefc-4b22-b7e5-d272e6c0d5ec.smbh"
+  },
+  {
+    "name": "V3 RELAY adjustable clamp 1",
+    "file": "C:\\Users\\vladm\\AppData\\Local\\Temp\\murik_native_fix_20261018\\breps\\BREP.0d268935-abca-4436-b320-0bbabff0ec5c.smb",
+    "blob": "BREP.0d268935-abca-4436-b320-0bbabff0ec5c.smbh"
+  },
+  {
+    "name": "V3 RELAY adjustable clamp 2",
+    "file": "C:\\Users\\vladm\\AppData\\Local\\Temp\\murik_native_fix_20261018\\breps\\BREP.849ec71a-c422-40fa-848a-d28eb3e795cc.smb",
+    "blob": "BREP.849ec71a-c422-40fa-848a-d28eb3e795cc.smbh"
+  },
+  {
+    "name": "V3 RELAY adjustable clamp 3",
+    "file": "C:\\Users\\vladm\\AppData\\Local\\Temp\\murik_native_fix_20261018\\breps\\BREP.4acd38ed-1b7c-4e51-aa59-7ed742e84e78.smb",
+    "blob": "BREP.4acd38ed-1b7c-4e51-aa59-7ed742e84e78.smbh"
+  },
+  {
+    "name": "V3 RELAY adjustable clamp 4",
+    "file": "C:\\Users\\vladm\\AppData\\Local\\Temp\\murik_native_fix_20261018\\breps\\BREP.7f167c2c-b72e-4238-b7f4-959441fdd8de.smb",
+    "blob": "BREP.7f167c2c-b72e-4238-b7f4-959441fdd8de.smbh"
+  },
+  {
+    "name": "REF relay envelope 75.5x55x20 - variant not confirmed",
+    "file": "C:\\Users\\vladm\\AppData\\Local\\Temp\\murik_native_fix_20261018\\breps\\BREP.f6cc9e5a-6b5e-4f14-a34e-8628c4db7b92.smb",
+    "blob": "BREP.f6cc9e5a-6b5e-4f14-a34e-8628c4db7b92.smbh"
+  },
+  {
+    "name": "REF LCD2004 98x60 - 93x55 mounting - conservative thickness",
+    "file": "C:\\Users\\vladm\\AppData\\Local\\Temp\\murik_native_fix_20261018\\breps\\BREP.c0c2ab76-905d-47c6-9c15-b2819fbe3ee8.smb",
+    "blob": "BREP.c0c2ab76-905d-47c6-9c15-b2819fbe3ee8.smbh"
+  }
+]

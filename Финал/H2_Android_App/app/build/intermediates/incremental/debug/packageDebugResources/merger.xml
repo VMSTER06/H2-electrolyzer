@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merger version="3" xmlns:ns1="http://schemas.android.com/tools"><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="main$Generated" generated="true" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="S:\Projects\1Electrolizer\Финал\H2_Android_App\app\src\main\res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="main" generated-set="main$Generated" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="S:\Projects\1Electrolizer\Финал\H2_Android_App\app\src\main\res"><file name="ic_launcher" path="S:\Projects\1Electrolizer\Финал\H2_Android_App\app\src\main\res\drawable\ic_launcher.xml" qualifiers="" type="drawable"/><file name="ic_stat_h2" path="S:\Projects\1Electrolizer\Финал\H2_Android_App\app\src\main\res\drawable\ic_stat_h2.xml" qualifiers="" type="drawable"/><file path="S:\Projects\1Electrolizer\Финал\H2_Android_App\app\src\main\res\values\styles.xml" qualifiers=""><style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar" ns1:targetApi="27">true</item>
+        <item name="android:statusBarColor">#F1F0EC</item>
+        <item name="android:navigationBarColor">#F1F0EC</item>
+        <item name="android:windowBackground">#F1F0EC</item>
+        <item name="android:colorAccent">#E95C26</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style></file><file path="S:\Projects\1Electrolizer\Финал\H2_Android_App\app\src\main\res\values-night\styles.xml" qualifiers="night-v8"><style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar" ns1:targetApi="27">false</item>
+        <item name="android:statusBarColor">#171A18</item>
+        <item name="android:navigationBarColor">#171A18</item>
+        <item name="android:windowBackground">#171A18</item>
+        <item name="android:colorAccent">#E95C26</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style></file></source></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="debug$Generated" generated="true" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="S:\Projects\1Electrolizer\Финал\H2_Android_App\app\src\debug\res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="debug" generated-set="debug$Generated" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="S:\Projects\1Electrolizer\Финал\H2_Android_App\app\src\debug\res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="generated$Generated" generated="true" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="S:\Projects\1Electrolizer\Финал\H2_Android_App\app\build\generated\res\resValues\debug"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="generated" generated-set="generated$Generated" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="S:\Projects\1Electrolizer\Финал\H2_Android_App\app\build\generated\res\resValues\debug"/></dataSet><mergedItems/></merger>

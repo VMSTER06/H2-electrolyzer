@@ -1,0 +1,16 @@
+{
+  "sliced": true,
+  "printer": "Creality K1 Max",
+  "layer_mm": "0.2",
+  "supports": false,
+  "nozzle_mm": [
+    "0.4"
+  ],
+  "filament": [
+    "PETG"
+  ],
+  "estimates": [
+    "; total filament used [g] = 8.64",
+    "; estimated printing time (normal mode) = 32m 4s"
+  ]
+}

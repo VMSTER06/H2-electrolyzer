@@ -1,0 +1,2431 @@
+/*
+ * =====================================================================================
+ *  ПРОШИВКА УСТРОЙСТВА КОНТРОЛЯ (ESP32 DevKit v1, ESP32-WROOM-32)
+ * =====================================================================================
+ *
+ *  НАЗНАЧЕНИЕ
+ *  ----------
+ *  Управление установкой получения водорода: регулирование давления в баке
+ *  включением электролизера через транзисторный ключ, управление продувочным
+ *  клапаном, пьезоэлектрическим поджигом и выводным вентилятором через модуль
+ *  реле, аварийные защиты по давлению, наклону корпуса и температуре, вывод
+ *  параметров на индикатор, звуковая сигнализация и двусторонний обмен с
+ *  устройством удаленного управления по радиоканалу nRF24L01+.
+ *
+ *  ПОДКЛЮЧЕНИЕ (см. схему электрическую принципиальную)
+ *  ----------------------------------------------------
+ *    Радиомодуль nRF24L01+ (SPI): CE – GPIO4, CSN – GPIO5, SCK – GPIO18,
+ *        MISO – GPIO19, MOSI – GPIO23, питание 3,3 В, конденсатор 470 мкФ.
+ *    Шина I2C: SDA – GPIO21, SCL – GPIO22; датчик наклона MPU-6050 (0x68),
+ *        индикатор LCD2004 с PCF8574 (0x27/0x3F) через преобразователь
+ *        уровней BSS138 или индикатор SSD1306 (0x3C).
+ *    Транзисторный ключ электролизера – GPIO32 (активный высокий уровень,
+ *        резистор 10 кОм затвор – общий провод).
+ *    Модуль реле: выводной вентилятор – GPIO25, клапан – GPIO26,
+ *        поджиг – GPIO27.
+ *    Звуковой излучатель – GPIO16.
+ *    Кнопки (INPUT_PULLUP): SB1 «Питание» – GPIO13, SB2 «Блокировка» – GPIO14,
+ *        SB3 «Продувка» – GPIO33.
+ *    Светодиоды: HL1 «Питание» – GPIO17, HL2 «Блокировка» – GPIO12,
+ *        HL3 «Режим» – GPIO2.
+ *    Датчик давления 0–10 бар (0,5–4,5 В) через делитель 10/20 кОм – GPIO36.
+ *    Датчик температуры DS18B20 (1-Wire, 4,7 кОм к 3,3 В) – GPIO15.
+ *
+ *  РАДИОКАНАЛ
+ *  ----------
+ *    2 Мбит/с, CRC 16 бит, каналы 76, 100, 120 (смена канала при потере связи).
+ *    Пакет состояния передается каждые 100 мс, команды принимаются по приходу.
+ *
+ *  ТАБЛИЦА КОМАНД
+ *  --------------
+ *    1 – вкл./выкл. системы;   2 – блокировка, сброс защит;
+ *    3 – импульс подачи газа с поджигом;   4 – поджиг (500 мс);
+ *    5 – короткая продувка (200 мс);   7 – ручная подача газа;
+ *    8 / 9 – целевое давление +0,5 / –0,5 бар;   12 – отключить звук тревоги;
+ *    99 – продувка до 0,05 бар (не более 90 с) и выключение.
+ *
+ *  ЗАЩИТЫ
+ *  ------
+ *    Давление выше 6,8 бар, наклон корпуса более 30°, неисправность датчика
+ *    давления или утечка – отключение ключа и реле, блокировка до сброса
+ *    кнопкой «Блокировка», звуковой сигнал с повтором каждые 15 с.
+ *    Перегрев (75 °C и выше) – предупреждение и включение выводного вентилятора.
+ *    Настройки хранятся во Flash-памяти (NVS) с контрольной суммой CRC-16.
+ * =====================================================================================
+ */
+
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+#include <Wire.h>
+#include "h2_oled.h"   // ⚡ v6.6: OLED на GyverOLED (русский шрифт), API как у Adafruit
+#include "lcd2004_i2c.h"   // ⚡ v6.1: символьный LCD2004 (HD44780 + PCF8574)
+#include <Preferences.h>
+#include <LittleFS.h>      // ⚡ v6.0: библиотека пользовательских мелодий
+#include <math.h>
+#include "h2_protocol.h"   // ⚡ общий протокол: CmdPacket/StatusPacket, трубы, каналы,
+                           //    MIN/MAX_TARGET_PRESSURE (единый для мозга и пульта)
+
+// =====================================================================================
+//  ВЫБОР ДАТЧИКА ТЕМПЕРАТУРЫ (⚡ v5.0)
+// =====================================================================================
+//  Раскомментируйте ОДИН вариант:
+#define TEMP_SENSOR_DS18B20    // цифровой 1-Wire (GPIO 15) — точный, рекомендуется
+// #define TEMP_SENSOR_NTC     // аналоговый NTC-термистор (ADC GPIO 34)
+
+#ifdef TEMP_SENSOR_DS18B20
+  #include <GyverDS18.h>   // ⚡ v6.6: GyverDS18 вместо OneWire + DallasTemperature (асинхронно, CRC)
+#endif
+
+
+// =====================================================================================
+//  ПИНЫ
+// =====================================================================================
+// ⚡ v6.0: электролизёр — ТОЛЬКО транзистор (MOSFET) на отдельном пине. Активный
+// ВЫСОКИЙ (не зависит от RELAY_ACTIVE_LOW). 10 кОм затвор→GND обязателен.
+#define PIN_ELECTRO_MOSFET  32
+
+#define PIN_RELAY_FAN_EXH   25   // реле выводного вентилятора (бывший канал электролизёра)
+#define PIN_RELAY_VALVE     26
+#define PIN_RELAY_PIEZO     27
+
+#define PIN_BTN_POWER       13   // 1×=ON/OFF  2×=продувка до нуля
+#define PIN_BTN_LOCK        14   // блокировка + сброс защёлок
+#define PIN_BTN_PURGE       33   // короткая продувка 200 мс
+
+#define PIN_LED_POWER       17   // прежнее подключение: GPIO -> резистор -> LED -> GND
+#define LED_POWER_ACTIVE_LOW false
+#define PIN_LED_LOCK        12   // ! strapping-pin
+#define PIN_LED_MODE         2   // ! strapping-pin (встроенный LED)
+
+// ⚡ v6.0: звуковой излучатель мозга. true — пассивный (ШИМ-тон, мелодии),
+// false — активный (нота = просто «включить на длительность», частота игнорируется).
+#define PIN_BUZZER          16
+#define BUZZER_PASSIVE      true
+
+#define PIN_PRESSURE        36   // ADC1_CH0, только вход
+#define PIN_TEMP_DS18B20    15   // ⚡ v5.0: DS18B20 1-Wire (если выбран цифровой)
+#define PIN_TEMP_NTC        34   // ⚡ v5.0: NTC термистор ADC (если выбран аналоговый)
+
+#define PIN_NRF_CE           4
+#define PIN_NRF_CSN          5
+// VSPI: SCK=18, MISO=19, MOSI=23
+
+#define I2C_SDA             21
+#define I2C_SCL             22
+
+#define MPU6050_ADDR        0x68
+
+
+// =====================================================================================
+//  РЕЛЕ — УРОВЕНЬ АКТИВНОСТИ
+// =====================================================================================
+#define RELAY_ACTIVE_LOW    false
+#define RELAY_ON            (RELAY_ACTIVE_LOW ? LOW  : HIGH)
+#define RELAY_OFF           (RELAY_ACTIVE_LOW ? HIGH : LOW)
+
+
+// =====================================================================================
+//  ПОРОГИ
+// =====================================================================================
+const float MAX_SAFE_PRESSURE   = 6.8f;   // аварийный порог (ovLock)
+const float WARN_PRESSURE       = 6.0f;   // предупредительный порог (ovWarn)
+// MIN_TARGET_PRESSURE / MAX_TARGET_PRESSURE — в общем h2_protocol.h (0.5 / 6.5 бар)
+const float TARGET_STEP         = 0.5f;
+const float PURGE_ZERO_BAR      = 0.05f;
+const float TILT_ANGLE_DEG      = 30.0f;
+const int   TILT_AVG_SAMPLES    = 5;     // Скользящее среднее
+const int   TILT_CAL_SAMPLES    = 50;    // Калибровка
+
+// ── ⚡ v6.2: Регулирование электролизёра (MOSFET) — без гистерезиса ────────
+// ВКЛ при P < цели, ВЫКЛ при P ≥ цели. От дребезга на шумном АЦП защищает
+// минимальное время между переключениями MOSFET (аварийное выключение — мгновенно).
+const unsigned long MOSFET_MIN_SWITCH_MS = 100;
+
+// ── ⚡ v6.2: Сторожевой таймер цикла управления ─────────────────────────────
+// Если loop на ядре 1 зависнет дольше — перезагрузка; при старте MOSFET и реле
+// выключаются первыми строками setup().
+const uint32_t LOOP_WDT_TIMEOUT_MS = 5000;
+
+// ── ⚡ v6.2: Проверка датчика давления (обрыв / замыкание) ────────────────────
+// Напряжение на пине АЦП (после делителя): исправный датчик 0,5–4,5 В даёт
+// ≈0,33–3,0 В. Ниже/выше — обрыв, замыкание на GND или на питание.
+const float         PSENS_V_MIN      = 0.15f;   // В
+const float         PSENS_V_MAX      = 3.20f;   // В
+const unsigned long PSENS_FAULT_MS   = 500;     // столько подряд вне диапазона → неисправность
+const unsigned long PSENS_OK_MS      = 2000;    // столько подряд в норме → снять неисправность
+
+// ── ⚡ v6.2: Детектор утечки / незакрытого клапана ───────────────────────────
+// При закрытом клапане и выключенном электролизёре давление стоять должно.
+// Падение за окно LEAK_WINDOW_MS: ≥ WARN — предупреждение, ≥ CRIT — выключение.
+const unsigned long LEAK_WINDOW_MS   = 30000;
+const unsigned long LEAK_SETTLE_MS   = 5000;    // пауза после переключений перед замером
+const float         LEAK_WARN_BAR    = 0.15f;   // ≈0,3 бар/мин
+const float         LEAK_CRIT_BAR    = 0.50f;   // ≈1 бар/мин
+const float         LEAK_MIN_P       = 0.30f;   // ниже — замер бессмыслен
+// Вариант при работающей системе: удержание цели (давление в полосе цели) с
+// закрытым клапаном, а MOSFET подкачивает дольше LEAK_HOLD_DUTY времени окна
+const float         LEAK_HOLD_BAND      = 0.20f;    // бар ниже цели — ещё «удержание»
+const unsigned long LEAK_HOLD_WINDOW_MS = 300000;   // окно 5 мин
+const float         LEAK_HOLD_DUTY      = 0.25f;    // доля времени работы MOSFET
+
+// ── ⚡ v6.2: Таймер работы ──────────────────────────────────────────────────
+const uint16_t RUN_TIMER_MAX_MIN = 600;          // 0 = без ограничения
+
+// ── ⚡ v6.2: Счётчик газа и обслуживание ─────────────────────────────────────
+const float    GAS_TANK_L_DEF    = 1.0f;         // объём бака по умолчанию, л
+const float    P_ATM_BAR         = 1.013f;
+const uint16_t MAINT_H_DEF       = 20;           // часов наработки между доливками
+
+// ── Watchdog по давлению ───────────────────────────────────────────────────
+const unsigned long WD_TIMEOUT      = 120000;  // 2 минуты без прогресса → предупреждение
+const float         WD_PROGRESS_BAR = 0.05f;   // На столько должно вырасти давление, чтобы счесть "есть прогресс"
+
+// Вентилятор корпуса подключён к постоянному питанию, без управления ESP32.
+// [1] — выводной вентилятор на реле GPIO 25. Индекс 0 оставлен в пакете
+// статуса для совместимости с уже прошитым пультом, но не управляет железом.
+// Включение по порогам температуры с гистерезисом: вкл при t ≥ tOn, выкл при t ≤ tOff.
+enum FanMode { FAN_AUTO = 0, FAN_ON = 1, FAN_OFF = 2, FAN_WORK = 3 };
+const uint8_t       FAN_COUNT        = 2;
+const unsigned long FAN_MIN_DWELL_MS = 5000;   // защита реле: смена состояния не чаще раза в 5 с
+const int           FAN_TON_MIN      = 20;     // порог включения, °C
+const int           FAN_TON_MAX      = 90;
+const int           FAN_TOFF_MIN     = 15;     // порог выключения: 15..tOn−1 °C
+const FanMode       FAN_DEF_MODE[FAN_COUNT] = { FAN_OFF, FAN_WORK };
+const int           FAN_DEF_TON[FAN_COUNT]  = { 40, 45 };
+const int           FAN_DEF_TOFF[FAN_COUNT] = { 35, 40 };
+// [0] — корпусный вентилятор на постоянном питании: реле нет, элемент не используется
+// (циклы в updateFans идут с i = 1). 0xFF — заведомо не номер GPIO.
+const uint8_t       FAN_RELAY_PIN[FAN_COUNT] = { 0xFF, PIN_RELAY_FAN_EXH };
+// Ключи NVS: режим / порог вкл / порог выкл
+const char* const   FAN_KEY_MODE[FAN_COUNT] = { "f1m",  "f2m"  };
+const char* const   FAN_KEY_TON[FAN_COUNT]  = { "f1on", "f2on" };
+const char* const   FAN_KEY_TOFF[FAN_COUNT] = { "f1of", "f2of" };
+
+// ── ⚡ v5.0: Датчик температуры ────────────────────────────────────────────
+const unsigned long T_TEMP_SAMP   = 1000;   // опрос температуры раз в секунду
+const float TEMP_OVERHEAT         = 75.0f;  // аварийный перегрев → предупреждение
+const float TEMP_OVERHEAT_HYST    = 5.0f;   // ⚡ v6.3: сброс перегрева при t ≤ TEMP_OVERHEAT − 5 °C (без дребезга на пороге)
+// NTC параметры (если выбран аналоговый): делитель + Бета-уравнение
+const float NTC_NOMINAL_R    = 10000.0f;   // 10 кОм при 25°C
+const float NTC_NOMINAL_T    = 25.0f;
+const float NTC_BETA         = 3950.0f;
+const float NTC_SERIES_R     = 10000.0f;   // последовательный резистор делителя
+
+// ── ⚡ v5.0: Счётчик циклов реле ───────────────────────────────────────────
+const unsigned long RELAY_LIFE_WARN = 100000UL;  // ресурс реле (циклов) → предупреждение
+                                                 // (MOSFET электролизёра не изнашивается — не входит)
+
+// ── ⚡ v5.0: Резервные каналы NRF24 (channel hopping) ──────────────────────
+// RF_CHANNELS[] и RF_CHANNEL_CNT вынесены в общий h2_protocol.h.
+const unsigned long RF_HOP_SILENCE = 4000;   // мс тишины до перехода на след. канал
+
+
+// =====================================================================================
+//  ТАЙМИНГИ (мс)
+// =====================================================================================
+const unsigned long T_PIEZO_WORK         = 500;     // обычный пьезо (cmd=4)
+const unsigned long T_PURGE_MAX          = 90000;   // макс. продувка
+const unsigned long T_PURGE_SHORT        = 200;     // импульс клапана
+const unsigned long T_REPULSOR_TOTAL     = 800;     // ⚡ репульсор: общая длительность
+const unsigned long T_REPULSOR_PIEZO_AT  = 700;     // ⚡ репульсор: момент включения пьезо
+const unsigned long T_DOUBLE_CLICK       = 400;
+const unsigned long T_DEBOUNCE           = 50;
+const unsigned long T_STATUS_TX          = 100;
+const unsigned long T_DISPLAY_UPD        = 200;
+const unsigned long T_PRESSURE_SAMP      = 100;
+const unsigned long T_TILT_SAMP          = 100;
+const unsigned long T_RF_TIMEOUT    = 3000;
+const unsigned long T_SHOW_TARGET   = 2500;   // OLED-экран установки давления
+
+
+// =====================================================================================
+//  NRF24
+// =====================================================================================
+RF24 radio(PIN_NRF_CE, PIN_NRF_CSN);
+// Трубы PIPE_R2B/PIPE_B2R и структуры CmdPacket/StatusPacket/TonePacket вынесены в
+// общий h2_protocol.h (включён выше) — протокол байт-в-байт идентичен с прошивкой пульта.
+
+// ⚡ v6.0: радио используется из двух задач — loop (приём команд, статус, смена
+// канала) и плеер звука soundTask (ноты на пульт). Поэтому ВСЕ обращения к radio.*
+// после setup() выполняются под мьютексом radioMutex (создаётся в setup до радио).
+SemaphoreHandle_t      radioMutex  = nullptr;
+volatile unsigned long remoteAckMs = 0;   // millis() последнего статуса, подтверждённого ACK пульта
+
+// Захват мьютекса радио на время блока (освобождается автоматически при выходе).
+// ok == false — радио занято дольше wait, обращение нужно пропустить.
+struct RadioLock {
+  bool held = false;
+  bool ok   = true;
+  explicit RadioLock(TickType_t wait) {
+    if (radioMutex) { held = (xSemaphoreTake(radioMutex, wait) == pdTRUE); ok = held; }
+  }
+  ~RadioLock() { if (held) xSemaphoreGive(radioMutex); }
+};
+
+
+// =====================================================================================
+//  OLED
+// =====================================================================================
+H2Oled oled;                          // ⚡ v6.6: GyverOLED 128×64, адрес 0x3C
+bool oledOk = false;
+
+// ⚡ v6.1: LCD2004 с PCF8574 — основной дисплей. При его отсутствии
+// используется OLED. LCD2004 на 5 В подключать через преобразователь уровней
+// BSS138. Адреса: 0x27/0x3F — LCD2004, 0x3C/0x3D — OLED.
+LiquidCrystal_I2C* lcd = nullptr;
+bool lcdOk = false;
+char lcdShadow[4][21];            // что сейчас на экране: пишем только изменившиеся знаки
+
+
+// =====================================================================================
+//  СОСТОЯНИЕ
+// =====================================================================================
+bool  systemOn         = false;
+bool  isLocked         = true;
+bool  isPurging        = false;
+bool  isPurgeShort     = false;
+bool  repulsorActive   = false;       // ⚡ v4.3: одноразовый импульс газ+поджиг
+bool  manualGasActive  = false;
+bool  piezoActive      = false;
+bool  electroOn        = false;
+bool  valveOn          = false;
+bool  overpressureLock = false;
+bool  tiltLock         = false;
+bool  tiltCalibrating  = true;        // true пока идёт калибровка в setup
+bool  mpuOk            = false;
+// ⚡ v6.3: отказ MPU6050 во время работы (по образцу проверки датчика давления):
+// 10 плохих чтений подряд (~1 с) → mpuFault, тревога, MOSFET не включается;
+// 20 хороших подряд (~2 с) → норма. Пока mpuFault — переинициализация раз в 2 с.
+bool          mpuFault         = false;
+uint8_t       mpuBadCnt        = 0;
+uint8_t       mpuGoodCnt       = 0;
+unsigned long mpuRetryT        = 0;
+float targetPressure   = 1.0f;
+float currentPressure  = 0.0f;
+float currentTiltDeg   = 0.0f;        // Текущий угол наклона относительно baseline
+
+// ⚡ v6.2: MOSFET — время последнего переключения (минимум MOSFET_MIN_SWITCH_MS)
+unsigned long electroLastSwitch = 0;
+
+// ⚡ v6.2: датчик давления — неисправность (обрыв/замыкание)
+float         pressureVolts     = 0.0f;   // напряжение на пине АЦП, В
+bool          pressureFault     = false;  // датчик неисправен → электролизёр не включается
+unsigned long psensBadSince     = 0;      // millis() начала выхода из диапазона (0 = в норме)
+unsigned long psensGoodSince    = 0;      // millis() начала возврата в диапазон
+
+// ⚡ v6.2: детектор утечки / незакрытого клапана
+float         pressureFilt      = 0.0f;   // сглаженное давление (EMA) для медленных оценок
+bool          leakWarn          = false;  // подозрение на утечку (любой из способов ниже)
+bool          leakWarnStatic    = false;  // давление падает при выключенном электролизёре
+bool          leakWarnHold      = false;  // при удержании цели MOSFET подкачивает слишком часто
+bool          leakLock          = false;  // сильная утечка — система выключена (сброс LOCK)
+unsigned long leakQuietSince    = 0;      // с какого момента условия замера стабильны
+unsigned long leakRefMs         = 0;      // начало окна замера
+float         leakRefP          = 0.0f;   // давление в начале окна
+
+// ⚡ v6.2: таймер работы (0 = без ограничения)
+uint16_t      runTimerMin       = 0;
+unsigned long runStartMs        = 0;      // millis() включения системы (0 = выключена)
+bool          runTimerEnded     = false;
+
+// ⚡ v6.2: заглушение повторов тревоги (до следующей новой тревоги)
+volatile bool alarmMuted        = false;
+
+// ⚡ v6.2: счётчик газа (оценка по росту давления при закрытом клапане)
+float         gasTankL          = GAS_TANK_L_DEF;   // объём бака, л
+double        gasTotalNL        = 0;      // всего, нормальных литров (сохраняется в NVS)
+double        gasSessionNL      = 0;      // с последнего включения системы
+double        gasSavedNL        = 0;      // что записано в NVS
+float         gasDayNL[7]       = {0};    // последние 7 суток (индекс = день % 7), при синхронизированных часах
+uint32_t      gasDayStamp[7]    = {0};    // номер суток (epoch/86400) для каждой ячейки
+float         gasRateNLh        = 0.0f;   // текущая производительность, нл/ч (EMA)
+// ⚡ v6.3: учётное окно счётчика газа (см. gasUpdate)
+bool          gasWinOpen        = false;  // окно открыто: прирост давления считается газом
+float         gasHiP            = 0.0f;   // отметка максимума отфильтрованного давления в окне
+unsigned long gasLastOnMs       = 0;      // millis() последнего отсчёта с включённым MOSFET (0 — не было)
+float         electroDuty       = 0.0f;   // доля времени работы MOSFET за ~10 мин, 0..1 (EMA)
+
+// ⚡ v6.2: обслуживание (доливка воды/электролита) по наработке
+uint16_t      maintIntervalH    = MAINT_H_DEF;
+unsigned long maintLastRt       = 0;      // runtimeSeconds на момент последнего обслуживания
+bool          maintDue          = false;
+
+bool          timeSynced        = false;
+uint32_t      bootCount         = 0;      // номер загрузки (NVS) — для журнала
+
+// ⚡ v4.4: Watchdog по давлению
+bool          pressureWatchdog = false;  // true = бак не набирает давление
+unsigned long wdStart          = 0;      // когда начали отсчёт текущего "качка"
+float         wdRefPressure     = 0.0f;   // опорное давление на начало отсчёта
+
+// ⚡ v4.4: Счётчик наработки электролизера
+unsigned long runtimeSeconds   = 0;      // суммарное время работы электролизера (сек)
+unsigned long electroOnSince    = 0;     // millis() момента включения электролизера (0 = выкл)
+unsigned long runtimeMsAccum    = 0;     // накопленные миллисекунды < 1 сек (не теряем остаток)
+unsigned long lastRuntimeSave    = 0;    // последнее сохранение в NVS
+unsigned long savedRuntimeSeconds = 0;   // что реально записано в NVS (чтобы не писать зря)
+
+
+volatile bool          settingsDirty     = false;
+volatile unsigned long settingsDirtyTime = 0;
+const unsigned long SETTINGS_SAVE_DELAY = 10000;  // 10 сек тишины → запись
+
+// ⚡ v5.0: Температура
+float         currentTemp       = 25.0f;     // текущая температура °C
+bool          tempSensorOk      = false;
+bool          tempSampled       = false;     // ⚡ v6.0: был хотя бы один замер (до него вентиляторы не решаем)
+bool          overheatWarn      = false;     // перегрев > TEMP_OVERHEAT
+unsigned long lastTempSamp      = 0;
+
+volatile FanMode fanMode[FAN_COUNT]    = { FAN_DEF_MODE[0], FAN_DEF_MODE[1] };
+volatile int     fanTOn[FAN_COUNT]     = { FAN_DEF_TON[0],  FAN_DEF_TON[1]  };   // вкл при t ≥ tOn
+volatile int     fanTOff[FAN_COUNT]    = { FAN_DEF_TOFF[0], FAN_DEF_TOFF[1] };   // выкл при t ≤ tOff
+volatile bool    fanForce[FAN_COUNT]   = { true, true };    // применить без выдержки (смена настроек)
+bool             fanTempNeed[FAN_COUNT] = { false, false }; // гистерезисный флаг «нужно по температуре»
+bool             fanOn[FAN_COUNT]       = { false, false }; // фактическое состояние реле
+unsigned long    fanLastSwitch[FAN_COUNT] = { 0, 0 };       // millis() последнего переключения
+
+// ⚡ v5.0: Калибровка датчика давления (P = (raw_volt - offset) * scale)
+float         presCalOffset     = 0.5f;      // напряжение при 0 бар (датчик 0.5–4.5В)
+float         presCalScale      = 2.5f;      // бар на вольт ((10бар)/(4.5-0.5)В = 2.5)
+
+// ⚡ v5.0: Счётчики циклов реле
+unsigned long relayCyclesElectro = 0;        // ⚡ v6.0: переключения MOSFET электролизёра
+unsigned long relayCyclesValve   = 0;
+unsigned long relayCyclesPiezo   = 0;
+unsigned long relayCyclesFan1    = 0;        // ⚡ v6.0: реле вентилятора корпуса
+unsigned long relayCyclesFan2    = 0;        // ⚡ v6.0: реле выводного вентилятора
+bool          relayElectroPrev   = false;    // для детекта фронта
+bool          relayValvePrev     = false;
+bool          relayPiezoPrev     = false;
+unsigned long lastCyclesSave     = 0;
+
+// ⚡ v5.0: Резервный канал NRF24 (channel hopping)
+uint8_t       rfChannelIdx       = 0;        // индекс текущего канала в RF_CHANNELS
+unsigned long rfLastActivity     = 0;        // когда последний раз был приём
+uint32_t      rfHopCount         = 0;        // сколько раз перепрыгивали
+
+
+// MPU6050 — baseline (эталонный вектор гравитации после калибровки)
+float baseAx = 0, baseAy = 0, baseAz = 0;
+// Скользящее среднее угла
+float angleBuf[TILT_AVG_SAMPLES] = {0};
+int   angleIdx = 0;
+bool  angleBufFilled = false;
+
+// RF
+bool          remoteOnline = false;
+bool          radioOk      = false;   // ⚡ NRF24 инициализирован успешно
+unsigned long lastRfRx     = 0;
+
+// Кнопки
+bool          pwrLastRaw   = HIGH, pwrStable   = HIGH;
+bool          lckLastRaw   = HIGH, lckStable   = HIGH;
+bool          prgLastRaw   = HIGH, prgStable   = HIGH;
+unsigned long pwrDebTime   = 0,    lckDebTime  = 0,   prgDebTime = 0;
+unsigned long pwrLastClick = 0;
+
+// Таймеры
+unsigned long purgeStart       = 0;
+unsigned long purgeShortStart  = 0;
+unsigned long piezoStart       = 0;
+unsigned long repulsorStart    = 0;   // ⚡ v4.3
+unsigned long lastStatusTx     = 0;
+// ⚡ ТЗ 7.3: перерисовка OLED только при изменении данных
+unsigned long lastDispCheck    = 0;   // последняя проверка (троттлинг T_DISPLAY_UPD)
+unsigned long lastDispDraw     = 0;   // время последней реальной перерисовки
+char          lastDispSig[110] = "";  // сигнатура отображаемых полей
+unsigned long lastPressureT    = 0;
+unsigned long lastTiltT        = 0;
+unsigned long bootMs           = 0;
+unsigned long lastTargetChange = 0;
+
+// NVS-хранилище для настроек
+Preferences prefs;
+
+// ⚡ v5.0: датчик температуры DS18B20 (если выбран цифровой)
+#ifdef TEMP_SENSOR_DS18B20
+// ⚡ v6.6: GyverDS18Single — один датчик на шине, адресация Skip ROM: поиск адреса не
+// нужен (раньше ~14 мс поиска ROM и отдельная логика переискания). Внешнее питание
+// датчика (3 провода), поэтому паразитное питание выключено.
+GyverDS18Single tempSensor(PIN_TEMP_DS18B20, false);
+bool          tempResOk    = false;   // разрешение 10 бит выставлено (после подключения датчика)
+#endif
+
+
+#include "h2_sound.h"
+#include "h2_events.h"
+#include <esp_task_wdt.h> // ⚡ v6.2: сторожевой таймер цикла управления
+
+
+// =====================================================================================
+//  MPU6050 — ПРЯМОЙ I2C
+// =====================================================================================
+bool mpuWriteReg(uint8_t reg, uint8_t val) {
+  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.write(reg);
+  Wire.write(val);
+  return (Wire.endTransmission() == 0);
+}
+
+bool mpuReadAccel(float &ax, float &ay, float &az) {
+  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.write(0x3B);  // ACCEL_XOUT_H
+  if (Wire.endTransmission(false) != 0) return false;
+  if (Wire.requestFrom((uint8_t)MPU6050_ADDR, (uint8_t)6) != 6) return false;
+  int16_t rx = (Wire.read() << 8) | Wire.read();
+  int16_t ry = (Wire.read() << 8) | Wire.read();
+  int16_t rz = (Wire.read() << 8) | Wire.read();
+  // Делитель для ±2g (LSB sensitivity = 16384) — для угла масштаб не важен,
+  // считаем в "сырых" единицах для скорости
+  ax = (float)rx;
+  ay = (float)ry;
+  az = (float)rz;
+  return true;
+}
+
+bool mpuInit() {
+  // Пробуждение (PWR_MGMT_1 = 0)
+  if (!mpuWriteReg(0x6B, 0x00)) return false;
+  delay(50);
+  // Диапазон акселерометра ±2g (ACCEL_CONFIG = 0)
+  if (!mpuWriteReg(0x1C, 0x00)) return false;
+  // Лёгкий фильтр (CONFIG = 3, ~44 Hz)
+  if (!mpuWriteReg(0x1A, 0x03)) return false;
+  delay(50);
+  // Проверка чтения
+  float ax, ay, az;
+  if (!mpuReadAccel(ax, ay, az)) return false;
+  return true;
+}
+
+// ⚡ v6.3: правдоподобный модуль вектора ускорения в «сырых» единицах ±2g
+// (16384 = 1 g): 0,5..1,5 g. Сброшенный модуль после сброса тоже в ±2g, а во сне
+// отдаёт нули — такие чтения считаются ошибкой, а не «установка ровно».
+const float         MPU_MAG_MIN     = 8192.0f;
+const float         MPU_MAG_MAX     = 24576.0f;
+const uint8_t       MPU_FAULT_READS = 10;     // плохих чтений подряд (~1 с) → mpuFault
+const uint8_t       MPU_OK_READS    = 20;     // хороших подряд (~2 с) → снять mpuFault
+const unsigned long MPU_RETRY_MS    = 2000;   // переинициализация при отказе не чаще (шина I2C общая с LCD)
+
+// ⚡ v6.3: возвращает false, если не было ни одного чтения или эталонный вектор
+// неправдоподобен — тогда TILT-защита считается отключённой (как «MPU не найден»).
+bool mpuCalibrate() {
+  // Снимаем TILT_CAL_SAMPLES измерений, усредняем
+  Serial.print("[MPU] Калибровка ");
+  double sx = 0, sy = 0, sz = 0;
+  int got = 0;
+  for (int i = 0; i < TILT_CAL_SAMPLES; i++) {
+    float ax, ay, az;
+    if (mpuReadAccel(ax, ay, az)) {
+      sx += ax; sy += ay; sz += az;
+      got++;
+    }
+    if (i % 10 == 0) Serial.print('.');
+    delay(10);
+  }
+  if (got > 0) {
+    baseAx = sx / got;
+    baseAy = sy / got;
+    baseAz = sz / got;
+    float magB = sqrtf(baseAx*baseAx + baseAy*baseAy + baseAz*baseAz);
+    if (!(magB >= MPU_MAG_MIN && magB <= MPU_MAG_MAX)) {
+      Serial.printf(" FAIL (|g|=%.0f — не похоже на 1 g)\n", magB);
+      return false;
+    }
+    Serial.printf(" OK (samples=%d, baseline=[%.0f,%.0f,%.0f])\n", got, baseAx, baseAy, baseAz);
+    return true;
+  }
+  Serial.println(" FAIL");
+  return false;
+}
+
+// Угол между текущим вектором гравитации и baseline, в градусах.
+// −1 — ошибка чтения или ⚡ v6.3 неправдоподобный модуль вектора (раньше было 0 = «ровно»).
+float mpuAngleVsBaseline() {
+  float ax, ay, az;
+  if (!mpuReadAccel(ax, ay, az)) return -1.0f;
+  float dot = ax*baseAx + ay*baseAy + az*baseAz;
+  float magA = sqrtf(ax*ax + ay*ay + az*az);
+  float magB = sqrtf(baseAx*baseAx + baseAy*baseAy + baseAz*baseAz);
+  if (!(magA >= MPU_MAG_MIN && magA <= MPU_MAG_MAX)) return -1.0f;
+  if (magB < 1.0f) return 0;
+  float c = dot / (magA * magB);
+  if (c > 1.0f)  c = 1.0f;
+  if (c < -1.0f) c = -1.0f;
+  return acosf(c) * 180.0f / (float)M_PI;
+}
+
+
+// =====================================================================================
+//  УТИЛИТЫ
+// =====================================================================================
+// Прототипы — гарантируют корректную сборку независимо от порядка определения
+// (Arduino обычно генерит их сам, но явное объявление надёжнее).
+void  setRelay(int pin, bool on);
+void  setElectro(bool on);
+void  accrueRuntime();
+void  allRelaysOff();
+void  electroOff();
+void  resetProcesses();
+float readPressure();
+void  startPiezo();
+void  setTarget(float v);
+void  bumpTarget(float delta);
+void  saveSettings();
+void  commitSettings();
+void  loadSettings();
+void  saveRuntime();
+void  resetRuntime();
+void  updateRuntimeOnElectroChange(bool nowOn);
+void  wdReset();
+void  wdCheck();
+void  startRepulsor();
+void  executeCommand(uint8_t cmd);
+void  safetyCheck();
+void  tiltCheck();
+void  updateDisplay();
+void  maybeUpdateDisplay(unsigned long now);
+void  updateLEDs();
+void  sendStatusToRemote();
+// ⚡ v5.0 прототипы
+float readTemperature();
+void  countRelayCycles();
+void  saveCycles();
+void  saveCalibration();
+void  rfApplyChannel();
+void  rfCheckHop();
+// ⚡ v6.0 прототипы
+void  updateFans(unsigned long now);
+void  saveFans(uint8_t i);
+void  soundEvents(unsigned long now);
+
+void setRelay(int pin, bool on) { digitalWrite(pin, on ? RELAY_ON : RELAY_OFF); }
+
+// ⚡ v6.0: электролизёр — MOSFET на отдельном пине, активный ВЫСОКИЙ (полярность
+// реле RELAY_ACTIVE_LOW на него не влияет). Единственная точка управления затвором.
+void setElectro(bool on) { digitalWrite(PIN_ELECTRO_MOSFET, on ? HIGH : LOW); }
+
+// ⚡ Зафиксировать наработку электролизера и ЗАКРЫТЬ текущий интервал работы.
+// Единая точка учёта (DRY): вызывается всюду, где электролизер гасится. Накапливает
+// время без потери остатка миллисекунд и обнуляет electroOnSince, чтобы при
+// следующем включении в счётчик НЕ попал интервал простоя под блокировкой.
+void accrueRuntime() {
+  if (electroOn && electroOnSince != 0) {
+    runtimeMsAccum += (millis() - electroOnSince);
+    runtimeSeconds += runtimeMsAccum / 1000UL;
+    runtimeMsAccum %= 1000UL;
+    electroOnSince = 0;
+  }
+}
+
+// ⚡ v6.3: единая точка гашения электролизёра: сначала затвор, потом учёт наработки
+// (accrueRuntime нужен electroOn == true), потом флаг
+void electroOff() {
+  setElectro(false);
+  accrueRuntime();
+  electroOn = false;
+}
+
+// Обесточить электролизёр (MOSFET), клапан и пьезо.
+// ⚡ v6.0: реле вентиляторов НЕ трогаем — это охлаждение, оно должно работать и
+// при выключенной/заблокированной системе (ими управляет только updateFans).
+void allRelaysOff() {
+  electroOff();
+  setRelay(PIN_RELAY_VALVE,   false);
+  setRelay(PIN_RELAY_PIEZO,   false);
+  valveOn = false;
+}
+
+void resetProcesses() {
+  repulsorActive  = false;
+  manualGasActive = false;
+  piezoActive     = false;
+}
+
+float readPressure() {
+  // ⚡ Усреднение нескольких отсчётов ADC: ESP32 ADC шумный, одиночное
+  // измерение даёт дребезг ±0.05–0.1 бар, и MOSFET лишний раз переключался бы
+  // у цели. 8 отсчётов сглаживают шум, занимают ~0.1 мс.
+  uint32_t acc = 0;
+  for (uint8_t i = 0; i < 8; i++) acc += analogRead(PIN_PRESSURE);
+  float v = (acc / 8.0f) / 4095.0f * 3.3f;
+  pressureVolts = v;   // ⚡ v6.2: для проверки датчика на обрыв/замыкание
+  return max(0.0f, (v - presCalOffset) * presCalScale);
+}
+
+// ── ⚡ v5.0: ЧТЕНИЕ ТЕМПЕРАТУРЫ (цифровой DS18B20 или аналоговый NTC) ───────
+float readTemperature() {
+#ifdef TEMP_SENSOR_DS18B20
+  // АСИНХРОННОЕ чтение: забираем результат ПРЕДЫДУЩЕГО запроса (между вызовами
+  // T_TEMP_SAMP=1000 мс, преобразование 10 бит ~190 мс, 12 бит ~750 мс), затем
+  // запускаем следующее — loop не ждёт конверсию.
+  // ⚡ v6.6: GyverDS18 читает память датчика с проверкой CRC; нет датчика / помеха —
+  // readTemp() = false. Значение 85 °C после подачи питания библиотека не принимает.
+  bool ok = tempSensor.readTemp() && tempSensor.initialized();
+  // датчик (пере)подключили — сначала 10 бит, потом запуск преобразования
+  if (ok && !tempResOk) tempResOk = tempSensor.setResolution(10);
+  tempSensor.requestTemp();              // следующее преобразование (неблокирующее)
+  if (!ok) {
+    tempSensorOk = false;
+    tempResOk    = false;                // датчик могли заменить — разрешение выставим заново
+    return currentTemp;                  // держим прошлое значение
+  }
+  tempSensorOk = true;
+  return tempSensor.getTemp();
+#else
+  // NTC термистор: делитель NTC—последовательный резистор, уравнение Бета
+  uint32_t acc = 0;
+  for (uint8_t i = 0; i < 8; i++) acc += analogRead(PIN_TEMP_NTC);
+  float adc = acc / 8.0f;
+  if (adc < 1 || adc > 4094) { tempSensorOk = false; return currentTemp; }
+  // Делитель по схеме (см. H2_Wiring_Full): NTC к 3.3В, резистор к GND,
+  // ADC меряет напряжение на резисторе → R_ntc = R_series * (4095 - adc) / adc.
+  // (Прежняя формула adc/(4095-adc) соответствовала ОБРАТНОМУ включению и
+  // давала инвертированную температуру — вентиляторы выключались бы при нагреве.)
+  float r = NTC_SERIES_R * (4095.0f - adc) / adc;
+  float steinhart = r / NTC_NOMINAL_R;
+  steinhart = logf(steinhart);
+  steinhart /= NTC_BETA;
+  steinhart += 1.0f / (NTC_NOMINAL_T + 273.15f);
+  steinhart = 1.0f / steinhart - 273.15f;
+  tempSensorOk = true;
+  return steinhart;
+#endif
+}
+
+// ── ⚡ v6.0: ДВА ВЕНТИЛЯТОРА НА РЕЛЕ (режимы + пороги с гистерезисом) ──────
+// Вызывается КАЖДУЮ итерацию loop (до ранних return — охлаждение работает в любом
+// состоянии системы). Температура при этом обновляется раз в секунду отдельно.
+// Защита реле: состояние меняется не чаще FAN_MIN_DWELL_MS, кроме смены настроек
+// пользователем (fanForce — применить сразу).
+void updateFans(unsigned long now) {
+  // До первого замера температура неизвестна (DS18B20 отдаёт результат через
+  // 1 с после старта) — не решаем, иначе «датчик неисправен» щёлкал бы реле.
+  if (!tempSampled) return;
+  bool overheat = tempSensorOk && currentTemp >= TEMP_OVERHEAT;
+  for (uint8_t i = 1; i < FAN_COUNT; i++) {
+    bool force = fanForce[i];
+    if (force) fanForce[i] = false;
+    // Гистерезис: «нужно» при t ≥ tOn, «не нужно» при t ≤ tOff
+    if (tempSensorOk) {
+      if (currentTemp >= fanTOn[i])       fanTempNeed[i] = true;
+      else if (currentTemp <= fanTOff[i]) fanTempNeed[i] = false;
+    }
+    // Датчик неисправен — охлаждаем (безопасная реакция при неизвестной температуре)
+    bool byTemp = tempSensorOk ? fanTempNeed[i] : true;
+    bool want;
+    switch (fanMode[i]) {
+      case FAN_OFF:  want = false;                              break;
+      case FAN_ON:   want = true;                               break;
+      case FAN_WORK: want = systemOn || isPurging || byTemp;   break;
+      default:       want = byTemp;                             break;   // FAN_AUTO
+    }
+    if (overheat && fanMode[i] != FAN_OFF) want = true;   // перегрев — охлаждать всем, кроме «Выкл»
+    if (want == fanOn[i]) continue;
+    if (!force && fanLastSwitch[i] != 0 &&
+        (now - fanLastSwitch[i] < FAN_MIN_DWELL_MS)) continue;
+    fanOn[i]         = want;
+    fanLastSwitch[i] = now;
+    setRelay(FAN_RELAY_PIN[i], want);
+    if (want) relayCyclesFan2++;   // счёт фронтов OFF→ON
+
+    Serial.printf("[FAN] выводной -> %s (t=%.1f)\n", want ? "ВКЛ" : "ВЫКЛ", currentTemp);
+  }
+}
+
+// ── ⚡ v5.0: СЧЁТЧИК ЦИКЛОВ РЕЛЕ (детект фронта OFF→ON) ─────────────────────
+void countRelayCycles() {
+  if (electroOn && !relayElectroPrev) relayCyclesElectro++;
+  if (valveOn   && !relayValvePrev)   relayCyclesValve++;
+  if (piezoActive && !relayPiezoPrev) relayCyclesPiezo++;
+  relayElectroPrev = electroOn;
+  relayValvePrev   = valveOn;
+  relayPiezoPrev   = piezoActive;
+}
+
+// ── ⚡ v5.0: РЕЗЕРВНЫЙ КАНАЛ NRF24 (channel hopping) ────────────────────────
+void rfApplyChannel() {
+  RadioLock rl(portMAX_DELAY);   // ⚡ v6.0: radio.* — только под мьютексом (плеер шлёт ноты)
+  radio.setChannel(RF_CHANNELS[rfChannelIdx]);
+}
+
+void rfCheckHop() {
+  // Если давно не было приёма от пульта — пробуем следующий канал.
+  // Пульт делает то же самое синхронно, так что они встретятся на общем канале.
+  if (millis() - rfLastActivity >= RF_HOP_SILENCE) {
+    rfChannelIdx = (rfChannelIdx + 1) % RF_CHANNEL_CNT;
+    rfApplyChannel();
+    rfHopCount++;
+    rfLastActivity = millis();   // даём время на этом канале
+    Serial.printf("[RF] hop -> канал %d\n", RF_CHANNELS[rfChannelIdx]);
+  }
+}
+
+void startPiezo() {
+  // ⚡ v6.3: + защёлки давления и утечки (при них systemOn и !isLocked возможны)
+  if (!piezoActive && systemOn && !isLocked && !isPurging && !tiltLock && !repulsorActive &&
+      !overpressureLock && !leakLock) {
+    piezoActive = true; piezoStart = millis();
+    setRelay(PIN_RELAY_PIEZO, true);
+  }
+}
+
+void setTarget(float v) {
+  if (!isfinite(v)) return;
+  v = constrain(roundf(v * 10.0f) / 10.0f, MIN_TARGET_PRESSURE, MAX_TARGET_PRESSURE);
+  targetPressure   = v;
+  lastTargetChange = millis();
+  saveSettings();
+}
+
+void bumpTarget(float delta) {
+  setTarget(roundf((targetPressure + delta) * 2.0f) / 2.0f);
+}
+
+// ── ⚡ v6.4: КОНТРОЛЬНАЯ СУММА НАСТРОЕК ВО FLASH ───────────────────────────
+// Целевое давление и калибровка датчика давления хранятся в NVS вместе с контрольной
+// суммой CRC-16/CCITT (ключ "cks"). При загрузке сумма пересчитывается; если она не
+// совпала (повреждение flash, прерванная запись), значения заменяются умолчаниями и
+// записываются заново, чтобы защиты не работали по испорченной калибровке.
+// ⚡ v6.5: ИСПРАВЛЕНО. Общая сумма "cks" писалась в разные моменты: цель — отложенно
+// (commitSettings через SETTINGS_SAVE_DELAY), калибровка — сразу (saveCalibration) с
+// целью из RAM, которой в NVS ещё нет. Пропадание питания в этом окне давало «сумма
+// не совпала» и СБРАСЫВАЛО КАЛИБРОВКУ датчика давления. Теперь две независимые суммы:
+//   "ckt" — цель (пишется в том же begin/end, что и "tgt"),
+//   "ckc" — калибровка pco/pcs (в том же begin/end, что и "pco"/"pcs").
+// Старый "cks" читается только для миграции и затем удаляется (см. loadSettings).
+// ⚡ v6.5: калибровка с суммой теперь пишется одним ключом-блобом "cal" (CalBlob):
+// три отдельных put (pco/pcs/ckc) оставляли окно, в котором сбой питания сбрасывал
+// верную новую калибровку. "ckc" удаляется после записи "cal".
+static uint16_t crc16Ccitt(const void* data, size_t len) {
+  const uint8_t* b = (const uint8_t*)data;
+  uint16_t crc = 0xFFFF;
+  for (size_t i = 0; i < len; i++) {
+    crc ^= (uint16_t)b[i] << 8;
+    for (uint8_t k = 0; k < 8; k++) crc = (crc & 0x8000) ? (uint16_t)((crc << 1) ^ 0x1021) : (uint16_t)(crc << 1);
+  }
+  return crc;
+}
+
+// ⚡ v6.4: прежняя общая сумма (цель + калибровка) — ⚡ v6.5: только для миграции "cks"
+uint16_t settingsCrc(float tgt, float pco, float pcs) {
+  const float v[3] = { tgt, pco, pcs };
+  return crc16Ccitt(v, sizeof(v));
+}
+uint16_t targetCrc(float tgt)          { return crc16Ccitt(&tgt, sizeof(tgt)); }            // ⚡ v6.5: "ckt"
+uint16_t calCrc(float pco, float pcs)  { const float v[2] = { pco, pcs }; return crc16Ccitt(v, sizeof(v)); }   // ⚡ v6.5: "cal"/"ckc"
+// ⚡ v6.5: калибровка одним атомарным ключом NVS "cal" (смещение, крутизна, сумма calCrc)
+struct CalBlob { float pco; float pcs; uint16_t crc; };
+
+// ⚡ v6.5: миграция со старого "cks", который не совпал. В окне бага v6.4 saveCalibration
+// записал сумму с целью из RAM, ещё не сохранённой в NVS. setTarget() округляет цель до
+// 0,1 бар (0,5..6,5 → 61 значение) — перебираем их: совпадение означает, что калибровка
+// в NVS цела (и найдена последняя заданная цель). Случайное совпадение у испорченных
+// данных — ≈ 61/65536 (0,09 %), диапазоны калибровки дальше проверяются как обычно.
+static bool legacyCksFindTarget(uint16_t cks, float pco, float pcs, float& tgtOut) {
+  for (int k = (int)lroundf(MIN_TARGET_PRESSURE * 10.0f); k <= (int)lroundf(MAX_TARGET_PRESSURE * 10.0f); k++) {
+    float t = (float)k / 10.0f;    // ровно как roundf(v * 10) / 10 в setTarget()
+    if (settingsCrc(t, pco, pcs) == cks) { tgtOut = t; return true; }
+  }
+  return false;
+}
+
+// ⚡ v6.5: калибровка датчика давления сброшена из-за несовпавшей суммы — в журнал
+// событий (журнал поднимается позже loadSettings, запись делает setup после evtInit)
+bool nvsCalResetPending = false;
+
+// ── ⚡ v4.3: НАСТРОЙКИ (гистерезис, цель, наработка) ───────────────────────
+// Фактическая запись настроек в NVS. NVS сам пропускает запись поля, если его
+// значение не изменилось, так что повторные вызовы с теми же данными безопасны.
+// ⚡ v6.0: ключ "drv" (выбор драйвера) больше не пишется и не читается.
+void commitSettings() {
+  settingsDirty = false;
+  float         t  = targetPressure;
+  unsigned long rt = runtimeSeconds;
+  prefs.begin("h2cfg", false);
+  prefs.putFloat("tgt",   t);
+  prefs.putULong("rt",    rt);               // ⚡ v4.4: наработка
+  prefs.putUShort("ckt",  targetCrc(t));      // ⚡ v6.5: своя сумма цели — в том же begin/end, что и "tgt"
+  prefs.end();
+  savedRuntimeSeconds = rt;                  // ⚡ v6.3: то же значение saveRuntime не пишет повторно
+}
+
+// Отложенная пометка «настройки изменились». Реальная запись произойдёт в loop
+// через SETTINGS_SAVE_DELAY после последнего изменения — это защищает flash от
+// износа при частых правках (перетаскивание слайдера давления даёт
+// десятки промежуточных значений; пишем только финальное).
+void saveSettings() {
+  settingsDirty     = true;
+  settingsDirtyTime = millis();
+}
+
+void loadSettings() {
+  prefs.begin("h2cfg", true);
+  targetPressure = prefs.getFloat("tgt",   1.0f);
+  // ⚡ v6.2: таймер работы, бак/газ, обслуживание, номер загрузки
+  runTimerMin    = prefs.getUShort("rtmr", 0);
+  gasTankL       = prefs.getFloat("gtank", GAS_TANK_L_DEF);
+  gasTotalNL     = prefs.getDouble("gtot", 0);
+  maintIntervalH = prefs.getUShort("mnti", MAINT_H_DEF);
+  maintLastRt    = prefs.getULong("mntr", 0);
+  bootCount      = prefs.getULong("boots", 0);
+  if (prefs.getBytesLength("gday") == sizeof(gasDayNL)) prefs.getBytes("gday", gasDayNL, sizeof(gasDayNL));
+  if (prefs.getBytesLength("gdst") == sizeof(gasDayStamp)) prefs.getBytes("gdst", gasDayStamp, sizeof(gasDayStamp));
+  runtimeSeconds = prefs.getULong("rt",    0);     // ⚡ v4.4
+  // ⚡ v5.0: калибровка давления, счётчики реле
+  presCalOffset  = prefs.getFloat("pco",   0.5f);
+  presCalScale   = prefs.getFloat("pcs",   2.5f);
+  relayCyclesElectro = prefs.getULong("rce", 0);
+  relayCyclesValve   = prefs.getULong("rcv", 0);
+  relayCyclesPiezo   = prefs.getULong("rcp", 0);
+  relayCyclesFan1    = prefs.getULong("rcf1", 0);   // ⚡ v6.0
+  relayCyclesFan2    = prefs.getULong("rcf2", 0);   // ⚡ v6.0
+  // Только выводной вентилятор имеет настройки; сохранённый f1m игнорируем.
+  for (uint8_t i = 1; i < FAN_COUNT; i++) {
+    uint8_t m   = prefs.getUChar(FAN_KEY_MODE[i], (uint8_t)FAN_DEF_MODE[i]);
+    int     ton = prefs.getUChar(FAN_KEY_TON[i],  (uint8_t)FAN_DEF_TON[i]);
+    int     tof = prefs.getUChar(FAN_KEY_TOFF[i], (uint8_t)FAN_DEF_TOFF[i]);
+    if (m > FAN_WORK) m = FAN_DEF_MODE[i];
+    if (ton < FAN_TON_MIN || ton > FAN_TON_MAX || tof < FAN_TOFF_MIN || tof >= ton) {
+      ton = FAN_DEF_TON[i];
+      tof = FAN_DEF_TOFF[i];
+    }
+    fanMode[i] = (FanMode)m;
+    fanTOn[i]  = ton;
+    fanTOff[i] = tof;
+  }
+  soundLoadSettings(prefs);   // ⚡ v6.0: "sout","svol","salm","sclk","sboot","son"
+  // ⚡ v6.4: проверка контрольной суммы цели и калибровки; ключа нет — первая загрузка.
+  // ⚡ v6.5: две независимые суммы "ckt" (цель) и "ckc" (калибровка) + миграция "cks".
+  bool     hasCkt = prefs.isKey("ckt");
+  bool     hasCkc = prefs.isKey("ckc");
+  bool     hasCks = prefs.isKey("cks");          // старая общая сумма v6.4
+  uint16_t ckt    = prefs.getUShort("ckt", 0);
+  uint16_t ckc    = prefs.getUShort("ckc", 0);
+  uint16_t cks    = prefs.getUShort("cks", 0);
+  // ⚡ v6.5: атомарный ключ калибровки "cal" — главный источник; pco/pcs/ckc читаются
+  // только для миграции, пока "cal" ещё не записан
+  bool    hasCal = prefs.isKey("cal");
+  CalBlob cb     = { 0.5f, 2.5f, 0 };
+  bool    calLen = hasCal && prefs.getBytesLength("cal") == sizeof(cb) &&
+                   prefs.getBytes("cal", &cb, sizeof(cb)) == sizeof(cb);
+  prefs.end();
+  bool tgtBad = hasCkt && ckt != targetCrc(targetPressure);
+  bool calBad = hasCkc && ckc != calCrc(presCalOffset, presCalScale);
+  if (hasCal) {
+    // Ключ записан целиком или не записан вовсе — несовпадение тут только от порчи flash
+    calBad = !(calLen && cb.crc == calCrc(cb.pco, cb.pcs));
+    if (!calBad) { presCalOffset = cb.pco; presCalScale = cb.pcs; }
+    hasCkc = true;                           // старые суммы калибровки больше не нужны
+  }
+  if (hasCks && (!hasCkt || !hasCkc)) {
+    // Миграция: новой суммы ещё нет — проверяем часть по старой "cks". Совпала — значения
+    // приняты. Не совпала — ищем цель, с которой калибровка даёт "cks" (окно бага v6.4).
+    bool  legacyOk = cks == settingsCrc(targetPressure, presCalOffset, presCalScale);
+    float tFound   = targetPressure;
+    bool  found    = !legacyOk && legacyCksFindTarget(cks, presCalOffset, presCalScale, tFound);
+    if (!hasCkc && !legacyOk && !found) calBad = true;
+    if (!hasCkt && !legacyOk) {
+      if (found) {
+        targetPressure = tFound;             // последняя заданная цель (не успела записаться)
+        Serial.printf("NVS: миграция суммы — калибровка цела, цель восстановлена: %.1f бар\n", tFound);
+      } else {
+        tgtBad = true;
+      }
+    }
+    if (legacyOk) Serial.println("NVS: миграция контрольной суммы v6.4 → v6.5 (ckt/ckc)");
+  }
+  if (tgtBad) {
+    Serial.println("NVS: контрольная сумма цели давления не совпала — цель 1.0 бар");
+    targetPressure = 1.0f;
+  }
+  if (calBad) {
+    // Калибровке нельзя верить: защиты по давлению работали бы по испорченным данным
+    Serial.println("NVS: !!! контрольная сумма КАЛИБРОВКИ датчика давления не совпала — "
+                   "калибровка по умолчанию (0.5 / 2.5). ОТКАЛИБРУЙТЕ ДАТЧИК ЗАНОВО!");
+    presCalOffset = 0.5f;
+    presCalScale  = 2.5f;
+    nvsCalResetPending = true;
+  }
+  // Защита от мусора
+  // ⚡ v6.3: NaN проходил constrain насквозь (макрос на сравнениях) — NaN из NVS → 1.0 бар
+  if (!isfinite(targetPressure)) targetPressure = 1.0f;
+  targetPressure = constrain(targetPressure, MIN_TARGET_PRESSURE, MAX_TARGET_PRESSURE);
+  // ⚡ v6.3: калибровка вне допустимого диапазона (в т.ч. NaN) → значения по умолчанию,
+  // иначе давление считалось бы 0 и защиты по давлению не работали бы
+  if (!(presCalOffset >= 0.0f && presCalOffset <= 2.0f))  presCalOffset = 0.5f;
+  if (!(presCalScale  >= 0.1f && presCalScale  <= 10.0f)) presCalScale  = 2.5f;
+  if (runTimerMin > RUN_TIMER_MAX_MIN) runTimerMin = 0;
+  if (!(gasTankL >= 0.1f && gasTankL <= 100.0f)) gasTankL = GAS_TANK_L_DEF;
+  if (!(gasTotalNL >= 0 && gasTotalNL < 1e9)) gasTotalNL = 0;
+  if (maintIntervalH < 1 || maintIntervalH > 1000) maintIntervalH = MAINT_H_DEF;
+  if (maintLastRt > runtimeSeconds) maintLastRt = runtimeSeconds;
+  gasSavedNL = gasTotalNL;
+  savedRuntimeSeconds = runtimeSeconds;  // ⚡ v4.4: то что в NVS — уже сохранено
+  // ⚡ v6.5: дописать недостающие/исправленные суммы — каждая своей функцией (калибровка
+  // первой: её сумма важнее); старый "cks" удаляем, только когда обе новые записаны
+  if (!hasCal || calBad) saveCalibration();   // ⚡ v6.5: миграция pco/pcs(/ckc) → "cal"
+  if (!hasCkt || tgtBad) commitSettings();
+  if (hasCks) {
+    prefs.begin("h2cfg", false);
+    prefs.remove("cks");
+    prefs.end();
+  }
+}
+
+void saveExtras() {
+  Preferences p;
+  p.begin("h2cfg", false);
+  p.putUShort("rtmr",  runTimerMin);
+  p.putFloat ("gtank", gasTankL);
+  p.putUShort("mnti",  maintIntervalH);
+  p.putULong ("mntr",  maintLastRt);
+  p.end();
+}
+
+// ⚡ v6.2: счётчик газа — раз в 5 минут из loop (пишет только при изменении)
+void saveGas() {
+  if (fabs(gasTotalNL - gasSavedNL) < 0.001) return;
+  Preferences p;
+  p.begin("h2cfg", false);
+  p.putDouble("gtot", gasTotalNL);
+  p.putBytes("gday", gasDayNL, sizeof(gasDayNL));
+  p.putBytes("gdst", gasDayStamp, sizeof(gasDayStamp));
+  p.end();
+  gasSavedNL = gasTotalNL;
+}
+
+void saveCalibration() {
+  Preferences p;
+  p.begin("h2cfg", false);
+  // ⚡ v6.5: снимок значений; калибровка и её сумма — ОДНИМ ключом "cal" (запись одного
+  // ключа NVS атомарна). Раньше pco/pcs/ckc шли тремя put: пропадание питания между
+  // ними давало «сумма не совпала» и сброс верной новой калибровки.
+  float  o = presCalOffset, s = presCalScale;
+  CalBlob b = { o, s, calCrc(o, s) };
+  p.putBytes("cal", &b, sizeof(b));
+  // pco/pcs — копия для отката на старую прошивку; v6.5 их не читает, пока "cal" цел
+  p.putFloat("pco", o);
+  p.putFloat("pcs", s);
+  p.remove("ckc");      // сумма старого формата больше не нужна (и не должна устаревать)
+  p.end();
+}
+
+void saveFans(uint8_t i) {
+  Preferences p;
+  p.begin("h2cfg", false);
+  p.putUChar(FAN_KEY_MODE[i], (uint8_t)fanMode[i]);
+  p.putUChar(FAN_KEY_TON[i],  (uint8_t)fanTOn[i]);
+  p.putUChar(FAN_KEY_TOFF[i], (uint8_t)fanTOff[i]);
+  p.end();
+}
+
+void saveCycles() {
+  Preferences p;
+  p.begin("h2cfg", false);
+  p.putULong("rce",  relayCyclesElectro);
+  p.putULong("rcv",  relayCyclesValve);
+  p.putULong("rcp",  relayCyclesPiezo);
+  p.putULong("rcf1", relayCyclesFan1);
+  p.putULong("rcf2", relayCyclesFan2);
+  p.end();
+}
+
+// ── ⚡ v4.4: СЧЁТЧИК НАРАБОТКИ ──────────────────────────────────────────────
+// Сохраняем runtime отдельно (только это поле), чтобы не трогать остальное.
+// Пишем во flash ТОЛЬКО если значение секунд реально изменилось с прошлой
+// записи — это защищает NVS от лишнего износа.
+void saveRuntime() {
+  if (runtimeSeconds == savedRuntimeSeconds) return;  // нечего сохранять
+  prefs.begin("h2cfg", false);
+  prefs.putULong("rt", runtimeSeconds);
+  prefs.end();
+  savedRuntimeSeconds = runtimeSeconds;
+}
+
+void resetRuntime() {
+  runtimeSeconds = 0;
+  runtimeMsAccum = 0;
+  electroOnSince = electroOn ? millis() : 0;
+  savedRuntimeSeconds = 1;  // форсируем запись нуля (1 != 0)
+  saveRuntime();
+  maintLastRt = 0;          // ⚡ v6.2: отсчёт обслуживания — тоже с нуля
+  maintDue    = false;
+  saveExtras();
+  Serial.println("[RUNTIME] Счётчик наработки обнулён");
+}
+
+// Вызывается при каждом изменении electroOn — учитывает накопленное время
+void updateRuntimeOnElectroChange(bool nowOn) {
+  unsigned long ms = millis();
+  if (nowOn && electroOnSince == 0) {
+    // включился
+    electroOnSince = ms;
+  } else if (!nowOn && electroOnSince != 0) {
+    // выключился — добавляем интервал без потери остатка миллисекунд
+    runtimeMsAccum += (ms - electroOnSince);
+    runtimeSeconds += runtimeMsAccum / 1000UL;
+    runtimeMsAccum %= 1000UL;
+    electroOnSince = 0;
+  }
+}
+
+// ── ⚡ v4.4: WATCHDOG ПО ДАВЛЕНИЮ ──────────────────────────────────────────
+// Сбросить watchdog (вызывается когда есть прогресс или электролизер выкл)
+void wdReset() {
+  pressureWatchdog = false;
+  wdStart       = millis();
+  wdRefPressure = currentPressure;
+}
+
+// Проверка watchdog — вызывается в loop когда электролизер активен в авто-режиме
+void wdCheck() {
+  unsigned long now = millis();
+  // Если давление выросло на WD_PROGRESS_BAR от опорного — есть прогресс, сброс
+  if (currentPressure >= wdRefPressure + WD_PROGRESS_BAR) {
+    wdStart       = now;
+    wdRefPressure = currentPressure;
+    pressureWatchdog = false;
+    return;
+  }
+  // Прогресса нет — проверяем тайм-аут
+  if (now - wdStart >= WD_TIMEOUT) {
+    if (!pressureWatchdog) {
+      Serial.printf("[WATCHDOG] Бак не набирает давление за %lu сек! P=%.2f, опорное=%.2f\n",
+                    WD_TIMEOUT/1000UL, currentPressure, wdRefPressure);
+    }
+    pressureWatchdog = true;
+  }
+}
+
+// ── ⚡ v4.3: ЗАПУСК РЕПУЛЬСОРА ─────────────────────────────────────────────
+void startRepulsor() {
+  if (repulsorActive) return;  // повторное нажатие во время цикла игнорируем
+  // ⚡ v6.3: + защёлки давления и утечки — при них systemOn и !isLocked возможны, и
+  // клапан открывался до следующей итерации (флаг repulsorActive при этом «зависал»)
+  if (!systemOn || isLocked || tiltLock || overpressureLock || leakLock || isPurging || isPurgeShort) return;
+  repulsorActive = true;
+  repulsorStart  = millis();
+  manualGasActive = false;     // взаимоисключение с manual gas
+  // Открываем клапан сразу. Пьезо включится в loop() при t >= 700 мс.
+  setRelay(PIN_RELAY_VALVE, true);
+  valveOn = true;
+  Serial.println("[REPULSOR] FIRE!");
+}
+
+
+// =====================================================================================
+//  КОМАНДЫ
+// =====================================================================================
+volatile bool purgeAborted = false;   // ⚡ v6.0: продувку прервали LOCK (для звука события)
+                                      // ⚡ v6.3: или TILT / тайм-аут с остаточным давлением
+
+void executeCommand(uint8_t cmd) {
+  if (isPurging && cmd != 2 && cmd != 12) return;
+
+
+  switch (cmd) {
+    case 1:  // POWER
+      if (!systemOn) {
+        if (overpressureLock && currentPressure < WARN_PRESSURE) overpressureLock = false;
+        systemOn = true;
+        runStartMs    = millis();   // ⚡ v6.2: отсчёт таймера работы
+        runTimerEnded = false;
+        gasSessionNL  = 0;
+      } else {
+        systemOn = false; resetProcesses(); allRelaysOff();
+      }
+      break;
+
+    case 2:  // LOCK toggle + сброс защёлок TILT/overpressure
+      if (isLocked || tiltLock || overpressureLock || leakLock) {
+        // Попытка разблокировки: сбрасываем всё, что можем
+        // ⚡ v6.3: пока установка наклонена (среднее > TILT_ANGLE_DEG), LOCK защёлку TILT
+        // не снимает — иначе до следующего tiltCheck MOSFET успевал открыться
+        bool stillTilted = mpuOk && !tiltCalibrating && currentTiltDeg > TILT_ANGLE_DEG;
+        leakLock = false;              // ⚡ v6.2: защёлка сильной утечки
+        leakWarn = leakWarnStatic = leakWarnHold = false;
+        if (currentPressure < WARN_PRESSURE) overpressureLock = false;
+        if (stillTilted) { tiltLock = true;  isLocked = true; }   // остаёмся заблокированными
+        else             { tiltLock = false; isLocked = false; }
+      } else {
+        isLocked = true;
+        resetProcesses();
+        // LOCK во время продувки = аборт продувки: иначе клапан закрывается
+        // (allRelaysOff), а isPurging ещё до 90 сек держит систему в продувке.
+        if (isPurging) { isPurging = false; systemOn = false; purgeAborted = true; }
+        allRelaysOff();
+      }
+      break;
+
+    case 3:  // РЕПУЛЬСОР — одноразовый выстрел
+      startRepulsor();
+      break;
+
+    case 4: startPiezo(); break;
+
+    case 5:  // PURGE SHORT
+      if (systemOn && !isLocked && !tiltLock && !isPurging && !isPurgeShort && !repulsorActive) {
+        isPurgeShort    = true;
+        purgeShortStart = millis();
+        setRelay(PIN_RELAY_VALVE, true);
+        valveOn = true;
+      }
+      break;
+
+    case 7:  // MANUAL GAS
+      // ⚡ v6.3: выключить можно всегда; включить — только в полностью разрешённом
+      // состоянии (без защёлок давления/утечки и без репульсора)
+      if (manualGasActive) manualGasActive = false;
+      else if (systemOn && !isLocked && !tiltLock && !overpressureLock && !leakLock && !repulsorActive)
+        manualGasActive = true;
+      break;
+
+    case 8: bumpTarget(+TARGET_STEP); break;
+    case 9: bumpTarget(-TARGET_STEP); break;
+
+    case 10: // ⚡ v6.0: выбор драйвера (MOSFET/РЕЛЕ) убран — электролизёр только
+      break; //          через MOSFET; команда старых пультов игнорируется
+
+    case 12:
+      alarmMuted = true;
+      soundStop();
+      break;
+
+    case 99: // SAFE OFF — продувка до нуля
+      // БЕЗ проверки systemOn: при двойном клике POWER (пульт и кнопка мозга)
+      // первый клик уже выключил систему, и cmd 99 приходил в systemOn=false —
+      // продувка молча не запускалась. Продувка-сброс должна работать из
+      // любого состояния (это аварийное стравливание бака).
+      resetProcesses();
+      electroOff();           // ⚡ затвор + учёт наработки перед гашением (v6.3: единая точка)
+      setRelay(PIN_RELAY_PIEZO,   false);
+      // ⚡ v6.3: при TILT клапан не открываем даже импульсом (корпус опрокинут) —
+      // продувка стартует с закрытым клапаном, ветка продувки её прервёт
+      setRelay(PIN_RELAY_VALVE,   !tiltLock);
+      valveOn = !tiltLock;
+      isPurging = true; purgeStart = millis();
+      purgeAborted = false;   // ⚡ v6.3: флаг — только для этой продувки (не остаётся от прошлой)
+      break;
+  }
+}
+
+
+// =====================================================================================
+//  БЕЗОПАСНОСТЬ — ДАВЛЕНИЕ
+// =====================================================================================
+void safetyCheck() {
+  // ⚡ v6.2: при неисправном датчике его показания — мусор: аварию по давлению
+  // не взводим (электролизёр и так заблокирован pressureFault)
+  if (pressureFault) return;
+  if (currentPressure > MAX_SAFE_PRESSURE && systemOn) {
+    electroOff();              // ⚡ затвор + учёт наработки перед гашением (v6.3: единая точка)
+    setRelay(PIN_RELAY_PIEZO,   false);
+    // Во время продувки клапан НЕ закрываем: открытый клапан — единственный
+    // путь сброса давления. Закрыть его при сверхдавлении значило бы
+    // заблокировать стравливание до 90-сек таймаута продувки.
+    if (!isPurging) {
+      setRelay(PIN_RELAY_VALVE, false);
+      valveOn = false;
+    }
+    piezoActive = false;
+    repulsorActive = false;
+    manualGasActive = false;   // ⚡ v6.3: ручная подача тоже гасится, как при TILT; после снятия защёлки нужна новая команда
+    overpressureLock = true;
+  }
+}
+
+// ── ⚡ v6.2: ПРОВЕРКА ДАТЧИКА ДАВЛЕНИЯ (вызывается каждые 100 мс) ──────────────
+// Обрыв или замыкание дают напряжение вне рабочего диапазона. Тогда давление
+// неизвестно: электролизёр не включается (см. основную логику), звучит тревога.
+// Снимается само, когда показания 2 с подряд снова в норме.
+void pressureSensorCheck(unsigned long now) {
+  bool bad = (pressureVolts < PSENS_V_MIN) || (pressureVolts > PSENS_V_MAX);
+  if (bad) {
+    psensGoodSince = 0;
+    if (psensBadSince == 0) psensBadSince = now;
+    if (!pressureFault && now - psensBadSince >= PSENS_FAULT_MS) {
+      pressureFault = true;
+      electroOff();                    // ⚡ v6.3: единая точка гашения электролизёра
+      evtLog(EVT_PSENS_FAULT, (int32_t)(pressureVolts * 1000));
+    }
+  } else {
+    psensBadSince = 0;
+    if (pressureFault) {
+      if (psensGoodSince == 0) psensGoodSince = now;
+      if (now - psensGoodSince >= PSENS_OK_MS) {
+        pressureFault = false;
+        evtLog(EVT_PSENS_OK, (int32_t)(pressureVolts * 1000));
+      }
+    }
+  }
+}
+
+// ── ⚡ v6.2: ДЕТЕКТОР УТЕЧКИ / НЕЗАКРЫТОГО КЛАПАНА (каждые 100 мс) ────────────
+// Условия замера: клапан закрыт, электролизёр выключен, нет продувок/репульсора/
+// ручной подачи, датчик исправен, давление ≥ LEAK_MIN_P. После LEAK_SETTLE_MS
+// стабильных условий берём опорное давление и смотрим падение за LEAK_WINDOW_MS.
+void leakCheck(unsigned long now) {
+  // ── Вариант A: система работает и держит цель. Расхода нет (клапан закрыт),
+  // значит MOSFET почти не должен включаться. Если за окно удержания он работает
+  // дольше LEAK_HOLD_DUTY времени — газ уходит: предупреждение (без выключения).
+  static unsigned long holdStart = 0, holdOnMs = 0, holdLast = 0;
+  bool holding = systemOn && !isLocked && !valveOn && !isPurging && !isPurgeShort && !repulsorActive &&
+                 !manualGasActive && !pressureFault && targetPressure >= LEAK_MIN_P &&
+                 pressureFilt >= targetPressure - LEAK_HOLD_BAND;
+  if (!holding) { holdStart = 0; }
+  else if (holdStart == 0) { holdStart = now; holdOnMs = 0; holdLast = now; }
+  else {
+    if (electroOn) holdOnMs += now - holdLast;
+    holdLast = now;
+    if (now - holdStart >= LEAK_HOLD_WINDOW_MS) {
+      float duty = (float)holdOnMs / (float)(now - holdStart);
+      if (duty >= LEAK_HOLD_DUTY) {
+        if (!leakWarnHold) evtLog(EVT_LEAK_HOLD, (int32_t)roundf(duty * 100));
+        leakWarnHold = true;
+      } else if (duty < LEAK_HOLD_DUTY / 3) {
+        leakWarnHold = false;                           // подкачка почти не нужна — норма
+      }
+      holdStart = now; holdOnMs = 0;                    // следующее окно
+    }
+  }
+
+  // ── Вариант B: электролизёр выключен, клапан закрыт — давление должно стоять.
+  bool quiet = !valveOn && !electroOn && !isPurging && !isPurgeShort && !repulsorActive &&
+               !manualGasActive && !pressureFault && pressureFilt >= LEAK_MIN_P;
+  if (!quiet) { leakQuietSince = 0; leakRefMs = 0; }
+  else if (leakQuietSince == 0) { leakQuietSince = now; }
+  else if (now - leakQuietSince >= LEAK_SETTLE_MS) {
+    if (leakRefMs == 0) { leakRefMs = now; leakRefP = pressureFilt; }
+    else if (now - leakRefMs >= LEAK_WINDOW_MS) {
+      float drop = leakRefP - pressureFilt;
+      leakRefMs = now; leakRefP = pressureFilt;        // следующее окно
+      if (drop >= LEAK_CRIT_BAR) {
+        if (!leakLock) {
+          leakLock = true;
+          leakWarnStatic = true;
+          evtLog(EVT_LEAK_CRIT, (int32_t)(drop * 100));
+          Serial.printf("[LEAK] сильная утечка: −%.2f бар за %lu с — выключение\n", drop, LEAK_WINDOW_MS / 1000);
+          if (systemOn) { systemOn = false; resetProcesses(); allRelaysOff(); }
+        }
+      } else if (drop >= LEAK_WARN_BAR) {
+        if (!leakWarnStatic) evtLog(EVT_LEAK_WARN, (int32_t)(drop * 100));
+        leakWarnStatic = true;
+      } else if (drop < LEAK_WARN_BAR / 2) {
+        leakWarnStatic = false;                         // давление держится
+      }
+    }
+  }
+  leakWarn = leakWarnStatic || leakWarnHold;
+}
+
+// ── ⚡ v6.2: СЧЁТЧИК ГАЗА (каждые 100 мс) ─────────────────────────────────────
+// Пока электролизёр работает при закрытом клапане, прирост давления ΔP в баке
+// объёмом V даёт ΔP·V/Pатм нормальных литров. Это оценка (без расходомера).
+// ⚡ v6.3: учёт по «окну» и отметке максимума. Раньше прирост считался только пока
+// MOSFET включён, а сглаженное давление (EMA ≈ 2 с) после выключения ещё ~5 с догоняет
+// реальное — короткие дозаправки (после выстрела) теряли 40–60 % газа; кроме того,
+// суммировались только dp > 0, и шум фильтра «выпрямлялся» в ложный газ.
+// Теперь: окно открыто при закрытом клапане (без репульсора/ручной подачи, датчик
+// исправен), пока MOSFET работает и ещё GAS_TAIL_MS после выключения (хвост фильтра
+// ≈ 3τ). Газ = рост отметки максимума pressureFilt внутри окна: шум у цели почти не
+// поднимает максимум, падение давления не вычитается и не прибавляется.
+// Отметка опускается вслед за реальным падением (больше GAS_DROP_BAR): после выстрела
+// сглаженное давление ещё несколько секунд падает, и дозаправка считается от минимума.
+const unsigned long GAS_TAIL_MS = 6000;
+const float GAS_DROP_BAR = 0.01f;   // ⚡ отметка максимума опускается вслед за реальным падением (шум EMA ≈ 0,003 бар)
+
+void gasUpdate(unsigned long dtMs) {
+  float p = pressureFilt;
+  unsigned long ms = millis();
+  if (electroOn) gasLastOnMs = ms;
+  // Доля времени работы MOSFET: EMA с постоянной ~10 мин
+  float k = dtMs / 600000.0f;
+  electroDuty += ((electroOn ? 1.0f : 0.0f) - electroDuty) * k;
+  bool allow = !valveOn && !repulsorActive && !manualGasActive && !pressureFault &&
+               (electroOn || (gasLastOnMs != 0 && ms - gasLastOnMs < GAS_TAIL_MS));
+  float nl = 0;
+  if (!allow) {
+    gasWinOpen = false;                       // клапан открыт, сбой датчика или долгий простой
+  } else if (!gasWinOpen) {
+    gasWinOpen = true;                        // база окна — текущее сглаженное давление
+    gasHiP     = p;
+  } else if (p > gasHiP) {
+    float d = p - gasHiP;
+    gasHiP = p;
+    if (d < 0.5f) nl = d * gasTankL / P_ATM_BAR;   // защита от скачков: базу подняли, газ не считаем
+  } else if (p < gasHiP - GAS_DROP_BAR) {
+    // ⚡ сглаженное давление ещё догоняет реальное после закрытия клапана (выстрел,
+    // ручная подача, мини-продувка) — опускаем отметку, иначе дозаправка до прежнего
+    // максимума не учитывается. Полоса GAS_DROP_BAR не даёт шуму «выпрямляться» в газ.
+    gasHiP = p + GAS_DROP_BAR;
+  }
+  // Производительность (нл/ч), сглаженная ~30 с; вне работы плавно уходит в 0
+  float inst = (dtMs > 0) ? nl * 3600000.0f / dtMs : 0;
+  gasRateNLh += (inst - gasRateNLh) * (dtMs / 30000.0f);
+  if (nl <= 0) return;
+  gasTotalNL   += nl;
+  gasSessionNL += nl;
+  uint32_t ep = nowEpoch();
+  if (ep) {
+    uint32_t day = ep / 86400UL;
+    uint8_t  i   = day % 7;
+    if (gasDayStamp[i] != day) { gasDayStamp[i] = day; gasDayNL[i] = 0; }
+    gasDayNL[i] += nl;
+  }
+}
+
+// Газ за сегодня и за 7 суток (только при синхронизированных часах, иначе −1)
+float gasToday() {
+  uint32_t ep = nowEpoch(); if (!ep) return -1;
+  uint32_t day = ep / 86400UL;
+  return gasDayStamp[day % 7] == day ? gasDayNL[day % 7] : 0;
+}
+float gasWeek() {
+  uint32_t ep = nowEpoch(); if (!ep) return -1;
+  uint32_t day = ep / 86400UL; float s = 0;
+  for (uint8_t i = 0; i < 7; i++) if (gasDayStamp[i] && day - gasDayStamp[i] < 7) s += gasDayNL[i];
+  return s;
+}
+
+// ── ⚡ v6.2: ОБСЛУЖИВАНИЕ — часов наработки до доливки (может быть < 0) ──────
+long maintHoursLeft() {
+  return (long)maintIntervalH - (long)((runtimeSeconds - maintLastRt) / 3600UL);
+}
+
+void maintCheck() {
+  bool due = maintHoursLeft() <= 0;
+  if (due && !maintDue) {
+    evtLog(EVT_MAINT_DUE, (int32_t)(runtimeSeconds / 3600UL));
+    if (sndAlarms) soundPlay(MEL_WARN, SND_PRIO_WARN);   // ⚡ v6.3: не обрывает тревогу
+  }
+  maintDue = due;
+}
+
+// ── ⚡ v6.2: ТАЙМЕР РАБОТЫ (0 = без ограничения) ──────────────────────────────
+// Секунд до выключения, −1 — таймер не идёт
+long runTimerLeft() {
+  if (!systemOn || runTimerMin == 0 || runStartMs == 0) return -1;
+  long left = (long)runTimerMin * 60L - (long)((millis() - runStartMs) / 1000UL);
+  return left < 0 ? 0 : left;
+}
+
+void runTimerCheck() {
+  if (runTimerLeft() == 0 && systemOn && !isPurging) {
+    Serial.printf("[TIMER] %u мин истекли — выключение\n", runTimerMin);
+    executeCommand(1);                 // штатное выключение (звук «выключение»)
+    runTimerEnded = true;
+    evtLog(EVT_TIMER_END, runTimerMin);
+  }
+}
+
+
+// =====================================================================================
+//  БЕЗОПАСНОСТЬ — НАКЛОН
+// =====================================================================================
+void tiltCheck() {
+  if (!mpuOk || tiltCalibrating) return;   // не найден при старте — TILT-защита отключена
+
+  float ang = mpuAngleVsBaseline();
+  if (ang < 0) {
+    // ⚡ v6.3: ошибка чтения или неправдоподобный вектор (обрыв, зависшая шина, сброс
+    // модуля помехой — он уходит в сон и отдаёт нули). Раньше тик просто пропускался,
+    // угол «замерзал», а защита по наклону молча переставала работать.
+    mpuGoodCnt = 0;
+    if (mpuBadCnt < 255) mpuBadCnt++;
+    if (mpuBadCnt >= MPU_FAULT_READS && !mpuFault) {
+      mpuFault = true;
+      angleIdx = 0; angleBufFilled = false;   // старые углы не смешиваем с новыми
+      Serial.println("[TILT] MPU6050 не отвечает — угла нет, MOSFET запрещён до восстановления");
+      evtLog(EVT_TILT_FAULT, 0);
+    }
+    if (mpuFault) {
+      // Неблокирующая переинициализация (без delay и без перекалибровки: эталон
+      // сохраняем — установка может быть наклонена прямо сейчас). Не чаще раза в 2 с:
+      // шина I2C общая с дисплеем, при её зависании каждая транзакция ждёт тайм-аут.
+      unsigned long ms = millis();
+      if (ms - mpuRetryT >= MPU_RETRY_MS) {
+        mpuRetryT = ms;
+        mpuWriteReg(0x6B, 0x00);   // пробуждение
+        mpuWriteReg(0x1C, 0x00);   // ±2g
+        mpuWriteReg(0x1A, 0x03);   // фильтр ~44 Гц
+      }
+    }
+    return;
+  }
+  mpuBadCnt = 0;
+  if (mpuFault && ++mpuGoodCnt >= MPU_OK_READS) {
+    mpuFault   = false;
+    mpuGoodCnt = 0;
+    Serial.println("[TILT] MPU6050 снова отвечает — защита по наклону работает");
+  }
+  // (во время восстановления правдоподобные углы уже учитываются — защёлка TILT
+  //  может взвестись и до снятия mpuFault)
+
+  // Скользящее среднее
+  angleBuf[angleIdx] = ang;
+  angleIdx = (angleIdx + 1) % TILT_AVG_SAMPLES;
+  if (angleIdx == 0) angleBufFilled = true;
+  int n = angleBufFilled ? TILT_AVG_SAMPLES : angleIdx;
+  if (n == 0) return;
+  float sum = 0;
+  for (int i = 0; i < n; i++) sum += angleBuf[i];
+  currentTiltDeg = sum / n;
+
+  if (currentTiltDeg > TILT_ANGLE_DEG) {
+    if (!tiltLock) Serial.printf("[TILT] Сработка: %.1f° > %.1f°\n", currentTiltDeg, TILT_ANGLE_DEG);
+    tiltLock = true;
+    allRelaysOff();                // ⚡ v6.3: MOSFET, клапан, пьезо (была пара cutElectroAndValve + пьезо)
+    piezoActive     = false;
+    repulsorActive  = false;
+    manualGasActive = false;
+  }
+}
+
+
+// =====================================================================================
+//  OLED
+// =====================================================================================
+// Вывод строки LCD: сравнение с теневым буфером, передаются только изменившиеся
+// знакоместа (полная перерисовка 80 знаков по I2C 100 кГц заняла бы ~110 мс).
+void lcdLine(uint8_t row, const char* txt) {
+  char buf[21];
+  snprintf(buf, sizeof(buf), "%-20.20s", txt);
+  int8_t cur = -1;                       // позиция курсора контроллера, -1 = неизвестна
+  for (uint8_t c = 0; c < 20; c++) {
+    if (lcdShadow[row][c] == buf[c]) { cur = -1; continue; }
+    // ⚡ v6.3: передача не прошла — строку помечаем «неизвестной» (0 в buf не бывает)
+    // и выходим: перерисуется при следующем обновлении; при отключённом LCD — не
+    // больше одной неудачной транзакции на строку, без ожидания всех 20 знаков.
+    if ((cur != c && !lcd->setCursor(c, row)) || !lcd->write((uint8_t)buf[c])) {
+      memset(lcdShadow[row], 0, 20);
+      return;
+    }
+    lcdShadow[row][c] = buf[c];
+    cur = c + 1;
+  }
+}
+
+void updateDisplayLCD() {
+  unsigned long now = millis();
+  char l[4][32];   // с запасом: lcdLine всё равно выводит ровно 20 знаков
+  char tgt[6]; dtostrf(targetPressure, 3, 1, tgt);
+
+  // ── Экран установки целевого давления: значение и шкала из 20 знакомест ──
+  if (now - lastTargetChange < T_SHOW_TARGET) {
+    snprintf(l[0], sizeof(l[0]), "TARGET PRESSURE");
+    snprintf(l[1], sizeof(l[0]), "      %s bar", tgt);
+    int n = constrain((int)roundf(targetPressure / MAX_TARGET_PRESSURE * 20.0f), 0, 20);
+    for (int i = 0; i < 20; i++) l[2][i] = i < n ? (char)0xFF : '-';
+    l[2][20] = '\0';
+    snprintf(l[3], sizeof(l[0]), "%.1f           %.1f", MIN_TARGET_PRESSURE, MAX_TARGET_PRESSURE);
+    for (uint8_t r = 0; r < 4; r++) lcdLine(r, l[r]);
+    return;
+  }
+
+  // ── 1: заголовок, связь, режим ──
+  const char* mode = tiltCalibrating ? "CAL" : tiltLock ? "TILT!" : overpressureLock ? "!OVP" :
+                     (isPurging || isPurgeShort) ? "PURGE" :
+                     systemOn ? (isLocked ? "LOCK" : "ON") : "OFF";
+  snprintf(l[0], sizeof(l[0]), "H2 PRO RF:%s %5s", remoteOnline ? "OK" : "--", mode);
+
+  // ── 2: давление, температура, наклон ──
+  char p[8]; dtostrf(currentPressure, 4, 2, p);
+  char t[6];  if (tempSensorOk) snprintf(t, sizeof(t), "%2d%c", (int)roundf(currentTemp), (char)0xDF);
+              else              snprintf(t, sizeof(t), "--%c", (char)0xDF);
+  char a[6];  if (mpuOk && !mpuFault && !tiltCalibrating) snprintf(a, sizeof(a), "%2d%c", (int)currentTiltDeg, (char)0xDF);
+              else                           snprintf(a, sizeof(a), "--");
+  snprintf(l[1], sizeof(l[0]), "P%sbar %s A%s", p, t, a);
+
+  // ── 3: электролизер, клапан, поджиг, вентилятор ──
+  snprintf(l[2], sizeof(l[0]), "E:%s V:%s P:%s F:%s", electroOn ? "ON" : "OF", valveOn ? "ON" : "OF",
+           piezoActive ? "ON" : "OF", fanOn[1] ? "ON" : "OF");
+
+  // ── 4: цель и состояние ──
+  if (tiltLock)               snprintf(l[3], sizeof(l[0]), "TILT %d deg  LOCKED", (int)currentTiltDeg);
+  else if (overpressureLock)  snprintf(l[3], sizeof(l[0]), ">RELEASE PRESSURE!<");
+  else if (pressureFault)     snprintf(l[3], sizeof(l[0]), "!P-SENSOR FAULT!");
+  else if (mpuFault)          snprintf(l[3], sizeof(l[0]), "!MPU FAULT TILT?");   // ⚡ v6.3
+  else if (leakLock)          snprintf(l[3], sizeof(l[0]), "!LEAK! press LOCK");
+  else if (isPurging)         snprintf(l[3], sizeof(l[0]), "PURGE %s bar", p);
+  else if (isPurgeShort)      snprintf(l[3], sizeof(l[0]), "MINI-PURGE 200ms");
+  else if (repulsorActive)    snprintf(l[3], sizeof(l[0]), ">>REPULSOR FIRE!<<");
+  else if (!systemOn)         snprintf(l[3], sizeof(l[0]), "OFF   T=%s bar", tgt);
+  else if (isLocked)          snprintf(l[3], sizeof(l[0]), "LOCKED T=%s", tgt);
+  else if (pressureWatchdog)  snprintf(l[3], sizeof(l[0]), "!NO PRESSURE RISE!");
+  else if (manualGasActive)   snprintf(l[3], sizeof(l[0]), "MANUAL GAS");
+  else if (leakWarn)          snprintf(l[3], sizeof(l[0]), "!LEAK? T=%s", tgt);
+  else if (maintDue)          snprintf(l[3], sizeof(l[0]), "SERVICE! T=%s", tgt);
+  else {
+    long tl = runTimerLeft();   // ⚡ v6.2: остаток таймера работы
+    if (tl >= 0) snprintf(l[3], sizeof(l[0]), "AUTO T=%s  %ld:%02ld", tgt, tl / 60, tl % 60);
+    else         snprintf(l[3], sizeof(l[0]), "AUTO T=%s bar", tgt);
+  }
+
+  for (uint8_t r = 0; r < 4; r++) lcdLine(r, l[r]);
+}
+
+void updateDisplay() {
+  if (lcdOk) { updateDisplayLCD(); return; }
+  if (!oledOk) return;
+  unsigned long now = millis();
+  oled.clearDisplay();
+  oled.setTextColor(SSD1306_WHITE);
+
+  // ── Экран установки целевого давления ──────────────────────────────────
+  if (now - lastTargetChange < T_SHOW_TARGET) {
+    oled.setTextSize(1);
+    oled.setCursor(8, 0); oled.print("ЦЕЛЕВОЕ ДАВЛЕНИЕ");
+    oled.drawLine(0, 9, 127, 9, SSD1306_WHITE);
+    oled.setTextSize(3);
+    char tBuf[8]; dtostrf(targetPressure, 4, 1, tBuf);
+    oled.setCursor(8, 14); oled.print(tBuf);
+    oled.setTextSize(1);
+    oled.setCursor(100, 22); oled.print("бар");
+    int tw = constrain((int)(targetPressure / MAX_TARGET_PRESSURE * 127.0f), 0, 127);
+    oled.drawRect(0, 42, 128, 5, SSD1306_WHITE);
+    if (tw > 0) oled.fillRect(1, 43, tw, 3, SSD1306_WHITE);
+    oled.setCursor(0, 50);
+    oled.printf("%.1f         %.1f бар", MIN_TARGET_PRESSURE, MAX_TARGET_PRESSURE);
+    oled.display();
+    return;
+  }
+
+  // ── Заголовок ───────────────────────────────────────────────────────────
+  oled.setTextSize(1);
+  oled.setCursor(0, 0); oled.print("H2 PRO");
+  oled.setCursor(48, 0); oled.print("RF:"); oled.print(remoteOnline ? "OK" : "--");
+  oled.setCursor(86, 0);
+  if (tiltCalibrating)    oled.print("КАЛ..");
+  else if (tiltLock)      oled.print("НАКЛ!");
+  else if (overpressureLock) oled.print("!ДАВЛ");
+  else if (isPurging)     oled.print("ПРОД");
+  else if (isPurgeShort)  oled.print("ПРОД");
+  else                    oled.print(systemOn ? (isLocked ? "БЛОК" : "ON") : "OFF");
+  oled.drawLine(0, 9, 127, 9, SSD1306_WHITE);
+
+  // ── Давление крупно ─────────────────────────────────────────────────────
+  oled.setTextSize(2);
+  oled.setCursor(0, 12);
+  char pBuf[8]; dtostrf(currentPressure, 4, 2, pBuf);
+  oled.print(pBuf);
+  oled.setTextSize(1);
+  oled.setCursor(86, 18); oled.print("бар");
+
+  // ── Угол наклона справа от давления ──────────────────────────────────────
+  oled.setCursor(108, 12);
+  if (tiltCalibrating) { oled.print("КАЛ"); }
+  else if (mpuOk && !mpuFault) { oled.printf("%3d", (int)currentTiltDeg); oled.setCursor(108, 22); oled.print("гр"); }
+  else                 { oled.print("---"); }
+
+  // ── Полоска давления 0..6 бар + маркер цели ─────────────────────────────
+  const float SCALE = 7.0f;   // шкала давления 0..7 бар (запас над аварийным 6.8)
+  int bw = constrain((int)(currentPressure / SCALE * 127.0f), 0, 127);
+  oled.drawRect(0, 30, 128, 5, SSD1306_WHITE);
+  if (bw > 0) oled.fillRect(1, 31, bw, 3, SSD1306_WHITE);
+  int tx = constrain((int)(targetPressure / SCALE * 127.0f), 0, 127);
+  oled.drawLine(tx, 28, tx, 36, SSD1306_WHITE);
+  oled.drawLine(tx-1, 28, tx+1, 28, SSD1306_WHITE);
+  oled.drawLine(0, 38, 127, 38, SSD1306_WHITE);
+
+  // ── E/V/P + температура/вентиляторы─────────────────────────────────────
+  // Справа температура и управляемый выводной вентилятор ("F2" / "F-").
+  oled.setCursor(0, 41);
+  oled.print("Э:");  oled.print(electroOn   ? "вк" : "--");
+  oled.print(" К:"); oled.print(valveOn     ? "вк" : "--");
+  oled.print(" П:"); oled.print(piezoActive ? "вк" : "--");
+  char fBuf[12];
+  if (tempSensorOk) snprintf(fBuf, sizeof(fBuf), "%2d\xF8" "B%c", (int)roundf(currentTemp), fanOn[1] ? '2' : '-');
+  else              snprintf(fBuf, sizeof(fBuf), "t--B%c", fanOn[1] ? '2' : '-');
+  oled.setCursor(128 - 6 * (int)strlen(fBuf), 41);   // прижать к правому краю
+  oled.print(fBuf);
+
+  // ── Статус / режим ──────────────────────────────────────────────────────
+  char tgtBuf[6]; dtostrf(targetPressure, 3, 1, tgtBuf);
+  oled.setCursor(0, 52);
+  if (tiltCalibrating)        oled.print("КАЛИБРОВКА MPU...");
+  else if (tiltLock)          { oled.print("НАКЛОН "); oled.print((int)currentTiltDeg); oled.print("\xF8 БЛОК"); }
+  else if (overpressureLock)  oled.print(">СБРОСЬ ДАВЛЕНИЕ!<");
+  else if (pressureFault)     oled.print("!ДАТЧИК ДАВЛЕНИЯ!");
+  else if (mpuFault)          oled.print("!MPU НЕ ОТВЕЧАЕТ!");   // ⚡ v6.3
+  else if (leakLock)          oled.print("!УТЕЧКА! жми БЛОК");
+  else if (isPurging)         { oled.print("ПРОДУВКА "); oled.print(pBuf); oled.print(" бар"); }
+  else if (isPurgeShort)      oled.print("МИНИ-ПРОДУВКА 200мс");
+  else if (repulsorActive)    {
+    unsigned long dt = millis() - repulsorStart;
+    if (dt < T_REPULSOR_PIEZO_AT) { oled.print(">РЕПУЛЬС. ГАЗ "); oled.print(dt); oled.print("мс"); }
+    else                          { oled.print(">>РЕПУЛЬСОР ОГОНЬ!<<"); }
+  }
+  else if (!systemOn)         { oled.print("ВЫКЛ  Ц="); oled.print(tgtBuf); }
+  else if (isLocked)          oled.print("БЛОКИРОВКА");
+  else if (pressureWatchdog)  { oled.print("!ДАВЛЕНИЕ НЕ РАСТЕТ!"); }
+  else if (manualGasActive)   oled.print("РУЧНОЙ ГАЗ");
+  else if (leakWarn)          { oled.print("!УТЕЧКА? Ц="); oled.print(tgtBuf); }
+  else if (maintDue)          { oled.print("ОБСЛУЖИ! Ц="); oled.print(tgtBuf); }
+  else {
+    // АВТО — цель и остаток таймера работы (⚡ v6.2: без гистерезиса)
+    oled.print("АВТО Ц="); oled.print(tgtBuf);
+    long tl = runTimerLeft();
+    if (tl >= 0) oled.printf("  %ld:%02ld", tl / 60, tl % 60);
+  }
+
+  oled.display();
+}
+
+// ⚡ ТЗ 7.3: перерисовывать OLED не чаще раза в T_DISPLAY_UPD и ТОЛЬКО при изменении
+// отображаемых данных (либо принудительно раз в 1 с, либо на «живых» экранах —
+// показ установки цели и репульсор). Убирает мерцание и нагрузку на шину I2C.
+void maybeUpdateDisplay(unsigned long now) {
+  if (!oledOk && !lcdOk) return;
+  if (now - lastDispCheck < T_DISPLAY_UPD) return;
+  lastDispCheck = now;
+  char sig[110];
+  snprintf(sig, sizeof(sig),
+    "%d%d%d%d%d%d%d%d%d%d%d%d%d|%.2f|%.1f|%d|%d%d|%d%d|%d%d%d%d|%ld|%d%d",
+    systemOn, isLocked, isPurging, isPurgeShort, repulsorActive, manualGasActive,
+    electroOn, valveOn, piezoActive, overpressureLock, tiltLock, tiltCalibrating,
+    pressureWatchdog, currentPressure, targetPressure, (int)roundf(currentTiltDeg),
+    (int)roundf(currentTemp), tempSensorOk ? 1 : 0, fanOn[0] ? 1 : 0, fanOn[1] ? 1 : 0,
+    pressureFault, leakLock, leakWarn, maintDue, runTimerLeft(), remoteOnline ? 1 : 0,
+    mpuFault ? 1 : 0);
+  bool animated = (now - lastTargetChange < T_SHOW_TARGET) || repulsorActive;
+  bool forced   = (now - lastDispDraw >= 1000);
+  // ⚡ v6.3: самовосстановление LCD после помехи. Теневой буфер раньше не давал экрану
+  // восстановиться, пока не изменятся сами знаки. Раз в 20 с одна строка (по кругу)
+  // считается «неизвестной» и перерисовывается (~12 мс); раз в минуту — ресинхронизация
+  // 4-битного режима HD44780 (~5 мс) и полная перерисовка. Только в спокойном режиме
+  // (не экран цели, не репульсор, не продувка) — тайминги импульсных режимов не трогаем.
+  if (lcdOk && !animated && !isPurging && !isPurgeShort) {
+    static unsigned long lcdRowMs = 0, lcdSyncMs = 0;
+    static uint8_t       lcdRow   = 0;
+    if (now - lcdSyncMs >= 60000UL) {
+      lcdSyncMs = now; lcdRowMs = now;
+      lcd->resync();
+      memset(lcdShadow, 0, sizeof(lcdShadow));
+      forced = true;
+    } else if (now - lcdRowMs >= 20000UL) {
+      lcdRowMs = now;
+      memset(lcdShadow[lcdRow], 0, 20);
+      lcdRow = (lcdRow + 1) & 3;
+      forced = true;
+    }
+  }
+  if (animated || forced || strcmp(sig, lastDispSig) != 0) {
+    updateDisplay();
+    strncpy(lastDispSig, sig, sizeof(lastDispSig) - 1);
+    lastDispSig[sizeof(lastDispSig) - 1] = '\0';
+    lastDispDraw = now;
+  }
+}
+
+
+// =====================================================================================
+//  LED
+// =====================================================================================
+void updateLEDs() {
+  // LED POWER на прежнем GPIO17, активный HIGH.
+  bool pwrLed = systemOn && !isPurging;
+  digitalWrite(PIN_LED_POWER, (pwrLed != LED_POWER_ACTIVE_LOW) ? HIGH : LOW);
+  digitalWrite(PIN_LED_LOCK,  (isLocked || tiltLock || overpressureLock) ? HIGH : LOW);
+  if (tiltLock)
+    digitalWrite(PIN_LED_MODE, (millis() / 150) % 2 ? HIGH : LOW);   // быстрое мигание при TILT
+  else if (repulsorActive)
+    digitalWrite(PIN_LED_MODE, (millis() / 80)  % 2 ? HIGH : LOW);   // очень быстрое — стробит
+  else
+    digitalWrite(PIN_LED_MODE, manualGasActive ? HIGH : LOW);
+}
+
+
+// =====================================================================================
+//  NRF24 — отправка статуса
+// =====================================================================================
+void sendStatusToRemote() {
+  StatusPacket pkt;
+  pkt.type     = PKT_STATUS;
+  pkt.pressure = currentPressure;
+  pkt.target   = targetPressure;
+
+  uint8_t f = 0;
+  if (systemOn)        f |= (1<<0);
+  if (isLocked)        f |= (1<<1);
+  if (isPurging)       f |= (1<<2);
+  if (repulsorActive)  f |= (1<<3);   // ⚡ v4.3: бит3 теперь repulsor
+  if (manualGasActive) f |= (1<<4);
+  if (electroOn)       f |= (1<<5);
+  if (valveOn)         f |= (1<<6);
+  if (piezoActive)     f |= (1<<7);
+  pkt.flags = f;
+
+  uint8_t f2 = 0;
+  if (currentPressure > WARN_PRESSURE)  f2 |= (1<<0);
+  if (overpressureLock)                 f2 |= (1<<1);
+  if (isPurgeShort)                     f2 |= (1<<2);
+  if (tiltLock)                         f2 |= (1<<3);
+  if (tiltCalibrating)                  f2 |= (1<<4);
+  // бит5 — резерв (0): в v5 был выбор драйвера, в ⚡ v6.0 электролизёр только MOSFET
+  if (pressureWatchdog)                 f2 |= (1<<6);  // ⚡ v5.0: watchdog
+  if (overheatWarn)                     f2 |= (1<<7);  // ⚡ v5.0: перегрев
+  pkt.flags2 = f2;
+
+  int a = (int)roundf(currentTiltDeg);
+  if (a < 0) a = 0; if (a > 180) a = 180;
+  pkt.tiltAngle = (uint8_t)a;
+
+  // ⚡ v6.2: байт ext (бывший гистерезис ×10) — дополнительные состояния
+  uint8_t ex = 0;
+  if (pressureFault) ex |= EXT_PSENS_FAULT;
+  if (leakLock)      ex |= EXT_LEAK_LOCK;
+  if (leakWarn)      ex |= EXT_LEAK_WARN;
+  if (maintDue)      ex |= EXT_MAINT_DUE;
+  if (alarmMuted)    ex |= EXT_ALARM_MUTED;
+  // ⚡ v6.3: признаки недостоверных показаний — пульт показывает «t--» / «---»
+  // (те же условия, что у дисплея мозга)
+  if (!tempSensorOk)         ex |= EXT_TEMP_FAULT;
+  if (!mpuOk || mpuFault)    ex |= EXT_TILT_FAULT;
+  pkt.ext = ex;
+
+  // ⚡ v5.0: температура
+  int tc = (int)roundf(currentTemp);
+  tc = constrain(tc, -40, 125);
+  pkt.temp  = (int8_t)tc;
+  // bit0 зарезервирован (корпусный на постоянном питании), bit1 — выводной.
+  pkt.fans  = fanOn[1] ? 0x02 : 0;
+  pkt.sound = soundStatusByte();
+
+  if (!radioOk) return;   // NRF24 не инициализирован — пропускаем
+  bool acked;
+  {
+    RadioLock rl(pdMS_TO_TICKS(20));   // ⚡ v6.0: радио делим с плеером звука
+    if (!rl.ok) return;                // плеер занял эфир — статус уйдёт через 100 мс
+    radio.stopListening();
+    acked = radio.write(&pkt, sizeof(pkt));
+    radio.startListening();
+  }
+  // Аппаратный ACK пульта = канал жив. Без этого мозг считал канал «мёртвым»
+  // (пульт сам передаёт ТОЛЬКО при нажатии кнопок) и прыгал по каналам каждые
+  // RF_HOP_SILENCE, постоянно разрывая связь с молчащим пультом.
+  // ⚡ v6.0: remoteAckMs — по нему плеер решает, «слушает» ли пульт ноты.
+  if (acked) { rfLastActivity = millis(); remoteAckMs = rfLastActivity; }
+}
+
+
+// =====================================================================================
+//  КНОПКИ
+// =====================================================================================
+void handlePowerBtn(unsigned long now) {
+  bool raw = digitalRead(PIN_BTN_POWER);
+  if (raw != pwrLastRaw) pwrDebTime = now;
+  if ((now - pwrDebTime) > T_DEBOUNCE && raw != pwrStable) {
+    pwrStable = raw;
+    if (pwrStable == LOW) {
+      soundClick();   // ⚡ v6.0: щелчок физической кнопки (если включён и вывод — мозг)
+      if ((now - pwrLastClick) < T_DOUBLE_CLICK) executeCommand(99);
+      else                                        executeCommand(1);
+      pwrLastClick = now;
+    }
+  }
+  pwrLastRaw = raw;
+}
+
+void handleLockBtn(unsigned long now) {
+  bool raw = digitalRead(PIN_BTN_LOCK);
+  if (raw != lckLastRaw) lckDebTime = now;
+  if ((now - lckDebTime) > T_DEBOUNCE && raw != lckStable) {
+    lckStable = raw;
+    if (lckStable == LOW) { soundClick(); executeCommand(2); }
+  }
+  lckLastRaw = raw;
+}
+
+void handlePurgeBtn(unsigned long now) {
+  bool raw = digitalRead(PIN_BTN_PURGE);
+  if (raw != prgLastRaw) prgDebTime = now;
+  if ((now - prgDebTime) > T_DEBOUNCE && raw != prgStable) {
+    prgStable = raw;
+    if (prgStable == LOW) { soundClick(); executeCommand(5); }
+  }
+  prgLastRaw = raw;
+}
+
+
+void soundEvents(unsigned long now) {
+  static bool          bootPlayed   = false;
+  static bool          prevOn       = false, prevPurging = false;
+  static bool          prevOvLock   = false, prevTilt = false, prevOverheat = false;
+  static bool          prevWd       = false;
+  static bool          ovWarnLatch  = false;   // предупреждение по давлению взведено
+  static unsigned long lastAlarmMs  = 0;
+
+  // Мелодия загрузки — один раз, через SND_BOOT_DELAY_MS после старта
+  if (!bootPlayed && now - bootMs >= SND_BOOT_DELAY_MS) {
+    bootPlayed = true;
+    if (sndBoot != MEL_NONE) soundPlay(melEventId(sndBoot, MEL_BOOT), SND_PRIO_MELODY);
+  }
+
+  // Включение / выключение системы и окончание продувки. Выключение, вызванное
+  // продувкой (она сама гасит систему в конце), звучит как «продувка завершена».
+  bool on = systemOn, purging = isPurging;
+  if (on && !prevOn) {
+    if (sndOn != MEL_NONE) soundPlay(melEventId(sndOn, MEL_ON), SND_PRIO_MELODY);
+  } else if (!on && prevOn && !prevPurging && !purging) {
+    soundPlay(MEL_OFF, SND_PRIO_MELODY);
+  }
+  if (!purging && prevPurging) {
+    // Продувку прервали кнопкой LOCK — это выключение, а не «продувка завершена»
+    soundPlay(purgeAborted ? MEL_OFF : MEL_PURGED, SND_PRIO_MELODY);
+    purgeAborted = false;
+  }
+  prevOn = on; prevPurging = purging;
+
+  // Тревоги: фронт любой из (сверхдавление, TILT, перегрев, ⚡ v6.2: неисправный
+  // датчик давления, сильная утечка) → сразу; пока хоть одна активна — повтор
+  // каждые SND_ALARM_REPEAT_MS, если повторы не заглушены (cmd 12). Новая тревога
+  // снимает заглушение. Фронты пишутся в журнал.
+  // ⚡ v6.3: + отказ MPU6050 в работе (mpuFault) — тревога, как неисправный датчик давления
+  static bool prevPsf = false, prevLeakL = false, prevLeakW = false, prevMpuF = false;
+  bool ovl = overpressureLock, tlk = tiltLock, oh = overheatWarn, psf = pressureFault, lkl = leakLock;
+  bool mpf = mpuFault;
+  bool alarmEdge   = (ovl && !prevOvLock) || (tlk && !prevTilt) || (oh && !prevOverheat) ||
+                     (psf && !prevPsf) || (lkl && !prevLeakL) || (mpf && !prevMpuF);
+  bool alarmActive = ovl || tlk || oh || psf || lkl || mpf;
+  if (ovl && !prevOvLock)   evtLog(EVT_OVERPRESSURE, (int32_t)(currentPressure * 100));
+  if (tlk && !prevTilt)     evtLog(EVT_TILT, (int32_t)roundf(currentTiltDeg));
+  if (oh  && !prevOverheat) evtLog(EVT_OVERHEAT, (int32_t)roundf(currentTemp));
+  // (неисправность датчика и утечка пишутся в журнал там, где обнаружены)
+  prevOvLock = ovl; prevTilt = tlk; prevOverheat = oh; prevPsf = psf; prevLeakL = lkl; prevMpuF = mpf;
+  if (alarmEdge) alarmMuted = false;
+  if (!alarmActive && !leakWarn && !maintDue) alarmMuted = false;   // всё прошло — сброс
+  bool alarmPlayed = false;
+  if (sndAlarms && (alarmEdge || (alarmActive && !alarmMuted && now - lastAlarmMs >= SND_ALARM_REPEAT_MS))) {
+    soundPlay(MEL_ALARM, SND_PRIO_ALARM);
+    lastAlarmMs = now;
+    alarmPlayed = true;
+  }
+  // ⚡ v6.5: пока тревога звучит повторами — ноты «Бумера»/щелчков пульта мозг не играет
+  soundAlarmHold = sndAlarms && alarmActive && !alarmMuted;
+
+  // Предупреждения: фронт watchdog «бак не набирает», давления > WARN_PRESSURE или
+  // ⚡ v6.2 подозрения на утечку. По давлению — с небольшим гистерезисом, чтобы
+  // шум АЦП на пороге не давал серию.
+  bool wd = pressureWatchdog, lkw = leakWarn && !leakLock;
+  bool ovWarnEdge = false;
+  if (!ovWarnLatch && currentPressure > WARN_PRESSURE)                          { ovWarnLatch = true; ovWarnEdge = true; }
+  else if (ovWarnLatch && currentPressure < WARN_PRESSURE - SND_WARN_REARM_BAR) { ovWarnLatch = false; }
+  if (wd && !prevWd) evtLog(EVT_NO_RISE, (int32_t)(currentPressure * 100));
+  bool warnEdge = (wd && !prevWd) || ovWarnEdge || (lkw && !prevLeakW);
+  prevWd = wd; prevLeakW = lkw;
+  // ⚡ v6.3: свой приоритет — предупреждение не обрывает звучащую тревогу
+  if (sndAlarms && warnEdge && !alarmPlayed) soundPlay(MEL_WARN, SND_PRIO_WARN);
+
+  // ⚡ v6.2: отказ датчика температуры — только в журнал (фронт)
+  static bool prevTok = true;
+  if (tempSampled && prevTok && !tempSensorOk) evtLog(EVT_TEMP_FAULT, 0);
+  if (tempSampled) prevTok = tempSensorOk;
+}
+
+
+// =====================================================================================
+//  SETUP
+// =====================================================================================
+void setup() {
+  // ⚡ v6.0: САМОЕ ПЕРВОЕ — закрыть MOSFET электролизёра (до Serial и всего прочего).
+  // До этой строки пин в Z, MOSFET держит закрытым резистор 10 кОм затвор→GND.
+  pinMode(PIN_ELECTRO_MOSFET, OUTPUT);
+  digitalWrite(PIN_ELECTRO_MOSFET, LOW);
+
+  // Реле — сразу выключить. Выводным вентилятором управляет updateFans.
+  pinMode(PIN_RELAY_VALVE,    OUTPUT);
+  pinMode(PIN_RELAY_PIEZO,    OUTPUT);
+  pinMode(PIN_RELAY_FAN_EXH,  OUTPUT);
+  allRelaysOff();
+  setRelay(PIN_RELAY_FAN_EXH,  false);
+
+  // LED POWER на прежнем GPIO17, сразу «выкл» = LOW.
+  pinMode(PIN_LED_POWER, OUTPUT);
+  digitalWrite(PIN_LED_POWER, LED_POWER_ACTIVE_LOW ? HIGH : LOW);
+
+  // ⚡ v6.0: зуммер мозга — тишина
+  buzzerInit();
+
+  Serial.begin(115200);
+  Serial.println("\n=== H2 PRO Brain v6.6 ===");
+  bootMs = millis();
+
+  // ⚡ v4.3: Загружаем сохранённые настройки из NVS (цель, вентиляторы, звук, таймер…)
+  loadSettings();
+  // ⚡ v6.2: номер загрузки — для журнала событий
+  bootCount++;
+  { Preferences p; p.begin("h2cfg", false); p.putULong("boots", bootCount); p.end(); }
+
+  // АЦП — явно 12 бит: readPressure() (GPIO 36) и NTC (GPIO 34) делят на 4095.
+  // Не полагаемся на дефолт ядра — давление участвует в контуре безопасности.
+  analogReadResolution(12);
+
+  // ⚡ v5.0: датчик температуры
+#ifdef TEMP_SENSOR_DS18B20
+  // ⚡ v6.6: GyverDS18 — 10 бит ≈ 0.25 °C, первое преобразование запускаем сразу
+  tempResOk = tempSensor.setResolution(10);
+  tempSensor.requestTemp();
+  currentTemp  = 25.0f;                    // стартовое значение до первого готового замера
+  tempSensorOk = false;
+  Serial.printf("Темп. датчик: DS18B20 (GyverDS18, GPIO 15, асинхронно)%s\n",
+                tempResOk ? "" : " — НЕ ОТВЕЧАЕТ, опрос продолжается");
+#else
+  Serial.println("Темп. датчик: NTC (ADC, GPIO 34)");
+  currentTemp = readTemperature();
+  tempSampled = true;                     // ⚡ v6.0: NTC читается сразу
+#endif
+
+  // LED (LED POWER настроен в самом начале setup)
+  pinMode(PIN_LED_LOCK,  OUTPUT); digitalWrite(PIN_LED_LOCK,  HIGH);
+  pinMode(PIN_LED_MODE,  OUTPUT); digitalWrite(PIN_LED_MODE,  LOW);
+
+  // Кнопки
+  pinMode(PIN_BTN_POWER, INPUT_PULLUP);
+  pinMode(PIN_BTN_LOCK,  INPUT_PULLUP);
+  pinMode(PIN_BTN_PURGE, INPUT_PULLUP);
+
+  // I2C (общая шина: дисплей + MPU6050)
+  Wire.begin(I2C_SDA, I2C_SCL);
+  Wire.setClock(100000);              // поиск PCF8574 проводить на штатной частоте 100 кГц
+
+  // LCD2004 — основной: выбираем его при наличии, даже если OLED тоже подключён.
+  auto i2cProbe = [](uint8_t a) { Wire.beginTransmission(a); return Wire.endTransmission() == 0; };
+  uint8_t lcdAddr = i2cProbe(0x27) ? 0x27 : (i2cProbe(0x3F) ? 0x3F : 0);
+  if (lcdAddr) {
+    lcd = new LiquidCrystal_I2C(lcdAddr, 20, 4);
+    lcd->init(); lcd->backlight();
+    memset(lcdShadow, ' ', sizeof(lcdShadow));
+    for (uint8_t r = 0; r < 4; r++) lcdShadow[r][20] = '\0';
+    lcdOk = true;
+    lcdLine(0, "H2 PRO  Brain v6.6");
+    lcdLine(1, "LCD2004 OK");
+    lcdLine(2, "MPU6050 calibrating");
+    lcdLine(3, "Do not move!");
+    Serial.printf("LCD2004: OK (0x%02X)\n", lcdAddr);
+  }
+
+  // OLED — запасной дисплей, когда LCD2004 не найден.
+  if (!lcdOk) Wire.setClock(400000);
+  if (!lcdOk) oledOk = oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  if (lcdOk) {
+    // дисплей уже выбран — OLED не инициализируется
+  } else if (!oledOk) {
+    Serial.println("OLED: нет (проверьте I2C, адрес 0x3C/0x3D)");
+  } else {
+    oled.cp437(true);   // корректная таблица CP437: \xF8 = знак градуса
+    oled.clearDisplay(); oled.setTextSize(1); oled.setTextColor(SSD1306_WHITE);
+    oled.setCursor(8, 16); oled.print("H2 PRO  Мозг v6.6");
+    oled.setCursor(8, 32); oled.print("Калибровка MPU6050");
+    oled.setCursor(8, 44); oled.print("Не двигать!");
+    oled.display();
+    Serial.println("OLED: OK");
+  }
+
+  // MPU6050 — инициализация и калибровка
+  tiltCalibrating = true;
+  mpuOk = mpuInit();
+  if (mpuOk) {
+    Serial.println("MPU6050: OK");
+    mpuOk = mpuCalibrate();   // ⚡ v6.3: нет чтений или вектор не похож на 1 g — как «не найден»
+  }
+  if (!mpuOk) {
+    Serial.println("MPU6050: НЕТ — TILT-защита отключена!");
+    if (lcdOk) {
+      lcdLine(2, "MPU6050: NOT FOUND"); lcdLine(3, "TILT protection OFF");
+      delay(1500);
+    }
+    if (oledOk) {
+      oled.clearDisplay(); oled.setCursor(8, 24);
+      oled.print("MPU6050 НЕ НАЙДЕН");
+      oled.setCursor(8, 40);
+      oled.print("Защита наклона ВЫКЛ");
+      oled.display();
+      delay(1500);
+    }
+  }
+  tiltCalibrating = false;
+
+  // ⚡ v6.0: мьютекс радио — ДО инициализации радио и запуска задачи звука
+  radioMutex = xSemaphoreCreateMutex();
+  if (!radioMutex) Serial.println("RADIO: FAIL — нет мьютекса, ноты на пульт отключены");
+
+  // NRF24
+  SPI.begin(18, 19, 23, PIN_NRF_CSN);
+  if (radio.begin()) {
+    radio.openWritingPipe(PIPE_B2R);
+    radio.openReadingPipe(1, PIPE_R2B);
+    radio.setPALevel(RF24_PA_MAX);
+    radio.setDataRate(RF24_2MBPS);
+    radio.setCRCLength(RF24_CRC_16);
+    radio.setChannel(76);
+    // ⚡ ОПТИМИЗАЦИЯ: статус шлётся широковещательно 10 раз/сек, потеря
+    // отдельного пакета некритична (пульт сам отслеживает таймаут связи).
+    // Минимизируем автоповторы, чтобы radio.write() статуса при выключенном
+    // пульте не блокировал loop надолго: 1 попытка вместо 15, без задержки.
+    // Команды пульт→мозг (приём) это не затрагивает — там свой ACK.
+    radio.setRetries(0, 1);
+    rfChannelIdx   = 0;
+    rfApplyChannel();          // ⚡ v5.0: канал из RF_CHANNELS
+    rfLastActivity = millis();
+    radio.startListening();
+    radioOk = true;
+    Serial.printf("NRF24: OK (2 Мбит/с, канал %d, +резерв)\n", RF_CHANNELS[rfChannelIdx]);
+  } else { radioOk = false; Serial.println("NRF24: FAIL — радиоканал недоступен"); }
+
+  // ⚡ v6.0: звук — LittleFS + библиотека мелодий, очередь и задача плеера
+  soundInit();
+  // ⚡ v6.2: журнал событий (LittleFS уже смонтирована в soundInit) + запись о загрузке
+  evtInit();
+  evtLog(EVT_BOOT, (int32_t)esp_reset_reason());
+  // ⚡ v6.5: калибровка датчика давления сброшена в loadSettings (сумма "ckc" не совпала)
+  if (nvsCalResetPending) { evtLog(EVT_CAL_RESET); nvsCalResetPending = false; }
+  maintDue = maintHoursLeft() <= 0;
+
+  Serial.println("Старт: systemOn=false, isLocked=true");
+  Serial.printf("Загружено из NVS: target=%.1f, наработка=%lu сек, таймер=%u мин, бак=%.2f л, загрузка №%lu\n",
+    targetPressure, runtimeSeconds, (unsigned)runTimerMin, gasTankL, (unsigned long)bootCount);
+  Serial.printf("Вентиляторы: корпус от постоянного питания; выводной реле GPIO25, режим %d %d/%d°C\n",
+    (int)fanMode[1], (int)fanTOn[1], (int)fanTOff[1]);
+  Serial.printf("Звук: вывод %u, громкость %u, тревоги %d, щелчки %d, загрузка %d, вкл %d\n",
+    (unsigned)soundOut, (unsigned)soundVol, sndAlarms ? 1 : 0, sndClicks ? 1 : 0, (int)sndBoot, (int)sndOn);
+
+  // ⚡ v4.4 + v5.0: инициализация таймеров
+  wdStart         = millis();
+  wdRefPressure   = 0.0f;
+  lastRuntimeSave = millis();
+  electroOnSince  = 0;
+  lastTempSamp    = millis();
+  lastCyclesSave  = millis();
+
+  esp_task_wdt_config_t wdtCfg = {};
+  wdtCfg.timeout_ms     = LOOP_WDT_TIMEOUT_MS;
+  wdtCfg.idle_core_mask = 0;
+  wdtCfg.trigger_panic  = true;
+  esp_err_t we = esp_task_wdt_reconfigure(&wdtCfg);
+  if (we == ESP_ERR_INVALID_STATE) we = esp_task_wdt_init(&wdtCfg);   // TWDT ещё не запущен
+  if (we == ESP_OK) { enableLoopWDT(); Serial.printf("WDT: loop под контролем (%lu мс)\n", (unsigned long)LOOP_WDT_TIMEOUT_MS); }
+  else              Serial.printf("WDT: FAIL (%d) — сторожевой таймер не включён!\n", (int)we);
+}
+
+
+// =====================================================================================
+//  LOOP
+// =====================================================================================
+void loop() {
+  unsigned long now = millis();
+
+  // ⚡ v6.0: звуковые события (мелодия загрузки, вкл/выкл, продувка, тревоги,
+  // предупреждения) — до ранних return, чтобы звучали в любом состоянии системы
+  soundEvents(now);
+
+
+  // Давление каждые 100 мс
+  if (now - lastPressureT >= T_PRESSURE_SAMP) {
+    unsigned long dtP = lastPressureT ? now - lastPressureT : T_PRESSURE_SAMP;
+    lastPressureT   = now;
+    currentPressure = readPressure();
+    pressureSensorCheck(now);        // ⚡ v6.2: обрыв/замыкание датчика
+    safetyCheck();
+    // ⚡ v6.2: сглаженное давление (EMA, ~2 с) — для оценок утечки и газа
+    if (pressureFilt == 0.0f) pressureFilt = currentPressure;
+    pressureFilt += (currentPressure - pressureFilt) * 0.05f;
+    leakCheck(now);                  // ⚡ v6.2: утечка / незакрытый клапан
+    gasUpdate(dtP);                  // ⚡ v6.2: счётчик газа и загрузка MOSFET
+  }
+
+  // Угол наклона каждые 100 мс
+  if (now - lastTiltT >= T_TILT_SAMP) {
+    lastTiltT = now;
+    tiltCheck();
+  }
+
+  // ⚡ v5.0: Температура раз в секунду
+  if (now - lastTempSamp >= T_TEMP_SAMP) {
+    lastTempSamp = now;
+    currentTemp  = readTemperature();
+    tempSampled  = true;
+    // ⚡ v6.3: гистерезис — у порога DS18B20 (шаг 0.25 °C) флаг дребезжал: каждый фронт
+    // перезапускал тревогу (снимал заглушение) и переписывал журнал. Взводится по-прежнему
+    // при ≥ TEMP_OVERHEAT, сбрасывается только при ≤ TEMP_OVERHEAT − TEMP_OVERHEAT_HYST.
+    // При неисправном датчике состояние не меняем (не снимаем предупреждение по устаревшей t).
+    if (tempSensorOk) {
+      if (currentTemp >= TEMP_OVERHEAT)                           overheatWarn = true;
+      else if (currentTemp <= TEMP_OVERHEAT - TEMP_OVERHEAT_HYST) overheatWarn = false;
+    }
+    runTimerCheck();                 // ⚡ v6.2: таймер работы (раз в секунду)
+    maintCheck();                    // ⚡ v6.2: напоминание об обслуживании
+  }
+  // ⚡ v6.0: вентиляторы на реле — каждую итерацию, до ранних return (охлаждение
+  // работает и при выключенной/заблокированной системе, и во время продувки)
+  updateFans(now);
+
+  // ⚡ v5.0: периодическое сохранение счётчиков циклов (раз в 5 минут, NVS пишет
+  // только изменившиеся). ⚡ v6.0: до ранних return — реле вентиляторов щёлкают и
+  // при выключенной системе, их счётчики тоже должны сохраняться.
+  if (now - lastCyclesSave >= 300000) {
+    lastCyclesSave = now;
+    saveCycles();
+    saveGas();                       // ⚡ v6.2: счётчик газа (пишет только при изменении)
+  }
+
+  // Кнопки
+  handlePowerBtn(now);
+  handleLockBtn(now);
+  handlePurgeBtn(now);
+
+  // NRF24 — приём (только если модуль инициализирован).
+  // ⚡ v6.0: под мьютексом радио (плеер звука шлёт ноты из своей задачи); читаем
+  // весь payload и различаем пакет по первому байту. Команда выполняется уже
+  // после освобождения радио.
+  // ⚡ v6.5: за проход вычитываем до 3 пакетов (глубина RX FIFO nRF24): кроме команд
+  // пульт теперь шлёт ноты своих звуков (PKT_TONE) — нота не ждёт лишний цикл, а
+  // команда не теряется за нотами. Обработка — после освобождения радио.
+  uint8_t    rxCmds[3];
+  uint8_t    rxCmdN  = 0;
+  TonePacket rxTones[3];
+  uint8_t    rxToneN = 0;
+  if (radioOk) {
+    RadioLock rl(pdMS_TO_TICKS(5));
+    for (uint8_t n = 0; rl.ok && n < 3 && radio.available(); n++) {
+      uint8_t buf[RF_PAYLOAD_MAX];
+      uint8_t len = radio.getPayloadSize();
+      if (len > RF_PAYLOAD_MAX) len = RF_PAYLOAD_MAX;
+      radio.read(buf, len);
+      if (buf[0] == PKT_CMD) {
+        CmdPacket pkt;
+        memcpy(&pkt, buf, sizeof(pkt));
+        rxCmds[rxCmdN++] = pkt.cmd;
+      } else if (buf[0] == PKT_TONE && len >= sizeof(TonePacket)) {
+        memcpy(&rxTones[rxToneN++], buf, sizeof(TonePacket));
+      }
+    }
+  }
+  // ⚡ v6.5: ноты пульта — в плеер без ожидания (loop не блокируется). Нота пришла
+  // раньше команды (щелчок кнопки пульта уходит первым) — сначала ноты, потом команды.
+  for (uint8_t i = 0; i < rxToneN; i++) {
+    soundTone(rxTones[i].freq, rxTones[i].durMs, rxTones[i].volume);
+    lastRfRx = now;
+    rfLastActivity = now;          // пульт слышен на этом канале
+  }
+  for (uint8_t i = 0; i < rxCmdN; i++) {
+    uint8_t rxCode = rxCmds[i];
+    executeCommand(rxCode);
+    lastRfRx = now;
+    rfLastActivity = now;          // ⚡ v5.0: связь жива, канал хороший
+
+    Serial.print("[RF] cmd="); Serial.println(rxCode);
+  }
+  now = millis();
+  // ⚡ v6.3: фронты реле считаем до ранних return — продувка/мини-продувка/POWER-выкл
+  // иначе терялись (вызов в конце основной ветки тоже остаётся: двойного счёта нет)
+  countRelayCycles();
+  // ⚡ v6.3: пульт сам передаёт только при нажатии кнопок — «на связи» считаем и по
+  // аппаратному ACK статуса (remoteAckMs), иначе через 3 с после нажатия был «ОФФЛАЙН»
+  unsigned long rAck = remoteAckMs;
+  remoteOnline = (lastRfRx > 0 && now - lastRfRx < T_RF_TIMEOUT) ||
+                 (rAck != 0 && (long)(millis() - rAck) < (long)T_RF_TIMEOUT);
+
+  // ⚡ v5.0: резервный канал — если давно тишина, прыгаем на следующий
+  if (radioOk) rfCheckHop();
+
+  // NRF24 — отправка статуса
+  if (now - lastStatusTx >= T_STATUS_TX) {
+    sendStatusToRemote(); lastStatusTx = now;
+  }
+
+  // ── ПРОДУВКА ДО НУЛЯ ───────────────────────────────────────────────────
+  if (isPurging) {
+    // ⚡ v6.3: TILT во время продувки — клапан закрыт, продувка прерывается явно;
+    // оператор после LOCK запускает SAFE OFF заново. Раньше продувка шла с закрытым
+    // клапаном до 90 с и звучало «продувка завершена», хотя бак не стравлен.
+    if (tiltLock) {
+      // ⚡ ТЗ 5.2: при наклоне корпуса (> 30°) во время продувки клапан
+      // ЗАКРЫВАЕТСЯ — защита от утечки газа в опасном положении установки.
+      // Делаем закрытие явным, не полагаясь на порядок вызова tiltCheck().
+      electroOff();
+      setRelay(PIN_RELAY_VALVE, false);
+      valveOn = false;
+      isPurging = false; systemOn = false; purgeAborted = true;
+      Serial.println("[PURGE] TILT — продувка прервана");
+      evtLog(EVT_PURGE_FAIL, (int32_t)(currentPressure * 100));
+      updateLEDs();
+      maybeUpdateDisplay(now);
+      return;
+    }
+    // ⚡ v6.2: при неисправном датчике его «0 бар» — мусор: продувка идёт до тайм-аута
+    bool zeroed  = !pressureFault && currentPressure <= PURGE_ZERO_BAR;
+    bool timeout = (long)(now - purgeStart) >= (long)T_PURGE_MAX;   // ⚡ v6.3: знаковое сравнение
+    if (zeroed || timeout) {
+      setRelay(PIN_RELAY_VALVE, false);
+      // ⚡ v6.3: тайм-аут с давлением выше 0,05 бар — продувка НЕ завершена: звук
+      // «выключение», а не «продувка завершена», и запись в журнал. При неисправном
+      // датчике — как раньше (клапан был открыт все 90 с).
+      if (timeout && !zeroed && !pressureFault) {
+        purgeAborted = true;
+        evtLog(EVT_PURGE_FAIL, (int32_t)(currentPressure * 100));
+      }
+      valveOn = false; isPurging = false; systemOn = false;
+      if (!timeout || zeroed)   Serial.println("[PURGE] ≤0.05 бар — выкл.");
+      else if (pressureFault)   Serial.println("[PURGE] Таймаут (датчик давления неисправен) — выкл.");
+      else                      Serial.printf("[PURGE] Таймаут, давление %.2f бар — продувка НЕ завершена\n", currentPressure);
+    }
+    updateLEDs();
+    maybeUpdateDisplay(now);
+    return;
+  }
+
+  // ── МИНИ-ПРОДУВКА 200 мс ────────────────────────────────────────────────
+  if (isPurgeShort) {
+    if (tiltLock || (long)(now - purgeShortStart) >= (long)T_PURGE_SHORT) {   // ⚡ v6.3: знаковое
+      setRelay(PIN_RELAY_VALVE, false);
+      valveOn = false; isPurgeShort = false;
+    }
+    updateLEDs();
+    maybeUpdateDisplay(now);
+    return;
+  }
+
+  // ── ВЫКЛ / БЛОКИРОВКА / АВАРИЯ ДАВЛЕНИЯ / TILT ────────────────────────────
+  if (!systemOn || isLocked || overpressureLock || tiltLock || leakLock) {
+    if (tiltLock && !isLocked) {
+      // TILT принудительно блокирует, чтобы пользователь увидел причину
+      isLocked = true;
+    }
+    allRelaysOff();
+    saveRuntime();              // ⚡ v6.3: наработку — в NVS на остановке (пишет только при изменении: одна запись на остановку)
+    // ⚡ v6.3: процессы сбрасываем всегда: выходы уже обесточены, а флаг ручной подачи,
+    // переживший аварию давления/утечку, иначе сам включал MOSFET и клапан после LOCK
+    resetProcesses();
+    pressureWatchdog = false;   // ⚡ v4.4: снять watchdog в неактивном состоянии
+    // Если есть несохранённые настройки — записать сейчас (система простаивает,
+    // самый безопасный момент; защищает от потери при отключении питания).
+    if (settingsDirty) commitSettings();
+    updateLEDs();
+    maybeUpdateDisplay(now);
+    return;
+  }
+
+  // ── ⚡ РЕПУЛЬСОР — конечный автомат на 800 мс ──────────────────────────────
+  // Если репульсор активен — он управляет клапаном и пьезо. Электролизер
+  // продолжает работать по своей обычной гистерезисной логике параллельно.
+  if (repulsorActive) {
+    long dt = (long)(now - repulsorStart);   // ⚡ v6.3: знаковая разность (метка свежая)
+
+    if (dt >= (long)T_REPULSOR_TOTAL) {
+      // Цикл завершён — гасим клапан и пьезо
+      setRelay(PIN_RELAY_VALVE, false);
+      setRelay(PIN_RELAY_PIEZO, false);
+      valveOn        = false;
+      piezoActive    = false;
+      repulsorActive = false;
+      Serial.println("[REPULSOR] done");
+    } else {
+      // Клапан открыт всё время репульсора
+      setRelay(PIN_RELAY_VALVE, true);
+      valveOn = true;
+      // Пьезо включается на 700-й мс и горит до конца (= 100 мс)
+      if (dt >= (long)T_REPULSOR_PIEZO_AT && !piezoActive) {
+        piezoActive = true;
+        piezoStart  = now;          // чтобы общий таймер тоже видел
+        setRelay(PIN_RELAY_PIEZO, true);
+        Serial.println("[REPULSOR] piezo ON");
+      }
+    }
+  }
+
+  // ── ОСНОВНАЯ ЛОГИКА ЭЛЕКТРОЛИЗЕРА (⚡ v6.2: без гистерезиса) ────────────────
+  bool needElectro;
+  bool needValve;
+  bool wasElectroOn = electroOn;   // запомнить предыдущее состояние для runtime
+
+  if (manualGasActive) {
+    // Ручная подача — электролизер и клапан принудительно ВКЛ
+    needElectro = true;
+    needValve   = true;
+  } else {
+    // ВКЛ пока давление ниже цели, ВЫКЛ при P ≥ цели
+    needElectro = (currentPressure < targetPressure);
+    // Клапан в авто-режиме закрыт (если только репульсор не открыл его)
+    needValve = repulsorActive ? true : false;
+  }
+
+  // ⚡ v6.2: MOSFET переключается не чаще раза в MOSFET_MIN_SWITCH_MS — шум АЦП у
+  // цели не даёт дребезга. Блокировки ниже выключают немедленно, без этой выдержки.
+  if (needElectro != electroOn && now - electroLastSwitch < MOSFET_MIN_SWITCH_MS) needElectro = electroOn;
+
+  // ⚡ v6.0: финальная блокировка MOSFET — открываем только в полностью разрешённом
+  // режиме. ⚡ v6.2: + неисправный датчик давления (давление неизвестно — в т.ч. в
+  // ручном режиме) и защёлка сильной утечки. ⚡ v6.3: + отказ MPU6050 в работе (наклон
+  // неизвестен — как неисправный датчик давления; клапан и продувки не трогаем).
+  if (!systemOn || isLocked || tiltLock || overpressureLock || isPurging ||
+      pressureFault || leakLock || mpuFault) needElectro = false;
+  if (needElectro != electroOn) electroLastSwitch = now;
+
+  // Не перезаписываем valveOn если репульсор управляет клапаном
+  setElectro(needElectro);
+  electroOn = needElectro;
+
+  if (!repulsorActive) {
+    setRelay(PIN_RELAY_VALVE, needValve);
+    valveOn = needValve;
+  }
+
+  // ── ⚡ v4.4: Учёт наработки при изменении состояния электролизера ─────────
+  if (electroOn != wasElectroOn) {
+    updateRuntimeOnElectroChange(electroOn);
+  }
+
+  // ── ⚡ v4.4: WATCHDOG ПО ДАВЛЕНИЮ ────────────────────────────────────────
+  // Watchdog активен только когда электролизер реально качает в авто-режиме
+  // (не manual, не репульсор — там клапан открыт и давление падать должно).
+  if (electroOn && !manualGasActive && !repulsorActive) {
+    if (!wasElectroOn) wdReset();   // только что включился — начинаем отсчёт заново
+    wdCheck();
+  } else {
+    // Электролизер выключен (достигли цели) или manual/репульсор — снимаем watchdog
+    if (pressureWatchdog || wasElectroOn) wdReset();
+    pressureWatchdog = false;
+  }
+
+  // Обычный пьезо-поджиг (cmd=4) — гаснет через 500 мс
+  // Внутри репульсора пьезо гасится автоматом самого репульсора (см. выше)
+  if (piezoActive && !repulsorActive && ((long)(now - piezoStart) >= (long)T_PIEZO_WORK)) {   // ⚡ v6.3: знаковое
+    piezoActive = false;
+    setRelay(PIN_RELAY_PIEZO, false);
+  }
+
+  // ── ⚡ v4.4: периодическое сохранение наработки (раз в 5 минут) ───────────
+  // Реже пишем = меньше износ flash. saveRuntime() сам не пишет если значение
+  // не изменилось. ⚡ v6.3: при выключении/блокировке наработка переносится в RAM
+  // (allRelaysOff → accrueRuntime) и пишется в NVS в ветке ВЫКЛ/БЛОКИРОВКА.
+  if (now - lastRuntimeSave >= 300000) {   // 5 минут
+    lastRuntimeSave = now;
+    // Фиксируем накопленный интервал без сброса electroOnSince (без потери остатка).
+    // ⚡ v6.3: свежая метка — electroOnSince мог быть поставлен в этой же итерации
+    // через millis() (updateRuntimeOnElectroChange) позже, чем взят now: беззнаковая
+    // разность дала бы +1193 ч наработки.
+    if (electroOn && electroOnSince != 0) {
+      unsigned long ms = millis();
+      runtimeMsAccum += (ms - electroOnSince);
+      runtimeSeconds += runtimeMsAccum / 1000UL;
+      runtimeMsAccum %= 1000UL;
+      electroOnSince = ms;
+    }
+    saveRuntime();
+  }
+
+  // ── ⚡ v5.0: Счётчик циклов реле (детект фронтов каждую итерацию) ─────────
+  // (вентиляторы считаются в updateFans; сохранение — в начале loop)
+  countRelayCycles();
+
+  if (settingsDirty && ((long)(now - settingsDirtyTime) >= (long)SETTINGS_SAVE_DELAY)) {
+    commitSettings();
+  }
+
+
+  updateLEDs();
+  maybeUpdateDisplay(now);
+}

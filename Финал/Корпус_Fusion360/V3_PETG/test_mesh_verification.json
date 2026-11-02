@@ -1,0 +1,12 @@
+[
+  {
+    "file": "test_LCD_93x55.stl",
+    "triangles": 768,
+    "closed": true
+  },
+  {
+    "file": "test_XY_100_40_holes.stl",
+    "triangles": 576,
+    "closed": true
+  }
+]

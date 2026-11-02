@@ -1,0 +1,8 @@
+{
+  "autodeskProduct": "Fusion360",
+  "type": "script",
+  "author": "H2 PRO",
+  "description": {"": "Build H2 brain enclosure, LCD2004, PCB 90x100x15 mm"},
+  "version": "1.0.0",
+  "supportedOS": "windows"
+}

@@ -1,0 +1,47 @@
+{
+  "firmware": "v6.3 + GAME revision 2",
+  "port": "COM5",
+  "flash_verified": true,
+  "oled_and_radio_initialized": true,
+  "nvs_load_confirmed": true,
+  "nonzero_record_physically_reboot_tested": false,
+  "record_saved_at": [
+    "game over",
+    "exit",
+    "deep sleep"
+  ],
+  "exit_quiet_ms": 800,
+  "tests": [
+    {
+      "name": "test_clicks",
+      "passed": true,
+      "failedLine": null
+    },
+    {
+      "name": "test_dino",
+      "passed": true,
+      "failedLine": null
+    },
+    {
+      "name": "test_persistent_record",
+      "passed": true,
+      "failedLine": null
+    },
+    {
+      "name": "test_controls_regression",
+      "passed": true,
+      "failedLine": null
+    },
+    {
+      "name": "test_music_game_integration",
+      "passed": true,
+      "failedLine": null
+    }
+  ],
+  "sha256": {
+    "H2_Remote_v5\\H2_Remote_v5.ino": "ec324915a6ce3ee1c2557b561d4689c0039eda3bbb333eae0df68d1d1faa1109",
+    "H2_Remote_v5\\remote_game.h": "4e19d0079dc3f92da0e2d3c5f98dbac9241f2c4bfb793c76ce61f8e44924a509",
+    "H2_Remote_v5\\h2_protocol.h": "517b4f5ceabc1b754dd3f17f8658531308f83d8b4f642df43d6409ad36741043",
+    "Remote_game_2026-10-29\\revision2_build\\H2_Remote_v5.ino.bin": "8d61f3e052df767275e3277df198e227ae0a801f3cd9ce860c2a248fffe2a20a"
+  }
+}

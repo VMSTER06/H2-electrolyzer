@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "by.h2pro.control.app-merged_res-4:/drawable_ic_launcher.xml.flat",
+        "source": "by.h2pro.control.app-main-6:/drawable/ic_launcher.xml"
+    },
+    {
+        "merged": "by.h2pro.control.app-merged_res-4:/drawable_ic_stat_h2.xml.flat",
+        "source": "by.h2pro.control.app-main-6:/drawable/ic_stat_h2.xml"
+    }
+]

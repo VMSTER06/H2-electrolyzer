@@ -1,0 +1,4 @@
+#line 1 "S:\\Projects\\1Electrolizer\\Финал\\H2_Brain_v5\\build_opt.h"
+-DCONFIG_ASYNC_TCP_RUNNING_CORE=0
+-DARDUINO_RUNNING_CORE=1
+-DARDUINO_EVENT_RUNNING_CORE=0

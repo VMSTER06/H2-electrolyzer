@@ -1,0 +1,33 @@
+{
+  "opened_file": "C:\\Users\\vladm\\Desktop\\мурик_исправленный.f3d",
+  "active_document": "мурик_исправленный",
+  "reopened_successfully": true,
+  "components": 19,
+  "timeline_count": 95,
+  "native_cylindrical_guides": [
+    {
+      "center_mm": [
+        77.62,
+        53.0
+      ],
+      "diameter_mm": 6.29999999999999
+    },
+    {
+      "center_mm": [
+        70.0,
+        53.0
+      ],
+      "diameter_mm": 6.300000000000008
+    },
+    {
+      "center_mm": [
+        62.38,
+        53.0
+      ],
+      "diameter_mm": 6.300000000000008
+    }
+  ],
+  "fascia_volume_cm3": 8.496353323235446,
+  "original_feature_history_restored": false,
+  "new_correction_features_editable": true
+}

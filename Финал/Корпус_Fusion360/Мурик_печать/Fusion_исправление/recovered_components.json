@@ -1,0 +1,143 @@
+{
+  "document": "Murik corrected copy 2026-10-18",
+  "components": [
+    {
+      "name": "01 BASE - PCB at bottom",
+      "body_count": 3,
+      "volumes_cm3": [
+        164.12384436071565,
+        144.7133605475198,
+        211.76598805071797
+      ]
+    },
+    {
+      "name": "02 LID - LCD buttons LEDs",
+      "body_count": 1,
+      "volumes_cm3": [
+        64.13080112785462
+      ]
+    },
+    {
+      "name": "V2 MAIN clamp 1",
+      "body_count": 1,
+      "volumes_cm3": [
+        0.25355597471178826
+      ]
+    },
+    {
+      "name": "V2 MAIN clamp 2",
+      "body_count": 1,
+      "volumes_cm3": [
+        0.2535559747117882
+      ]
+    },
+    {
+      "name": "V2 MAIN clamp 3",
+      "body_count": 1,
+      "volumes_cm3": [
+        0.2535559747117885
+      ]
+    },
+    {
+      "name": "V2 MAIN clamp 4",
+      "body_count": 1,
+      "volumes_cm3": [
+        0.2535559747117884
+      ]
+    },
+    {
+      "name": "V2 removable control fascia",
+      "body_count": 1,
+      "volumes_cm3": [
+        8.70250982930665
+      ]
+    },
+    {
+      "name": "V2 control PCB removable carrier",
+      "body_count": 1,
+      "volumes_cm3": [
+        6.15012212554774
+      ]
+    },
+    {
+      "name": "REF main board 90x80x20 - photo estimate",
+      "body_count": 7,
+      "volumes_cm3": [
+        11.520000000000014,
+        16.20000000000001,
+        6.300000000000008,
+        2.0160000000000027,
+        1.8400000000000005,
+        1.3440000000000012,
+        0.32399999999999995
+      ]
+    },
+    {
+      "name": "REF actual combined buttons LEDs PCB - estimated",
+      "body_count": 10,
+      "volumes_cm3": [
+        1.4400000000000022,
+        0.11879999999999971,
+        0.00855298599939856,
+        0.11880000000000007,
+        0.00855298599939856,
+        0.11879999999999988,
+        0.00855298599939856,
+        0.031808625617595475,
+        0.031808625617595475,
+        0.031808625617595475
+      ]
+    },
+    {
+      "name": "V3 RELAY adjustable clamp 1",
+      "body_count": 1,
+      "volumes_cm3": [
+        0.3384671696541463
+      ]
+    },
+    {
+      "name": "V3 RELAY adjustable clamp 2",
+      "body_count": 1,
+      "volumes_cm3": [
+        0.3384671696541457
+      ]
+    },
+    {
+      "name": "V3 RELAY adjustable clamp 3",
+      "body_count": 1,
+      "volumes_cm3": [
+        0.3384671696541457
+      ]
+    },
+    {
+      "name": "V3 RELAY adjustable clamp 4",
+      "body_count": 1,
+      "volumes_cm3": [
+        0.33846716965414547
+      ]
+    },
+    {
+      "name": "REF relay envelope 75.5x55x20 - variant not confirmed",
+      "body_count": 7,
+      "volumes_cm3": [
+        6.644000000000007,
+        4.5647500000000045,
+        4.564750000000001,
+        4.564750000000002,
+        4.5647500000000045,
+        7.920000000000004,
+        3.3120000000000016
+      ]
+    },
+    {
+      "name": "REF LCD2004 98x60 - 93x55 mounting - conservative thickness",
+      "body_count": 4,
+      "volumes_cm3": [
+        9.376584073464112,
+        44.69760000000002,
+        0.19403999999999572,
+        7.862400000000008
+      ]
+    }
+  ]
+}
