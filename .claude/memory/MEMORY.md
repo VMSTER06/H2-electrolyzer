@@ -1,0 +1,4 @@
+﻿- [ADHD-friendly replies](adhd-friendly-replies.md) — always short, one step, explicit next step
+- [Лист задания: ток «не менее»](assignment-power-wording.md) — п. 9 питание: «не менее 1,5 А / 0,4 А», не «не более»
+- [Объём записки ≥ 35](page-count-rule.md) — от введения до заключения не меньше 35 стр., больше — ок
+- [Команды сборки и проверки](build-and-check-commands.md) — make_all.sh пересобирает всё, check_all.py проверяет всё
