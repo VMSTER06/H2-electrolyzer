@@ -426,8 +426,9 @@
  *  --------------------------
  *    MIN_TARGET_PRESSURE  = 0.5 бар  (минимум регулировки)
  *    MAX_TARGET_PRESSURE  = 6.5 бар  (максимум регулировки)
- *    WARN_PRESSURE        = 6.0 бар  (предупреждение, флаг ovWarn)
- *    MAX_SAFE_PRESSURE    = 6.8 бар  (АВАРИЯ — защёлка ovLock, электролизер OFF)
+ *    WARN_PRESSURE        = 6.8 бар  (предупреждение, флаг ovWarn) — ⚡ v6.7, было 6.0
+ *    MAX_SAFE_PRESSURE    = 7.2 бар  (АВАРИЯ — защёлка ovLock, электролизер OFF) — ⚡ v6.7, было 6.8
+ *    OVP_UNLOCK_PRESSURE  = 6.0 бар  (ниже — LOCK/POWER снимают защёлку аварии)
  *    PURGE_ZERO_BAR       = 0.05 бар (порог окончания продувки до нуля)
  *    TILT_ANGLE_DEG       = 30°      (порог TILT-сработки)
  *    HYST_MAX             = 1.0 бар  (макс. гистерезис электролизёра)
@@ -451,7 +452,7 @@
  *
  *  ПОВЕДЕНИЕ ПРИ АВАРИЯХ
  *  ---------------------
- *    Превышение 6.8 бар:
+ *    Превышение 7.2 бар:
  *        → электролизер выключается принудительно
  *        → РЕПУЛЬСОР прерывается, клапан и пьезо обесточиваются
  *        → поднимается ovLock (защёлка), звучит тревога (повтор каждые 15 с)
@@ -563,8 +564,11 @@ const char* AP_PASSWORD = "hydrogen_2024";
 // =====================================================================================
 //  ПОРОГИ
 // =====================================================================================
-const float MAX_SAFE_PRESSURE   = 6.8f;   // аварийный порог (ovLock)
-const float WARN_PRESSURE       = 6.0f;   // предупредительный порог (ovWarn)
+// ⚡ v6.7: предупреждение 6.8 (было 6.0 — при цели до 6.5 оно звучало в обычной работе),
+// авария 7.2 (было 6.8). Защёлка аварии по-прежнему снимается только ниже 6.0 бар.
+const float MAX_SAFE_PRESSURE   = 7.2f;   // аварийный порог (ovLock)
+const float WARN_PRESSURE       = 6.8f;   // предупредительный порог (ovWarn)
+const float OVP_UNLOCK_PRESSURE = 6.0f;   // ниже — LOCK/POWER снимают защёлку аварии
 // MIN_TARGET_PRESSURE / MAX_TARGET_PRESSURE — в общем h2_protocol.h (0.5 / 6.5 бар)
 const float TARGET_STEP         = 0.5f;
 const float PURGE_ZERO_BAR      = 0.05f;
@@ -1776,7 +1780,7 @@ void executeCommand(uint8_t cmd) {
   switch (cmd) {
     case 1:  // POWER
       if (!systemOn) {
-        if (overpressureLock && currentPressure < WARN_PRESSURE) overpressureLock = false;
+        if (overpressureLock && currentPressure < OVP_UNLOCK_PRESSURE) overpressureLock = false;
         systemOn = true;
         runStartMs    = millis();   // ⚡ v6.2: отсчёт таймера работы
         runTimerEnded = false;
@@ -1794,7 +1798,7 @@ void executeCommand(uint8_t cmd) {
         bool stillTilted = mpuOk && !tiltCalibrating && currentTiltDeg > TILT_ANGLE_DEG;
         leakLock = false;              // ⚡ v6.2: защёлка сильной утечки
         leakWarn = leakWarnStatic = leakWarnHold = false;
-        if (currentPressure < WARN_PRESSURE) overpressureLock = false;
+        if (currentPressure < OVP_UNLOCK_PRESSURE) overpressureLock = false;
         if (stillTilted) { tiltLock = true;  isLocked = true; }   // остаёмся заблокированными
         else             { tiltLock = false; isLocked = false; }
       } else {
@@ -2270,7 +2274,7 @@ void updateDisplay() {
   else                 { oled.print("---"); }
 
   // ── Полоска давления 0..6 бар + маркер цели ─────────────────────────────
-  const float SCALE = 7.0f;   // шкала давления 0..7 бар (запас над аварийным 6.8)
+  const float SCALE = 7.5f;   // шкала давления 0..7.5 бар (запас над аварийным 7.2)
   int bw = constrain((int)(currentPressure / SCALE * 127.0f), 0, 127);
   oled.drawRect(0, 30, 128, 5, SSD1306_WHITE);
   if (bw > 0) oled.fillRect(1, 31, bw, 3, SSD1306_WHITE);

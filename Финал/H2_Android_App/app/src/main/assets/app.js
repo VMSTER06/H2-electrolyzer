@@ -75,7 +75,7 @@ const ALARMS=[
 {k:'mpuf',level:'danger',badge:'Авария · датчик наклона',title:'Датчик наклона не отвечает.',msg:()=>'Электролизёр заблокирован до восстановления. Что проверить — на вкладке «Статус».'},
 {k:'lkl',level:'danger',badge:'Авария · утечка',title:'Утечка.',msg:()=>'Система выключена. Проверь клапан и магистраль, затем нажми «Разблокировать».',act:()=>ACT_UNLOCK},
 {k:'oh',level:'danger',badge:'Авария · перегрев',title:'Перегрев.',msg:()=>'Дай установке остыть.'},
-{k:'ovw',level:'warn',badge:'Внимание',title:'Давление выше 6,0 бар.',msg:()=>'Авария — при 6,8 бар.'},
+{k:'ovw',level:'warn',badge:'Внимание',title:'Давление выше 6,8 бар.',msg:()=>'Авария — при 7,2 бар.'},
 {k:'wd',level:'warn',badge:'Внимание',title:'Бак не набирает давление.',msg:()=>'Проверь электролизёр и герметичность.'},
 {k:'lkw',level:'warn',title:'Возможна утечка.',msg:()=>'Давление падает при закрытом клапане.'},
 {k:'mntd',level:'warn',title:'Пора обслужить.',msg:()=>'Долей воду или электролит, затем нажми «Обслужено» (Управление → Обслуживание).'},
@@ -127,7 +127,7 @@ async function action(path,success,o){if(!online){toast('Нет связи с м
 async function safetyCmd(code){if(code!==99&&!online){toast('Нет связи с мозгом. Подключись к Wi-Fi H2_PRO',true);return false}if(safetyBusy[code]||Date.now()-(safetyLast[code]||0)<500)return false;safetyLast[code]=Date.now();safetyBusy[code]=true;updateControls();haptic();try{await brain('/cmd?id='+code);toast(CMD_OK[code]);setTimeout(poll,250);return true}catch(e){await commandFailed('/cmd?id='+code,e);return false}finally{safetyBusy[code]=false;updateControls()}}
 const CMD_OK={1:'Команда системе отправлена',12:'Тревога заглушена',2:'Блокировка переключена',3:'Импульс репульсора отправлен',4:'Команда поджига отправлена',5:'Команда продувки отправлена',7:'Подача газа переключена',99:'Команда сброса давления отправлена'};
 function sendCmd(code){if(online&&state&&state.prg&&code!==2&&code!==12){toast('Идёт продувка. Сейчас работают только блокировка и «Заглушить» — дождись конца продувки',true);return Promise.resolve(false)}return [2,12,99].includes(code)?safetyCmd(code):action('/cmd?id='+code,CMD_OK[code])}
-function targetPaint(){const el=byId('targetSlider'),v=Number(el.value);rangeOutput(el,'targetValue',1,'бар');document.querySelectorAll('[data-q]').forEach(b=>{const s=Number(b.dataset.q)===v;b.classList.toggle('selected',s);b.setAttribute('aria-pressed',String(s))});byId('targetWarn').hidden=!(v>6.0)}
+function targetPaint(){const el=byId('targetSlider'),v=Number(el.value);rangeOutput(el,'targetValue',1,'бар');document.querySelectorAll('[data-q]').forEach(b=>{const s=Number(b.dataset.q)===v;b.classList.toggle('selected',s);b.setAttribute('aria-pressed',String(s))})}
 function targetInput(){pressureDirty=true;targetPaint();paintDirty()}
 function setTargetValue(v){byId('targetSlider').value=Math.max(0.5,Math.min(6.5,v));pressureDirty=true;targetPaint();paintDirty()}
 function stepTarget(delta){setTargetValue(Math.round((Number(byId('targetSlider').value)+delta)*2)/2)}

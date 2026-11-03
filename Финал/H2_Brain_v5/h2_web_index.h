@@ -448,7 +448,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     <div class="ok-msg" id="cmdMsg"></div>
 
     <div class="block warn">
-      <div class="blk-lbl">Целевое давление (max 6.0 бар)</div>
+      <div class="blk-lbl">Целевое давление (max 6.5 бар)</div>
       <div class="row" style="justify-content:center;">
         <button class="t-pm" onclick="stepTgt(-0.5)">−</button>
         <span class="t-val"><span id="tval">1.0</span><span class="t-unit"> бар</span></span>
@@ -2185,7 +2185,7 @@ function alertOf(d,p){
   if(d.mpuf) return ['tilt','⚠ ДАТЧИК НАКЛОНА НЕ ОТВЕЧАЕТ — ЭЛЕКТРОЛИЗЁР ЗАБЛОКИРОВАН'];   // ⚡ v6.3
   if(d.lkl)  return ['danger','⚠ УТЕЧКА — СИСТЕМА ВЫКЛЮЧЕНА. Проверьте клапан и магистраль, затем LOCK'];
   if(d.oh)   return ['danger','🔥 ПЕРЕГРЕВ '+(+d.t).toFixed(0)+'°C'];
-  if(d.ovw)  return ['','⚠ Приближение к аварии: '+p.toFixed(2)+' / 6.5 бар'];
+  if(d.ovw)  return ['','⚠ Приближение к аварии: '+p.toFixed(2)+' / 7.2 бар'];
   if(d.wd)   return ['','⚠ БАК НЕ НАБИРАЕТ ДАВЛЕНИЕ'];
   if(d.lkw)  return ['','⚠ ДАВЛЕНИЕ ПАДАЕТ ПРИ ЗАКРЫТОМ КЛАПАНЕ — возможна утечка'];
   if(d.mntd) return ['','⚙ ПОРА ОБСЛУЖИТЬ: долить воду/электролит (Настройки → Обслуживание)'];

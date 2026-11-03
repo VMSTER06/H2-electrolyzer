@@ -1088,7 +1088,7 @@ void updateDisplay() {
   else { oled.printf("%3d", remTiltAngle); oled.setCursor(108, 22); oled.print("гр"); }
 
   // Полоска давления 0..6 бар + маркер цели
-  const float SCALE = 7.0f;   // шкала давления 0..7 бар (запас над аварийным 6.8)
+  const float SCALE = 7.5f;   // шкала давления 0..7.5 бар (запас над аварийным 7.2)
   int bw = constrain((int)(remPressure / SCALE * 127.0f), 0, 127);
   oled.drawRect(0, 30, 128, 5, SSD1306_WHITE);
   if (bw > 0) oled.fillRect(1, 31, bw, 3, SSD1306_WHITE);
