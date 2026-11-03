@@ -169,13 +169,22 @@ public class MainActivity extends Activity {
                 return q.isEmpty() ? LANE_POLL : -1;
             case "/snd/stop": case "/log/clear": case "/resetcycles": case "/resetruntime":
                 return q.isEmpty() ? LANE_CMD : -1;
+            case "/dbg":   // v1.5.0: журнал нажатий (режим отладки)
+                return only(q, "since") && intIn(u, "since", 0, 4_294_967_295L) ? LANE_POLL : -1;
+            case "/rset": {   // v1.5.0: настройки пульта — любое непустое подмножество
+                if (q.isEmpty() || !Arrays.asList("bat", "sleep", "con").containsAll(q)) return -1;
+                return (!q.contains("bat") || intIn(u, "bat", 0, 1)) && (!q.contains("sleep") || intIn(u, "sleep", 0, 60))
+                    && (!q.contains("con") || intIn(u, "con", 1, 10)) ? LANE_CMD : -1;
+            }
             case "/settime":
                 return only(q, "t") && intIn(u, "t", 1_700_000_000L, 4_294_967_295L) ? LANE_POLL : -1;
             case "/snd/get":
                 return only(q, "id") && melodyId(u, "id") ? LANE_POLL : -1;
             case "/cmd": {
                 Long c = intParam(u, "id");
-                if (!only(q, "id") || c == null || c < 0 || c > 99 || !COMMANDS.contains(c.intValue())) return -1;
+                // v1.5.0: src=app — пометка для журнала отладки мозга
+                boolean names = only(q, "id") || (only(q, "id", "src") && "app".equals(param(u, "src")));
+                if (!names || c == null || c < 0 || c > 99 || !COMMANDS.contains(c.intValue())) return -1;
                 return c == 99 ? LANE_SOS : LANE_CMD;
             }
             case "/setpressure":

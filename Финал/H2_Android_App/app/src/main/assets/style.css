@@ -122,3 +122,14 @@ select.input{-webkit-appearance:none;appearance:none;padding-right:36px;backgrou
 .sheet h2{font-size:17px;margin:0 0 8px;letter-spacing:-.4px}
 .sheet p{font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 18px}
 .sheet .twocol{margin-bottom:0}
+
+/* v1.5.0: режим отладки */
+.dbg-log{max-height:340px;overflow-y:auto;margin-top:8px}
+.dbg-row{display:grid;grid-template-columns:auto auto 1fr;gap:8px;align-items:start;padding:8px 0;border-top:1px solid var(--line);font-size:12px}
+.dbg-time{color:var(--muted);font-variant-numeric:tabular-nums}
+.dbg-src{padding:1px 7px;border-radius:9px;background:var(--track);font-weight:600;font-size:11px}
+.dbg-src.s0{background:var(--accent-soft);color:var(--accent)}.dbg-src.s1{background:var(--green-soft);color:var(--green)}.dbg-src.s4{background:var(--warn-soft);color:var(--warn)}
+.dbg-what strong{display:block;font-size:12px}.dbg-what small{color:var(--muted)}
+.dbg-kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid var(--line);font-size:12px}
+.dbg-kv span:last-child{text-align:right;font-weight:600}.dbg-kv.alarm span:last-child{color:var(--red)}
+.dbg-dev{display:block;margin:10px 0 2px;font-size:13px}

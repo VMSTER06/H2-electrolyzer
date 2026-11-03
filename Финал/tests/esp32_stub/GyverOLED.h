@@ -13,5 +13,5 @@ template<int T, int B> struct GyverOLED {
   void init() {} void clear() {} void update() {} void setCursorXY(int, int) {} void setScale(uint8_t) {}
   void invertText(bool) {} void textMode(uint8_t) {} void dot(int, int, uint8_t = 1) {} void line(int, int, int, int, uint8_t = 1) {}
   void fastLineH(int, int, int, uint8_t = 1) {} void fastLineV(int, int, int, uint8_t = 1) {} void rect(int, int, int, int, uint8_t = 1) {}
-  void setPower(bool) {} void sendCommand(uint8_t) {} size_t write(uint8_t) { return 1; }
+  void setPower(bool) {} void setContrast(uint8_t) {} void sendCommand(uint8_t) {} size_t write(uint8_t) { return 1; }
 };

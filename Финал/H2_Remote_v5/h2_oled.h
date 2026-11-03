@@ -77,6 +77,8 @@ class H2Oled : public Print {
     _d.rect(x, y, x + w - 1, y + h - 1, c ? OLED_FILL : OLED_CLEAR);
     restore();
   }
+  // ⚡ v6.8: яркость (контраст SSD1306) 0..255
+  void setContrast(uint8_t v) { _d.setContrast(v); }
   void ssd1306_command(uint8_t cmd) {
     if (cmd == SSD1306_DISPLAYOFF)     _d.setPower(false);
     else if (cmd == SSD1306_DISPLAYON) _d.setPower(true);

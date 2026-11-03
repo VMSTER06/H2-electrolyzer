@@ -1,7 +1,19 @@
 /*
  * =====================================================================================
- *  H2 CONTROL SYSTEM — ПУЛЬТ v6.7  (ESP32 DevKit v1)
+ *  H2 CONTROL SYSTEM — ПУЛЬТ v6.8  (ESP32 DevKit v1)
  * =====================================================================================
+ *
+ *  ⚡ НОВОЕ В v6.8 (протокол дополнен пакетом PKT_RSVC — прошивать вместе с мозгом v6.8):
+ *    • Заголовок главного экрана: заряд аккумулятора, доля принятых пакетов статуса
+ *      за 5 с («RF93%») и режим мозга.
+ *    • Батарея Li-ion 1S: делитель 100 кОм + 100 кОм с «+» аккумулятора на GPIO35.
+ *      Разряд < 10 % — «БАТ!» мигает и один короткий сигнал. Показ отключается в меню
+ *      или из приложения.
+ *    • МЕНЮ: удержание МЕЛОДИИ 1 с. ЦЕЛЬ−/ЦЕЛЬ+ — вниз/вверх, МЕЛОДИЯ — изменить,
+ *      удержание — выход. Яркость, время до сна (1–30 мин / никогда), батарея,
+ *      мелодия кнопки, звук включения, связь, версия и напряжение.
+ *    • Мозгу: телеметрия раз в 5 с (RSVC_INFO) и каждое нажатие (RSVC_BTN) — режим
+ *      отладки приложения; настройки из приложения — RSVC_SET.
  *
  *  ⚡ НОВОЕ В v6.7 (протокол не менялся, мозг — только тот же h2_oled.h):
  *    • OLED: текст в режиме BUF_ADD — русские строки больше не стирают низ соседних
@@ -129,6 +141,10 @@
  *                 GPIO34 не имеет внутренней подтяжки: нужен резистор 10 кОм
  *                 между GPIO34 и 3.3 В; кнопка замыкает GPIO34 на GND.
  *
+ *    ⚡ v6.8 БАТАРЕЯ (Li-ion 1S): «+» аккумулятора → 100 кОм → GPIO35 → 100 кОм → GND.
+ *        GPIO35 — только вход АЦП1, больше нигде не используется. Без делителя заряд
+ *        просто не показывается.
+ *
  *    СВЕТОДИОДЫ (GPIO → резистор 220 Ом → анод LED, катод → GND):
  *        GPIO14 → LED зелёный  (мигает при отправке: 1 вспышка = OK, 2 = ошибка)
  *        GPIO13 → LED синий    (горит — пульт включён)
@@ -172,6 +188,7 @@
 #include <LittleFS.h>       // ⚡ v6.7: свои мелодии пульта
 #include "h2_melody.h"     // ⚡ v6.7: формат H2M1 (общий с мозгом)
 #include "remote_rmel.h"   // ⚡ v6.7: приём мелодий от мозга (PKT_RMEL)
+#include "remote_ui.h"     // ⚡ v6.8: заряд Li-ion, доля принятых пакетов, выбор времени сна
 
 
 // ======================== ПИНЫ NRF24 ========================
@@ -301,7 +318,7 @@ const unsigned long RF_SCAN_FAST   = 1200;   // быстрый скан посл
 
 // ⚡ v5.0: Глубокий сон при простое
 const bool          DEEP_SLEEP_ENABLE = true;     // false если пульт на USB-питании
-const unsigned long IDLE_SLEEP_MS     = 120000;   // 2 мин без нажатий → сон
+// ⚡ v6.8: время до сна — настройка пульта rui.sleepMin (меню / приложение), по умолч. 2 мин
 // Пробуждение из сна: ext0 — кнопка TGT− (GPIO 33, LOW); ⚡ v6.0: ext1 ALL_LOW с маской
 // из одного пина — кнопка МЕЛОДИЯ (GPIO 34, LOW, внешняя подтяжка 10 кОм к 3,3 В).
 // Каждый источник будит по нажатию одной кнопки.
@@ -878,6 +895,211 @@ void updateMusic(unsigned long now) {
   else                                        soundPlayLocal(MEL_BOOMER, MEL_BOOMER_LEN, SPRIO_MUSIC, true);
 }
 
+// =====================================================================================
+//  ⚡ v6.8: НАСТРОЙКИ ПУЛЬТА, БАТАРЕЯ, ДОЛЯ ПАКЕТОВ, МЕНЮ, ОТЧЁТЫ МОЗГУ
+//  • Батарея Li-ion 1S: делитель 100 кОм + 100 кОм с «+» аккумулятора на GPIO35 (вход
+//    только АЦП, ни к чему больше не подключён). Замер раз в 2 с, сглаживание.
+//    Без аккумулятора (питание по USB) напряжение вне 2,8–4,5 В — заряд не показывается.
+//  • Доля принятых пакетов статуса (RxMeter, 10 Гц) — в заголовке главного экрана.
+//  • Настройки (NVS "h2-rui"): батарея вкл/выкл, минут до сна (0 — никогда), яркость
+//    1..10. Меняются в меню пульта (удержание МЕЛОДИИ 1 с) и из приложения (RSVC_SET).
+//  • Мозгу: RSVC_INFO раз в 5 с и после изменений, RSVC_BTN — каждое нажатие (отладка).
+// =====================================================================================
+#define PIN_BATTERY 35
+const float         BAT_DIVIDER     = 2.0f;     // 100 кОм / (100 + 100 кОм)
+const unsigned long T_BAT_SAMPLE    = 2000;
+const unsigned long T_INFO_TX       = 5000;
+const unsigned long T_MELODY_HOLD   = 1000;     // удержание МЕЛОДИИ → меню
+const unsigned long T_MENU_IDLE     = 30000;    // меню закрывается само
+const uint8_t       FW_VERSION_X10  = 68;
+const Note    MEL_LOW_BAT[]   = { {2000, 80}, {0, 80}, {2000, 80} };
+const uint8_t MEL_LOW_BAT_LEN = sizeof(MEL_LOW_BAT) / sizeof(MEL_LOW_BAT[0]);
+
+struct RemoteSettings { uint8_t bat; uint8_t sleepMin; uint8_t contrast; };
+RemoteSettings rui = { 1, 2, 10 };
+RxMeter        rxMeter;
+uint16_t       batMv       = 0;      // сглаженное напряжение, мВ (0 — ещё не мерили)
+bool           batLowWarned = false;
+unsigned long  lastBatSample = 0, lastInfoTx = 0;
+uint8_t        btnSeq = 0;
+
+void ruiApplyContrast() { if (oledOk) oled.setContrast((uint8_t)(rui.contrast * 25 + 5)); }   // 1..10 → 30..255
+
+void ruiLoad() {
+  Preferences p;
+  if (p.begin("h2-rui", true)) {
+    rui.bat      = p.getUChar("bat", 1) ? 1 : 0;
+    rui.sleepMin = p.getUChar("slp", 2);
+    rui.contrast = p.getUChar("con", 10);
+    p.end();
+  }
+  if (rui.sleepMin > 60) rui.sleepMin = 2;
+  if (rui.contrast < 1 || rui.contrast > 10) rui.contrast = 10;
+}
+
+void ruiSave() {
+  Preferences p;
+  if (!p.begin("h2-rui", false)) return;
+  p.putUChar("bat", rui.bat);
+  p.putUChar("slp", rui.sleepMin);
+  p.putUChar("con", rui.contrast);
+  p.end();
+}
+
+unsigned long idleSleepMs() { return rui.sleepMin ? (unsigned long)rui.sleepMin * 60000UL : 0; }
+
+bool batShown() { return rui.bat && liionPresent(batMv); }
+uint8_t batPercent() { return liionPercent(batMv); }
+
+void updateBattery(unsigned long now) {
+  if (!rui.bat || now - lastBatSample < T_BAT_SAMPLE) return;
+  lastBatSample = now;
+  uint32_t acc = 0;
+  for (uint8_t i = 0; i < 8; i++) acc += analogReadMilliVolts(PIN_BATTERY);
+  uint16_t mv = (uint16_t)(acc / 8 * BAT_DIVIDER);
+  // Сглаживание (≈ 20 с): кратковременная просадка при передаче не дёргает процент
+  batMv = (batMv == 0 || !liionPresent(batMv)) ? mv : (uint16_t)((batMv * 9u + mv) / 10u);
+  if (!batShown()) return;
+  uint8_t pct = batPercent();
+  if (pct < 10 && !batLowWarned) {          // один короткий сигнал при разряде
+    batLowWarned = true;
+    soundPlayLocal(MEL_LOW_BAT, MEL_LOW_BAT_LEN, SPRIO_ALARM);
+  } else if (pct >= 15) batLowWarned = false;
+}
+
+// Телеметрия мозгу (RSVC_INFO)
+void sendInfo() {
+  RsvcInfo p = {};
+  p.type = PKT_RSVC; p.op = RSVC_INFO; p.fw = FW_VERSION_X10;
+  p.batMv = (rui.bat && liionPresent(batMv)) ? batMv : 0;
+  p.batPct = batShown() ? batPercent() : RSVC_KEEP;
+  p.rxPct = rxMeter.pct(millis());
+  p.bat = rui.bat; p.sleepMin = rui.sleepMin; p.contrast = rui.contrast;
+  radio.stopListening();
+  radio.write(&p, sizeof(p));
+  radio.startListening();
+  lastInfoTx = millis();
+}
+
+// Нажатие кнопки — мозгу для журнала отладки (только при связи; не мешает командам)
+void reportBtn(uint8_t btn, uint8_t act, uint8_t cmd) {
+  if (!brainOnline) return;
+  RsvcBtn p = { PKT_RSVC, RSVC_BTN, ++btnSeq, btn, act, cmd };
+  radio.stopListening();
+  radio.write(&p, sizeof(p));
+  radio.startListening();
+}
+
+// Настройки из приложения (RSVC_SET через мозг)
+void rsvcOnPacket(const uint8_t* b) {
+  if (b[1] != RSVC_SET) return;
+  RsvcSet p; memcpy(&p, b, sizeof(p));
+  if (p.bat != RSVC_KEEP && p.bat <= 1)          rui.bat = p.bat;
+  if (p.sleepMin != RSVC_KEEP && p.sleepMin <= 60) rui.sleepMin = p.sleepMin;
+  if (p.contrast >= 1 && p.contrast <= 10)        rui.contrast = p.contrast;
+  ruiSave();
+  ruiApplyContrast();
+  lastActivityMs = millis();
+  sendInfo();
+}
+
+// ── Меню на OLED ───────────────────────────────────────────────────────────
+// Навигация: ЦЕЛЬ− — вниз, ЦЕЛЬ+ — вверх, МЕЛОДИЯ — изменить / выбрать, удержание
+// МЕЛОДИИ — выход. Остальные кнопки закрывают меню и работают как обычно.
+enum : uint8_t { MI_CONTRAST, MI_SLEEP, MI_BAT, MI_MUSIC, MI_BOOT, MI_LINK, MI_INFO, MI_EXIT, MI_COUNT };
+const uint8_t MENU_ROWS = 6;
+bool          menuOpen = false;
+uint8_t       menuSel = 0, menuTop = 0;
+unsigned long menuLastMs = 0;
+bool          menuMusicChanged = false;
+
+void openMenu(unsigned long now) {
+  if (!oledOk || dino.active) return;
+  menuOpen = true; menuSel = 0; menuTop = 0; menuLastMs = now; menuMusicChanged = false;
+  lastActivityMs = now;
+  Serial.println("[MENU] открыто");
+}
+
+void closeMenu() {
+  if (!menuOpen) return;
+  menuOpen = false;
+  ruiSave();
+  if (menuMusicChanged) { rmelSaveCfg(); if (brainOnline) rmelSendInventory(); }
+  if (brainOnline) sendInfo();
+  lastDispCheck = millis() - T_DISPLAY_UPD;
+  lastDispDraw  = millis() - 1000;
+  Serial.println("[MENU] закрыто");
+}
+
+// Следующий по кругу вариант: −1/−9 → слоты 0..7, только занятые
+int8_t nextSlotChoice(int8_t cur, int8_t none) {
+  for (int8_t k = 1; k <= RMEL_SLOTS + 1; k++) {
+    int8_t c = (int8_t)(((cur < 0 ? -1 : cur) + k) % (RMEL_SLOTS + 1));
+    int8_t v = c == RMEL_SLOTS ? none : c;
+    if (v == none || (rmelUsed & (1u << v))) return v;
+  }
+  return none;
+}
+
+void menuMove(int8_t d, unsigned long now) {
+  menuLastMs = now; lastActivityMs = now;
+  menuSel = (uint8_t)((menuSel + MI_COUNT + d) % MI_COUNT);
+  if (menuSel < menuTop) menuTop = menuSel;
+  if (menuSel >= menuTop + MENU_ROWS) menuTop = menuSel - MENU_ROWS + 1;
+}
+
+void menuSelect(unsigned long now) {
+  menuLastMs = now; lastActivityMs = now;
+  switch (menuSel) {
+    case MI_CONTRAST: rui.contrast = rui.contrast >= 10 ? 1 : rui.contrast + 1; ruiApplyContrast(); break;
+    case MI_SLEEP:    rui.sleepMin = nextSleepChoice(rui.sleepMin); break;
+    case MI_BAT:      rui.bat = !rui.bat; break;
+    case MI_MUSIC:    rmelAct = nextSlotChoice(rmelAct, RMEL_BOOMER); menuMusicChanged = true; rmelRestartMusic(); break;
+    case MI_BOOT:     rmelBoot = nextSlotChoice(rmelBoot, RMEL_NONE); menuMusicChanged = true; break;
+    case MI_EXIT:     closeMenu(); break;
+    default: break;   // MI_LINK, MI_INFO — только просмотр
+  }
+}
+
+// Название слота, укороченное до n знаков (UTF-8)
+void menuSlotName(int8_t slot, const char* none, char* out, size_t len) {
+  const char* s = slot >= 0 ? rmelInfo[slot].name : none;
+  size_t i = 0, chars = 0;
+  while (s[i] && chars < 9 && i + 4 < len) { uint8_t c = (uint8_t)s[i]; size_t n = c < 0x80 ? 1 : c < 0xE0 ? 2 : c < 0xF0 ? 3 : 4;
+    memcpy(out + i, s + i, n); i += n; chars++; }
+  out[i] = '\0';
+}
+
+void drawMenu(unsigned long now) {
+  oled.clearDisplay();
+  oled.setTextSize(1);
+  oled.setTextColor(SSD1306_WHITE);
+  oled.setCursor(0, 0); oled.print("МЕНЮ ПУЛЬТА");
+  oled.setCursor(84, 0); oled.printf("%u/%u", menuSel + 1, (unsigned)MI_COUNT);
+  oled.drawLine(0, 9, 127, 9, SSD1306_WHITE);
+  for (uint8_t r = 0; r < MENU_ROWS && menuTop + r < MI_COUNT; r++) {
+    uint8_t it = menuTop + r; int y = 11 + r * 9;
+    char val[40] = "";
+    const char* name = "";
+    switch (it) {
+      case MI_CONTRAST: name = "Яркость";  snprintf(val, sizeof(val), "%u", rui.contrast); break;
+      case MI_SLEEP:    name = "Сон";      if (rui.sleepMin) snprintf(val, sizeof(val), "%u мин", rui.sleepMin); else snprintf(val, sizeof(val), "нет"); break;
+      case MI_BAT:      name = "Батарея";  snprintf(val, sizeof(val), rui.bat ? "вкл" : "выкл"); break;
+      case MI_MUSIC:    name = "Музыка";   menuSlotName(rmelAct, "Бумер", val, sizeof(val)); break;
+      case MI_BOOT:     name = "Старт";    menuSlotName(rmelBoot, "нет", val, sizeof(val)); break;
+      case MI_LINK:     name = "Связь";    snprintf(val, sizeof(val), "к%u %u%%", RF_CHANNELS[rfChannelIdx], rxMeter.pct(now)); break;
+      case MI_INFO:     name = "v6.8";     if (batShown()) snprintf(val, sizeof(val), "%u.%02uВ", batMv / 1000, (batMv % 1000) / 10); else snprintf(val, sizeof(val), "USB"); break;
+      case MI_EXIT:     name = "Выход"; break;
+    }
+    bool sel = it == menuSel;
+    if (sel) { oled.fillRect(0, y - 1, 128, 9, SSD1306_WHITE); oled.setTextColor(SSD1306_BLACK); }
+    oled.setCursor(2, y); oled.print(name);
+    oled.setCursor(56, y); oled.print(val);
+    if (sel) oled.setTextColor(SSD1306_WHITE);
+  }
+  oled.display();
+}
+
 // Game never owns the control buttons, radio, alarm sound or sleep timer.
 // Any ordinary control returns to telemetry before sending its original command.
 void leaveGame(unsigned long now) {
@@ -913,7 +1135,10 @@ bool gameAlarmActive() {
     r_purging() || r_purgeShort() || r_repulsor() || r_manual() || r_piezo());
 }
 
+void reportBtn(uint8_t btn, uint8_t act, uint8_t cmd);
 void handleMelodyEvent(MelodyClicks::Event event, unsigned long now) {
+  if (event != MelodyClicks::NONE)      // ⚡ v6.8: отчёт мозгу (в игре — «поглощено игрой»)
+    reportBtn(RBTN_MELODY, dino.active ? BACT_GAME : (event == MelodyClicks::DOUBLE ? BACT_DOUBLE : BACT_PRESS), 0);
   if (event == MelodyClicks::DOUBLE) {
     if (dino.active) {
       leaveGame(now);
@@ -969,6 +1194,7 @@ void updateLedTx(unsigned long now) {
 //  ОТПРАВКА КОМАНДЫ
 // =====================================================================================
 void sendCmd(uint8_t cmd, const char* label) {
+  closeMenu();          // ⚡ v6.8: кнопка управления закрывает меню и работает как обычно
   leaveGame(millis());
   lastActivityMs = millis();   // ⚡ v5.0: любое нажатие сбрасывает таймер сна
   // ⚡ v6.0: щелчок через неблокирующий мини-плеер — отзвучит сам в loop
@@ -1063,8 +1289,13 @@ void updateDisplay() {
   oled.setTextSize(1);
   // ⚡ v6.3: шрифт 1 = 6 px на символ: «H2 REMOTE» занимает x=0..53, «RF:OK» —
   // x=60..89, режим (до 5 символов, «TILT!») — x=96..125. Без наложения букв.
-  oled.setCursor(0, 0); oled.print("H2 ПУЛЬТ");
-  oled.setCursor(60, 0); oled.print("RF:OK");
+  // ⚡ v6.8: заголовок — заряд пульта (x=0..23, «БАТ!» мигает при разряде < 10 %),
+  // доля принятых пакетов статуса за 5 с (x=30..65) и режим мозга (x=96..125)
+  oled.setCursor(0, 0);
+  if (!batShown())                            oled.print("H2");
+  else if (batPercent() < 10 && (now / 500) % 2) oled.print("БАТ!");
+  else                                        oled.printf("%u%%", (unsigned)batPercent());
+  oled.setCursor(30, 0); oled.printf("RF%u%%", (unsigned)rxMeter.pct(now));
   oled.setCursor(96, 0);
   if (r_tiltLock())        oled.print("НАКЛ!");
   else if (r_ovLock())     oled.print("!ДАВЛ");
@@ -1176,6 +1407,10 @@ void drawDino() {
 
 void maybeUpdateDisplay(unsigned long now) {
   if (!oledOk) return;
+  if (menuOpen) {                     // ⚡ v6.8: меню пульта
+    if (now - lastGameDraw >= 100) { lastGameDraw = now; drawMenu(now); }
+    return;
+  }
   if (dino.active) {
     if (now - lastGameDraw >= 80) {
       lastGameDraw = now;
@@ -1186,10 +1421,12 @@ void maybeUpdateDisplay(unsigned long now) {
   if (now - lastDispCheck < T_DISPLAY_UPD) return;
   lastDispCheck = now;
   char sig[110];
-  snprintf(sig, sizeof(sig), "%d|%u|%u|%.2f|%.1f|%u|%d|%u|%u",
+  snprintf(sig, sizeof(sig), "%d|%u|%u|%.2f|%.1f|%u|%d|%u|%u|%u|%d",
     brainOnline ? 1 : 0, (unsigned)remFlags, (unsigned)remFlags2,
     remPressure, remTarget, (unsigned)remTiltAngle, (int)remTemp,
-    (unsigned)remFans, (unsigned)remExt);
+    (unsigned)remFans, (unsigned)remExt, (unsigned)rxMeter.pct(now),
+    // ⚡ v6.8: заряд в заголовке (−2 — фаза мигания «БАТ!», −1 — не показывается)
+    !batShown() ? -1 : (batPercent() < 10 && (now / 500) % 2) ? -2 : (int)batPercent());
   // ⚡ v6.3: 0 = цель ещё не менялась — без «живого» экрана при старте/пробуждении
   bool animated = (lastTargetChange != 0) && (now - lastTargetChange < T_SHOW_TARGET);   // «живой» экран цели
   bool forced   = (now - lastDispDraw >= 1000);
@@ -1222,13 +1459,14 @@ void handlePowerBtn(unsigned long now) {
       pwrLongSent = false;
       // ⚡ v6.3: pwrLastClick == 0 — нажатий ещё не было (не «двойной клик» от нулевой метки на старте)
       pwrPurgeSent = pwrLastClick != 0 && (now - pwrLastClick) < T_DOUBLE_CLICK;
-      if (pwrPurgeSent) sendCmd(99, "SAFE OFF");
+      if (pwrPurgeSent) { sendCmd(99, "SAFE OFF"); reportBtn(RBTN_POWER, BACT_DOUBLE, 99); }
     } else {
       // ⚡ v6.5: POWER (cmd 1) — по ОТПУСКАНИЮ короткого нажатия, как у LOCK. Раньше cmd 1
       // уходил по нажатию, и удержание для продувки сначала включало систему (MOSFET
       // успевал открыться на ~1 с до cmd 99).
       if (pwrPressMs && !pwrLongSent && !pwrPurgeSent) {
         sendCmd(1, "POWER");
+        reportBtn(RBTN_POWER, BACT_PRESS, 1);
         pwrLastClick = now;            // окно двойного клика — от отпускания первого нажатия
       }
       pwrPressMs = 0;
@@ -1236,7 +1474,7 @@ void handlePowerBtn(unsigned long now) {
   }
   if (pwrStable == LOW && pwrPressMs && !pwrLongSent && now - pwrPressMs >= T_LONG_PRESS) {
     pwrLongSent = true;
-    if (!pwrPurgeSent) sendCmd(99, "SAFE OFF");
+    if (!pwrPurgeSent) { sendCmd(99, "SAFE OFF"); reportBtn(RBTN_POWER, BACT_HOLD, 99); }
   }
   pwrLastRaw = raw;
 }
@@ -1252,6 +1490,11 @@ void handlePowerBtn(unsigned long now) {
 const int     PIN_BTN_LOCK  = 17;
 unsigned long lockPressMs   = 0;
 bool          lockLongSent  = false;
+// ⚡ v6.8: кнопка простого ряда → код для отчёта мозгу (RBTN_*), порядок как SIMPLE_BTN_PINS
+const uint8_t SIMPLE_BTN_RBTN[NUM_SIMPLE_BTNS] = { RBTN_LOCK, RBTN_REPULSOR, RBTN_MANUAL, RBTN_PIEZO, RBTN_TGT_UP, RBTN_TGT_DOWN, RBTN_MELODY };
+// ⚡ v6.8: МЕЛОДИЯ — удержание 1 с открывает/закрывает меню
+unsigned long melodyDownMs  = 0;       // 0 — отпущена
+bool          melodyHoldDone = false;
 
 void handleSimpleBtns(unsigned long now) {
   for (uint8_t i = 0; i < NUM_SIMPLE_BTNS; i++) {
@@ -1260,12 +1503,24 @@ void handleSimpleBtns(unsigned long now) {
     if ((now - simpleDebTime[i]) > T_DEBOUNCE && raw != simpleStable[i]) {
       simpleStable[i] = raw;
       bool isLock = SIMPLE_BTN_PINS[i] == PIN_BTN_LOCK;
+      int  pin    = SIMPLE_BTN_PINS[i];
       if (simpleStable[i] == LOW) {
-        if (SIMPLE_BTN_PINS[i] == 34) handleMelodyPress(now);
-        else if (isLock) { leaveGame(now); lockPressMs = now; lockLongSent = false; lastActivityMs = now; }
-        else sendCmd(SIMPLE_BTN_CMDS[i], SIMPLE_BTN_LABELS[i]);
+        if (pin == 34) {
+          melodyDownMs = now; melodyHoldDone = false;
+          if (menuOpen) { menuLastMs = now; lastActivityMs = now; }    // выбор — по отпусканию
+          else          handleMelodyPress(now);
+        }
+        else if (menuOpen && (pin == 32 || pin == 33)) {               // ⚡ v6.8: навигация меню
+          menuMove(pin == 33 ? +1 : -1, now);
+          reportBtn(SIMPLE_BTN_RBTN[i], BACT_MENU, 0);
+        }
+        else if (isLock) { closeMenu(); leaveGame(now); lockPressMs = now; lockLongSent = false; lastActivityMs = now; }
+        else { sendCmd(SIMPLE_BTN_CMDS[i], SIMPLE_BTN_LABELS[i]); reportBtn(SIMPLE_BTN_RBTN[i], BACT_PRESS, SIMPLE_BTN_CMDS[i]); }
+      } else if (pin == 34) {
+        if (menuOpen && !melodyHoldDone && melodyDownMs) { menuSelect(now); reportBtn(RBTN_MELODY, BACT_MENU, 0); }
+        melodyDownMs = 0;
       } else if (isLock && lockPressMs) {
-        if (!lockLongSent) sendCmd(SIMPLE_BTN_CMDS[i], SIMPLE_BTN_LABELS[i]);   // короткое — LOCK
+        if (!lockLongSent) { sendCmd(SIMPLE_BTN_CMDS[i], SIMPLE_BTN_LABELS[i]); reportBtn(RBTN_LOCK, BACT_PRESS, 2); }   // короткое — LOCK
         lockPressMs = 0;
       }
     }
@@ -1276,6 +1531,14 @@ void handleSimpleBtns(unsigned long now) {
     lockLongSent = true;
     soundStop();                       // ⚡ v6.3: сначала глушим свой звук пульта («связь потеряна» / нота мозга),
     sendCmd(CMD_SILENCE_ALARM, "MUTE ALARM");   // затем команда — её щелчок (если включён) станет подтверждением удержания
+    reportBtn(RBTN_LOCK, BACT_HOLD, CMD_SILENCE_ALARM);
+  }
+  // ⚡ v6.8: удержание МЕЛОДИИ 1 с — меню (в игре не открывается); в меню — выход
+  if (melodyDownMs && !melodyHoldDone && now - melodyDownMs >= T_MELODY_HOLD) {
+    melodyHoldDone = true;
+    if (menuOpen) closeMenu();
+    else if (!dino.active) { melodyClicks.cancel(); openMenu(now); }
+    reportBtn(RBTN_MELODY, BACT_HOLD, 0);
   }
 }
 
@@ -1291,7 +1554,7 @@ void setup() {
   startBootBlink();
 
   Serial.begin(115200);
-  Serial.println("\n=== H2 PRO Remote v6.7 + GAME ===");
+  Serial.println("\n=== H2 PRO Remote v6.8 + GAME ===");
   Serial.println("[GAME] revision 2: quiet exit + persistent best");
   Preferences recordStorage;
   if (dinoRecord.load(recordStorage, dino.best)) {
@@ -1301,6 +1564,9 @@ void setup() {
   // ⚡ v6.0: зуммер — сразу в тишину
   buzzerInit();
   rmelInit();   // ⚡ v6.7: свои мелодии пульта (LittleFS) и их настройки (NVS)
+  ruiLoad();    // ⚡ v6.8: батарея, время до сна, яркость (NVS "h2-rui")
+  analogSetPinAttenuation(PIN_BATTERY, ADC_11db);   // ⚡ v6.8: делитель 1:2 даёт до 2,1 В на GPIO35
+  rxMeter.reset(millis());
 
   for (uint8_t i = 0; i < NUM_SIMPLE_BTNS; i++) {
     pinMode(SIMPLE_BTN_PINS[i], SIMPLE_BTN_PINS[i] == 34 ? INPUT : INPUT_PULLUP);
@@ -1331,7 +1597,8 @@ void setup() {
   else {
     oled.cp437(true);   // корректная таблица CP437: \xF8 = знак градуса
     oled.clearDisplay(); oled.setTextSize(1); oled.setTextColor(SSD1306_WHITE);
-    oled.setCursor(0, 20); oled.print("H2 ПУЛЬТ v6.7+ИГРА");
+    ruiApplyContrast();                       // ⚡ v6.8: яркость из настроек
+    oled.setCursor(0, 20); oled.print("H2 ПУЛЬТ v6.8+ИГРА");
     oled.setCursor(20, 36); oled.print("NRF24, 2 Мбит/с");
     oled.display();
     Serial.println("OLED: OK");
@@ -1479,6 +1746,7 @@ void loop() {
       remSound     = pkt.sound;       // ⚡ v6.0: настройки звука (в RTC — переживут сон)
       lastRxTime   = now;
       rfLastActivity = now;           // ⚡ v5.0: связь жива на этом канале
+      rxMeter.onPacket(now);          // ⚡ v6.8: доля принятых пакетов статуса
     } else if (buf[0] == PKT_TONE && len >= sizeof(TonePacket)) {
       TonePacket tp;
       memcpy(&tp, buf, sizeof(tp));
@@ -1487,6 +1755,9 @@ void loop() {
       lastActivityMs = now;           // во время мелодии не уходим в глубокий сон
     } else if (buf[0] == PKT_RMEL && len >= 2) {
       rmelOnPacket(buf, now);         // ⚡ v6.7: мелодии пульта
+      rfLastActivity = now;
+    } else if (buf[0] == PKT_RSVC && len >= sizeof(RsvcSet)) {
+      rsvcOnPacket(buf);              // ⚡ v6.8: настройки пульта из приложения
       rfLastActivity = now;
     }
   }
@@ -1515,7 +1786,11 @@ void loop() {
   if (dino.active && gameAlarmActive()) leaveGame(now);
   handlePowerBtn(now);
   handleSimpleBtns(now);
-  handleMelodyEvent(melodyClicks.poll(now), now);
+  // ⚡ v6.8: пока МЕЛОДИЯ зажата, отложенное одиночное нажатие ждёт (удержание — меню)
+  if (!melodyDownMs) handleMelodyEvent(melodyClicks.poll(now), now);
+  if (menuOpen && now - menuLastMs >= T_MENU_IDLE) closeMenu();
+  updateBattery(now);                                   // ⚡ v6.8: заряд Li-ion (GPIO35)
+  if (brainOnline && now - lastInfoTx >= T_INFO_TX) sendInfo();   // ⚡ v6.8: телеметрия мозгу
   dino.update(now);
   // No flash writes during a running round; commit each improved final record.
   if (!dino.active || dino.dead) saveDinoBest();
@@ -1532,7 +1807,7 @@ void loop() {
   // ⚡ v6.0: millis(), а не now — sendCmd() ставит lastActivityMs = millis() уже после
   // снятия now; разность «now − lastActivityMs» ушла бы в переполнение, и пульт
   // засыпал бы сразу после нажатия кнопки.
-  if (DEEP_SLEEP_ENABLE && !musicPlaying && (millis() - lastActivityMs >= IDLE_SLEEP_MS)) {
+  if (DEEP_SLEEP_ENABLE && !musicPlaying && !menuOpen && idleSleepMs() && (millis() - lastActivityMs >= idleSleepMs())) {
     goToSleep();
   }
 

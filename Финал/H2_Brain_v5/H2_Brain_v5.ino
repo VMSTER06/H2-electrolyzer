@@ -1,7 +1,13 @@
 /*
  * =====================================================================================
- *  H2 CONTROL SYSTEM — МОЗГ v6.7  (ESP32 DevKit v1, WROOM-32D)
+ *  H2 CONTROL SYSTEM — МОЗГ v6.8  (ESP32 DevKit v1, WROOM-32D)
  * =====================================================================================
+ *
+ *  ⚡ НОВОЕ В v6.8 (протокол дополнен пакетом PKT_RSVC — прошивать вместе с пультом v6.8):
+ *    • Реле LOW-active (RELAY_ACTIVE_LOW true): клапан, поджиг, выводной вентилятор.
+ *    • РЕЖИМ ОТЛАДКИ: журнал «кто что нажал» (кнопки мозга и пульта, команды по радио,
+ *      веба и приложения) — GET /dbg (h2_debug.h); телеметрия пульта (батарея, доля
+ *      принятых пакетов, настройки) — поля r* в /status; настройки пульта — GET /rset.
  *
  *  ⚡ НОВОЕ В v6.7 (протокол дополнен пакетами PKT_RMEL — прошивать вместе с пультом v6.7):
  *    • МЕЛОДИИ ПУЛЬТА: файл H2M1 из веба/приложения (POST /rmel/up) или из библиотеки
@@ -283,13 +289,13 @@
  *          и только он держит MOSFET закрытым.
  *        Полярность НЕ зависит от RELAY_ACTIVE_LOW.
  *
- *    Реле (модули SRD-05VDC-SL-C или аналогичные, HIGH-active по умолчанию):
+ *    Реле (модули SRD-05VDC-SL-C или аналогичные, ⚡ v6.8: LOW-active — RELAY_ACTIVE_LOW true):
  *        Выводной вентилятор       → GPIO25   (бывший канал электролизёра)
  *        Клапан                   → GPIO26
  *        Пьезоподжиг              → GPIO27
  *        ⚠ Реле должны питаться от ОТДЕЛЬНОГО источника 5 В. ESP32 не вытянет
  *          ток нескольких модулей одновременно. Общая земля с ESP32 ОБЯЗАТЕЛЬНА.
- *        Если у вас LOW-active модули — установите RELAY_ACTIVE_LOW = true
+ *        Для HIGH-active модулей установите RELAY_ACTIVE_LOW = false
  *        (касается всех реле, включая выводной вентилятор).
  *
  *    ⚡ v6.0 ЗУММЕР МОЗГА → GPIO16 (пассивный, через NPN-ключ):
@@ -556,7 +562,10 @@ const char* AP_PASSWORD = "hydrogen_2024";
 // =====================================================================================
 //  РЕЛЕ — УРОВЕНЬ АКТИВНОСТИ
 // =====================================================================================
-#define RELAY_ACTIVE_LOW    false
+// ⚡ v6.8: модули реле установки — LOW-active (вход IN к GND = реле включено). До setup()
+// пины в Z, и подтяжка IN на модуле держит реле выключенным; pinMode(OUTPUT) даёт LOW на
+// несколько микросекунд до allRelaysOff() — катушка за это время не срабатывает.
+#define RELAY_ACTIVE_LOW    true
 #define RELAY_ON            (RELAY_ACTIVE_LOW ? LOW  : HIGH)
 #define RELAY_OFF           (RELAY_ACTIVE_LOW ? HIGH : LOW)
 
@@ -929,6 +938,7 @@ bool          tempResOk    = false;   // разрешение 10 бит выст
 // radioMutex, remoteAckMs, otaInProgress, wsStateChanged и server.
 #include "h2_sound.h"
 #include "h2_rmel.h"    // ⚡ v6.7: мелодии пульта — передача по радио, /rmel/*
+#include "h2_debug.h"   // ⚡ v6.8: журнал нажатий (/dbg), телеметрия и настройки пульта (/rset)
 #include "h2_events.h"   // ⚡ v6.2: журнал аварий и событий (/log)
 #include <esp_task_wdt.h> // ⚡ v6.2: сторожевой таймер цикла управления
 
@@ -971,7 +981,7 @@ const char OTA_HTML[] PROGMEM = R"rawliteral(
   a{color:#00d4ff;font-size:.8em;text-decoration:none;display:inline-block;margin-top:18px;}
 </style></head><body>
 <h1>⬆ OTA ОБНОВЛЕНИЕ</h1>
-<div class="sub">H2 PRO Brain v6.7</div>
+<div class="sub">H2 PRO Brain v6.8</div>
 <div class="box">
   <div class="warn">⚠ Загрузите файл <b>.bin</b>, собранный в Arduino IDE
     (Sketch → Export Compiled Binary). НЕ выключайте питание во время прошивки!</div>
@@ -2474,8 +2484,9 @@ void handlePowerBtn(unsigned long now) {
     pwrStable = raw;
     if (pwrStable == LOW) {
       soundClick();   // ⚡ v6.0: щелчок физической кнопки (если включён и вывод — мозг)
-      if ((now - pwrLastClick) < T_DOUBLE_CLICK) executeCommand(99);
-      else                                        executeCommand(1);
+      bool dbl = (now - pwrLastClick) < T_DOUBLE_CLICK;
+      dbgLog(DBG_SRC_BRAIN, BBTN_POWER, dbl ? BACT_DOUBLE : BACT_PRESS, dbl ? 99 : 1);   // ⚡ v6.8
+      executeCommand(dbl ? 99 : 1);
       pwrLastClick = now;
     }
   }
@@ -2487,7 +2498,7 @@ void handleLockBtn(unsigned long now) {
   if (raw != lckLastRaw) lckDebTime = now;
   if ((now - lckDebTime) > T_DEBOUNCE && raw != lckStable) {
     lckStable = raw;
-    if (lckStable == LOW) { soundClick(); executeCommand(2); }
+    if (lckStable == LOW) { soundClick(); dbgLog(DBG_SRC_BRAIN, BBTN_LOCK, BACT_PRESS, 2); executeCommand(2); }
   }
   lckLastRaw = raw;
 }
@@ -2497,7 +2508,7 @@ void handlePurgeBtn(unsigned long now) {
   if (raw != prgLastRaw) prgDebTime = now;
   if ((now - prgDebTime) > T_DEBOUNCE && raw != prgStable) {
     prgStable = raw;
-    if (prgStable == LOW) { soundClick(); executeCommand(5); }
+    if (prgStable == LOW) { soundClick(); dbgLog(DBG_SRC_BRAIN, BBTN_PURGE, BACT_PRESS, 5); executeCommand(5); }
   }
   prgLastRaw = raw;
 }
@@ -2538,7 +2549,7 @@ void buildStatusJson(char* buf, size_t bufLen) {
     "\"rce\":%lu,\"rcv\":%lu,\"rcp\":%lu,\"rcf1\":%lu,\"rcf2\":%lu,\"relw\":%d,"
     "\"pco\":%.3f,\"pcs\":%.3f,\"rfc\":%d,\"rfh\":%lu,"
     "\"sout\":%u,\"svol\":%u,\"sp\":%d,\"fsok\":%d,"
-    "\"oledok\":%d,\"lcdok\":%d,\"mpuok\":%d,\"nrfok\":%d,\"mpuf\":%d}",
+    "\"oledok\":%d,\"lcdok\":%d,\"mpuok\":%d,\"nrfok\":%d,\"mpuf\":%d,\"dbgs\":%lu,",
     currentPressure, targetPressure, pressureVolts, pressureFault?1:0, leakWarn?1:0, leakLock?1:0,
     (unsigned)runTimerMin, runTimerLeft(), runTimerEnded?1:0, alarmMuted?1:0,
     gasTankL, gasTotalNL, gasSessionNL, gD, gW, gasRateNLh, electroDuty * 100.0f,
@@ -2557,7 +2568,14 @@ void buildStatusJson(char* buf, size_t bufLen) {
     presCalOffset, presCalScale, RF_CHANNELS[rfChannelIdx], (unsigned long)rfHopCount,
     (unsigned)soundOut, (unsigned)soundVol, soundIsPlaying()?1:0, fsOk?1:0,
     (oledOk || lcdOk)?1:0, lcdOk?1:0, mpuOk?1:0, radioOk?1:0,
-    mpuFault?1:0);   // ⚡ v6.3: "mpuf" — MPU6050 перестал отвечать в работе (TILT без данных)
+    mpuFault?1:0,    // ⚡ v6.3: "mpuf" — MPU6050 перестал отвечать в работе (TILT без данных)
+    (unsigned long)dbgSeq);   // ⚡ v6.8: "dbgs" — номер последней записи журнала нажатий
+  // ⚡ v6.8: телеметрия пульта (батарея, доля пакетов, настройки) и закрывающая скобка
+  if (n >= 0 && (size_t)n < bufLen) {
+    int m = rsvcJson(buf + n, bufLen - n);
+    n = (m < 0) ? -1 : n + m;
+    if (n >= 0 && (size_t)n + 1 < bufLen) { buf[n++] = '}'; buf[n] = '\0'; } else n = (int)bufLen;
+  }
   if (n < 0 || (size_t)n >= bufLen) {
     // Не должно случаться; обрезанный JSON сломал бы веб — отдаём минимальный
     Serial.printf("[JSON] статус обрезан (%d из %u)\n", n, (unsigned)bufLen);
@@ -2605,7 +2623,7 @@ void onWsEvent(AsyncWebSocket* s, AsyncWebSocketClient* c, AwsEventType type,
       int ci = msg.indexOf("\"cmd\":");
       if (ci >= 0) {
         int cmd = msg.substring(ci + 6).toInt();
-        if (webCommandKnown(cmd)) queueWebCommand((uint8_t)cmd);   // ⚡ v6.1: выполнит loop на ядре 1
+        if (webCommandKnown(cmd)) { dbgLog(DBG_SRC_WEB, DBG_BTN_NONE, 0, (uint8_t)cmd); queueWebCommand((uint8_t)cmd); }   // ⚡ v6.1: выполнит loop на ядре 1
       }
     }
   }
@@ -2752,7 +2770,7 @@ void setup() {
   buzzerInit();
 
   Serial.begin(115200);
-  Serial.println("\n=== H2 PRO Brain v6.7 ===");
+  Serial.println("\n=== H2 PRO Brain v6.8 ===");
   bootMs = millis();
 
   // ⚡ v4.3: Загружаем сохранённые настройки из NVS (цель, вентиляторы, звук, таймер…)
@@ -2802,7 +2820,7 @@ void setup() {
     memset(lcdShadow, ' ', sizeof(lcdShadow));
     for (uint8_t r = 0; r < 4; r++) lcdShadow[r][20] = '\0';
     lcdOk = true;
-    lcdLine(0, "H2 PRO  Brain v6.7");
+    lcdLine(0, "H2 PRO  Brain v6.8");
     lcdLine(1, "LCD2004 OK");
     lcdLine(2, "MPU6050 calibrating");
     lcdLine(3, "Do not move!");
@@ -2933,6 +2951,9 @@ void setup() {
     char* end = nullptr;
     long  id  = strtol(sid.c_str(), &end, 10);
     if (sid.length() == 0 || *end != '\0' || !webCommandKnown(id)) { req->send(400, "text/plain", "bad id"); return; }
+    // ⚡ v6.8: src=app — команда из Android-приложения (для журнала отладки)
+    bool app = req->hasParam("src") && req->getParam("src")->value() == "app";
+    dbgLog(app ? DBG_SRC_APP : DBG_SRC_WEB, DBG_BTN_NONE, 0, (uint8_t)id);
     if (!queueWebCommand((uint8_t)id)) {
       req->send(503, "text/plain", "busy");
       return;
@@ -3150,6 +3171,7 @@ void setup() {
   // ⚡ v6.0: звук — /snd/cfg, /snd/set, /snd/play, /snd/stop, /snd/up, /snd/del, /snd/get
   soundRegisterHttp();
   rmelRegisterHttp();   // ⚡ v6.7
+  dbgRegisterHttp();    // ⚡ v6.8
   // ⚡ v6.2: журнал событий — /log, /log/clear
   evtRegisterHttp();
 
@@ -3321,7 +3343,7 @@ void loop() {
   uint8_t    rxCmdN  = 0;
   TonePacket rxTones[3];
   uint8_t    rxToneN = 0;
-  uint8_t    rxRmel[3][RF_PAYLOAD_MAX];   // ⚡ v6.7: ответы пульта о мелодиях
+  uint8_t    rxRmel[3][RF_PAYLOAD_MAX];   // ⚡ v6.7: ответы пульта о мелодиях; ⚡ v6.8: и PKT_RSVC
   uint8_t    rxRmelN = 0;
   if (radioOk) {
     RadioLock rl(pdMS_TO_TICKS(5));
@@ -3336,7 +3358,7 @@ void loop() {
         rxCmds[rxCmdN++] = pkt.cmd;
       } else if (buf[0] == PKT_TONE && len >= sizeof(TonePacket)) {
         memcpy(&rxTones[rxToneN++], buf, sizeof(TonePacket));
-      } else if (buf[0] == PKT_RMEL) {
+      } else if (buf[0] == PKT_RMEL || buf[0] == PKT_RSVC) {
         memcpy(rxRmel[rxRmelN++], buf, RF_PAYLOAD_MAX);
       }
     }
@@ -3350,6 +3372,7 @@ void loop() {
   }
   for (uint8_t i = 0; i < rxCmdN; i++) {
     uint8_t rxCode = rxCmds[i];
+    dbgLog(DBG_SRC_RADIO, DBG_BTN_NONE, 0, rxCode);   // ⚡ v6.8: команда дошла до мозга
     executeCommand(rxCode);
     lastRfRx = now;
     rfLastActivity = now;          // ⚡ v5.0: связь жива, канал хороший
@@ -3357,7 +3380,8 @@ void loop() {
     Serial.print("[RF] cmd="); Serial.println(rxCode);
   }
   for (uint8_t i = 0; i < rxRmelN; i++) {   // ⚡ v6.7: опись / результат передачи
-    rmelOnPacket(rxRmel[i], RF_PAYLOAD_MAX);
+    if (rxRmel[i][0] == PKT_RSVC) rsvcOnPacket(rxRmel[i]);   // ⚡ v6.8: телеметрия / нажатие кнопки пульта
+    else                          rmelOnPacket(rxRmel[i], RF_PAYLOAD_MAX);
     lastRfRx = now;
     rfLastActivity = now;
   }

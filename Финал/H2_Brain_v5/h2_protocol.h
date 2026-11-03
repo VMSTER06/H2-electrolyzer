@@ -171,6 +171,48 @@ struct __attribute__((packed)) RmelResult { uint8_t type, op, xfer, code, slot; 
 
 static_assert(sizeof(RmelData) == 32 && sizeof(RmelSlot) == 32, "RMEL payload");
 
+// ── ⚡ v6.8: служебный канал пульта (PKT_RSVC) ───────────────────────────────
+// Настройки пульта из веба/приложения (через мозг), телеметрия пульта (батарея, доля
+// принятых пакетов статуса) и отчёт о каждом нажатии кнопки пульта — для режима отладки.
+const uint8_t PKT_RSVC  = 0xC4;
+const uint8_t RSVC_KEEP = 0xFF;    // RsvcSet: поле не менять
+enum : uint8_t {
+  RSVC_SET  = 1,      // мозг → пульт: настройки
+  RSVC_INFO = 0x81,   // пульт → мозг: телеметрия и настройки (раз в 5 с и после изменения)
+  RSVC_BTN  = 0x82,   // пульт → мозг: нажатие кнопки
+};
+// Кнопки пульта (RsvcBtn.btn)
+enum : uint8_t { RBTN_POWER, RBTN_LOCK, RBTN_REPULSOR, RBTN_MANUAL, RBTN_PIEZO, RBTN_TGT_UP, RBTN_TGT_DOWN, RBTN_MELODY };
+// Действие (RsvcBtn.act и журнал мозга)
+enum : uint8_t {
+  BACT_PRESS = 1,     // короткое нажатие
+  BACT_DOUBLE = 2,    // двойное
+  BACT_HOLD = 3,      // удержание ≥ 1 с
+  BACT_MENU = 4,      // нажатие поглощено меню пульта
+  BACT_GAME = 5,      // нажатие поглощено игрой
+};
+struct __attribute__((packed)) RsvcSet {
+  uint8_t type, op;   // PKT_RSVC, RSVC_SET
+  uint8_t bat;        // 0/1 — измерять и показывать батарею, RSVC_KEEP — не менять
+  uint8_t sleepMin;   // минут до сна, 0 — никогда, RSVC_KEEP
+  uint8_t contrast;   // яркость OLED 1..10, RSVC_KEEP
+};
+struct __attribute__((packed)) RsvcInfo {
+  uint8_t  type, op;  // PKT_RSVC, RSVC_INFO
+  uint8_t  fw;        // версия прошивки ×10 (68 = v6.8)
+  uint16_t batMv;     // напряжение батареи, мВ (0 — не измеряется / нет батареи)
+  uint8_t  batPct;    // заряд 0..100, RSVC_KEEP — нет данных
+  uint8_t  rxPct;     // доля принятых пакетов статуса за 5 с, 0..100
+  uint8_t  bat, sleepMin, contrast;   // текущие настройки
+};
+struct __attribute__((packed)) RsvcBtn {
+  uint8_t type, op;   // PKT_RSVC, RSVC_BTN
+  uint8_t seq;        // счётчик нажатий (повтор пакета — тот же seq)
+  uint8_t btn;        // RBTN_*
+  uint8_t act;        // BACT_*
+  uint8_t cmd;        // отправленная команда (0 — локальное действие пульта)
+};
+
 static_assert(sizeof(CmdPacket)    == 2,  "CmdPacket size");
 static_assert(sizeof(StatusPacket) == 16, "StatusPacket size");
 static_assert(sizeof(TonePacket)   == 7,  "TonePacket size");
