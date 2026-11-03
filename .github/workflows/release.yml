@@ -1,13 +1,23 @@
-# Релиз по тегу версии: git tag v6.9 && git push origin v6.9
-# Собирает архив прошивок мозга и пульта и APK приложения, публикует GitHub Release.
-# Описание релиза — release_notes/<тег>.md; строка «<!-- prerelease -->» в нём делает
-# релиз предварительным (pre-release). Нужно: Settings → Actions → General →
-# Workflow permissions → Read and write permissions.
+# Релиз GitHub: собирает архив прошивок мозга и пульта и APK приложения.
+# Запуск — любой из способов:
+#   • в ветку пришёл новый или изменённый файл release_notes/vX.Y.md → релиз vX.Y
+#     (тег создаётся сам на этом коммите; уже существующий релиз не трогается);
+#   • push тега vX.Y (описание — release_notes/vX.Y.md);
+#   • вручную: Actions → Release → Run workflow, указать тег.
+# Строка «<!-- prerelease» в описании делает релиз предварительным (pre-release).
+# Нужно: Settings → Actions → General → Workflow permissions → Read and write permissions.
 name: Release
 
 on:
   push:
     tags: ['v*']
+    branches: ['**']
+    paths: ['release_notes/v*.md']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Тег релиза, например v6.8'
+        required: true
 
 permissions:
   contents: write
@@ -17,16 +27,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Описание релиза
+      - name: Какой релиз
         id: notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          BEFORE: ${{ github.event.before }}
         run: |
-          f="release_notes/${GITHUB_REF_NAME}.md"
+          if [ -n "$INPUT_TAG" ]; then tag="$INPUT_TAG"
+          elif [ "$GITHUB_REF_TYPE" = tag ]; then tag="$GITHUB_REF_NAME"
+          else
+            # новый/изменённый файл описания в этом push (последний по версии)
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = 0000000000000000000000000000000000000000 ]; then range="$GITHUB_SHA"; else range="$BEFORE..$GITHUB_SHA"; fi
+            f=$(git diff --name-only --diff-filter=AM $range -- 'release_notes/v*.md' 2>/dev/null | sort -V | tail -1)
+            [ -z "$f" ] && f=$(git show --name-only --format= "$GITHUB_SHA" -- 'release_notes/v*.md' | sort -V | tail -1)
+            tag=$(basename "$f" .md)
+          fi
+          f="release_notes/${tag}.md"
           if [ ! -f "$f" ]; then echo "Нет файла $f с описанием релиза"; exit 1; fi
+          if gh release view "$tag" >/dev/null 2>&1; then echo "Релиз $tag уже есть — пропуск"; echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "path=$f" >> "$GITHUB_OUTPUT"
           if grep -q '<!-- prerelease' "$f"; then echo "pre=true" >> "$GITHUB_OUTPUT"; else echo "pre=false" >> "$GITHUB_OUTPUT"; fi
 
       - name: Проверки (тесты на ПК, синтаксис прошивок, страница мозга)
+        if: steps.notes.outputs.skip != 'true'
         run: |
           sh Финал/tests/run_tests.sh
           sh Финал/tests/compile_check.sh
@@ -34,8 +63,9 @@ jobs:
           python3 Финал/H2_Brain_v5/tools/sync_shared_js.py --check
 
       - name: Архив прошивок
+        if: steps.notes.outputs.skip != 'true'
         run: |
-          d="H2_PRO_${GITHUB_REF_NAME}"
+          d="H2_PRO_${{ steps.notes.outputs.tag }}"
           mkdir -p "out/$d"
           for sk in H2_Brain_v5 H2_Remote_v5; do
             mkdir -p "out/$d/$sk"
@@ -46,20 +76,25 @@ jobs:
           (cd out && zip -qr "${d}_firmware.zip" "$d")
 
       - uses: actions/setup-java@v4
+        if: steps.notes.outputs.skip != 'true'
         with:
           distribution: temurin
           java-version: '17'
 
       - name: APK приложения
+        if: steps.notes.outputs.skip != 'true'
         working-directory: Финал/H2_Android_App
         run: |
           rm -f local.properties                             # путь к SDK автора (Windows); на сервере — ANDROID_HOME
           bash ./gradlew --no-daemon assembleDebug
-          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/out/H2_PRO_${GITHUB_REF_NAME}.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/out/H2_PRO_${{ steps.notes.outputs.tag }}.apk"
 
       - uses: softprops/action-gh-release@v2
+        if: steps.notes.outputs.skip != 'true'
         with:
-          name: H2 PRO ${{ github.ref_name }}
+          tag_name: ${{ steps.notes.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: H2 PRO ${{ steps.notes.outputs.tag }}
           body_path: ${{ steps.notes.outputs.path }}
           prerelease: ${{ steps.notes.outputs.pre }}
           files: |
