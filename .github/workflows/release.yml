@@ -1,0 +1,67 @@
+# Релиз по тегу версии: git tag v6.9 && git push origin v6.9
+# Собирает архив прошивок мозга и пульта и APK приложения, публикует GitHub Release.
+# Описание релиза — release_notes/<тег>.md; строка «<!-- prerelease -->» в нём делает
+# релиз предварительным (pre-release). Нужно: Settings → Actions → General →
+# Workflow permissions → Read and write permissions.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Описание релиза
+        id: notes
+        run: |
+          f="release_notes/${GITHUB_REF_NAME}.md"
+          if [ ! -f "$f" ]; then echo "Нет файла $f с описанием релиза"; exit 1; fi
+          echo "path=$f" >> "$GITHUB_OUTPUT"
+          if grep -q '<!-- prerelease' "$f"; then echo "pre=true" >> "$GITHUB_OUTPUT"; else echo "pre=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Проверки (тесты на ПК, синтаксис прошивок, страница мозга)
+        run: |
+          sh Финал/tests/run_tests.sh
+          sh Финал/tests/compile_check.sh
+          python3 Финал/H2_Brain_v5/tools/make_web_gz.py --check
+          python3 Финал/H2_Brain_v5/tools/sync_shared_js.py --check
+
+      - name: Архив прошивок
+        run: |
+          d="H2_PRO_${GITHUB_REF_NAME}"
+          mkdir -p "out/$d"
+          for sk in H2_Brain_v5 H2_Remote_v5; do
+            mkdir -p "out/$d/$sk"
+            cp Финал/$sk/*.ino Финал/$sk/*.h "out/$d/$sk/"
+          done
+          rm "out/$d/H2_Brain_v5/h2_web_index.h"            # исходник страницы — в сборку не входит
+          cp Финал/README.md "out/$d/"
+          (cd out && zip -qr "${d}_firmware.zip" "$d")
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: APK приложения
+        working-directory: Финал/H2_Android_App
+        run: |
+          rm -f local.properties                             # путь к SDK автора (Windows); на сервере — ANDROID_HOME
+          bash ./gradlew --no-daemon assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/out/H2_PRO_${GITHUB_REF_NAME}.apk"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: H2 PRO ${{ github.ref_name }}
+          body_path: ${{ steps.notes.outputs.path }}
+          prerelease: ${{ steps.notes.outputs.pre }}
+          files: |
+            out/*_firmware.zip
+            out/*.apk
