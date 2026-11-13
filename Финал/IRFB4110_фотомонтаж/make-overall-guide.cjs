@@ -81,13 +81,13 @@ for(let i=0;i<2;i++){
 }
 
 // ESP32 and UCC27524 with all eight pins individually anchored to the photo.
-const ep=node('ESP.32',105.8,1502.9,'ESP','ESP32: контакт с надписью 32 / GPIO32'),ez=node('ESP.GND',105.8,1701.8,'GND','ESP32: контакт GND');
+const ep=node('ESP.32',105.8,1490.1,'ESP','ESP32: контакт с надписью 32 / GPIO32'),ez=node('ESP.GND',105.8,1668.4,'GND','ESP32: контакт GND');
 component('ESP','ESP32',image('esp',80,1240,300,650,'1380 1150 1700 3350'),[ep,ez],[80,1240]);badge(ep,'32');badge(ez,'−');
 const up={1:[33,274],2:[85,319],3:[138,369],4:[193,405],5:[444,224],6:[387,183],7:[334,140],8:[275,100]},un={1:'EN',2:'IN',3:'GND',4:'IN',5:'OUTB',6:'V12',7:'OUTA',8:'EN'};
 const uports=Object.entries(up).map(([n,p])=>node('U1.'+n,900+p[0]*450/480,1200+p[1]*450/480,un[n],`U1 UCC27524: ножка ${n} (${({1:'ENA',2:'INA',3:'GND',4:'INB',5:'OUTB',6:'12 В VDD',7:'OUTA',8:'ENB'})[n]})`));
 component('U1','UCC27524DR',image('u1',900,1200,450,450),uports,[900,1200]);uports.forEach(p=>badge(p,p.split('.')[1]));
-resistor('R9',500,1520,160,'100 Ом','ESP','IN');joint('INPUT',730,1520,'IN','Вход IN: ножки 2/4 после R9');edge('ESP.32','R9.1',[[450,1502.9],[450,1520]]);edge('R9.2','INPUT');edge('INPUT','U1.2',[[870,1520],[870,nodes['U1.2'].y]]);edge('INPUT','U1.4',[[840,1520],[840,1640],[nodes['U1.4'].x,1640]]);
-resistor('R10',540,1770,180,'10 кОм','GND','IN');edge('R10.2','INPUT',[[730,1770]]);joint('SIGNALGND',460,2370,'GND','Отдельный тонкий провод земли управления');edge('R10.1','SIGNALGND',[[460,1770]]);edge('ESP.GND','SIGNALGND',[[400,1701.8],[400,2370]]);edge('SIGNALGND','SSTAR',[[1540,2370]],'Отдельная земля ESP32 → общая точка S',4);
+resistor('R9',500,1520,160,'100 Ом','ESP','IN');joint('INPUT',730,1520,'IN','Вход IN: ножки 2/4 после R9');edge('ESP.32','R9.1',[[450,1490.1],[450,1520]]);edge('R9.2','INPUT');edge('INPUT','U1.2',[[870,1520],[870,nodes['U1.2'].y]]);edge('INPUT','U1.4',[[840,1520],[840,1640],[nodes['U1.4'].x,1640]]);
+resistor('R10',540,1770,180,'10 кОм','GND','IN');edge('R10.2','INPUT',[[730,1770]]);joint('SIGNALGND',460,2370,'GND','Отдельный тонкий провод земли управления');edge('R10.1','SIGNALGND',[[460,1770]]);edge('ESP.GND','SIGNALGND',[[400,1668.4],[400,2370]]);edge('SIGNALGND','SSTAR',[[1540,2370]],'Отдельная земля ESP32 → общая точка S',4);
 joint('DRVGND',1540,1940,'GND','Земля драйвера и C8–C10');edge('U1.3','DRVGND',[[nodes['U1.3'].x,1940]]);edge('DRVGND','SSTAR');
 joint('VDDDRV',1450,1150,'V12','Питание драйвера 12 В');edge('V12','VDDDRV');edge('VDDDRV','U1.6',[[nodes['U1.6'].x,1150]]);
 joint('VDDCAPS',1450,1680,'V12','Плюс C8–C10');edge('VDDDRV','VDDCAPS');

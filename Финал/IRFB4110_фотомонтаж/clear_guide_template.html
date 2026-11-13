@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Силовой ключ IRFB4110</title>
+<style>
+:root{--bg:#f3f5f7;--panel:#fff;--ink:#1f2a37;--mute:#52606d;--line:#d9e0e7;--accent:#0b63ce;--accent-ink:#fff;--ok:#12805c;--warn-bg:#fff4e5;--warn-line:#e07000;--hl:#ffb300}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#14191f;--panel:#1d242c;--ink:#e8edf2;--mute:#a3b0bd;--line:#35404b;--accent:#5aa2f5;--accent-ink:#0d1620;--ok:#4cc79a;--warn-bg:#33270f;--warn-line:#e8a33d}}
+*{box-sizing:border-box}html,body{margin:0}body{background:var(--bg);color:var(--ink);font:16px/1.5 "Segoe UI",Arial,sans-serif}
+header{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.bar{max-width:1320px;margin:auto;padding:10px 16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+h1{font-size:18px;margin:0;font-weight:700}nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button,.btn{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:8px 14px;border-radius:8px;cursor:pointer;min-height:40px}
+nav button[aria-selected=true],.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+button:focus-visible,a:focus-visible,input:focus-visible,g.part:focus-visible{outline:3px solid var(--hl);outline-offset:2px}
+main{max-width:1320px;margin:auto;padding:16px}section[hidden]{display:none}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+h2{font-size:20px;margin:0 0 8px}h3{font-size:16px;margin:0 0 6px}p{margin:0 0 8px}.mute{color:var(--mute)}
+.warn{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:10px;padding:10px 14px;margin-bottom:16px}.warn ul{margin:4px 0 0;padding-left:20px}
+.paper{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}.paper svg{display:block;width:100%;height:auto}
+.tools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+/* подсветка на схеме */
+svg .part{cursor:pointer}svg .w{cursor:pointer}
+svg.focus .w,svg.focus .part{opacity:.16}svg.focus .w.on,svg.focus .part.on{opacity:1}
+svg .part.on .b,svg .part.sel .b{stroke:#0b63ce;stroke-width:3}svg .ring{fill:none;stroke:var(--hl);stroke-width:5;pointer-events:none}
+#info{min-height:96px;display:grid;grid-template-columns:1fr auto;gap:16px}#info img{width:140px;border-radius:8px;display:block}#info ul{margin:4px 0;padding-left:18px}
+.chip{display:inline-block;padding:0 8px;border-radius:999px;color:#fff;font-size:13px;font-weight:600;margin-right:4px}
+a{color:var(--accent)}.link{background:none;border:0;color:var(--accent);font:inherit;padding:0;cursor:pointer;text-decoration:underline}
+/* сборка */
+.progress{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:6px 0 12px}.progress i{display:block;height:100%;background:var(--ok)}
+.grid{display:grid;grid-template-columns:270px 1fr;gap:16px;align-items:start}.grid>*{min-width:0}
+#sections{position:sticky;top:76px;max-height:calc(100vh - 92px);overflow:auto;padding:8px}
+#sections button{display:flex;justify-content:space-between;gap:8px;width:100%;text-align:left;background:none;border:0;border-radius:6px;padding:7px 10px;font:inherit;font-size:14.5px;color:var(--ink);cursor:pointer}
+#sections button.cur{background:var(--accent);color:var(--accent-ink);font-weight:600}#sections button.done:not(.cur) span:first-child{color:var(--ok)}
+.pair{display:grid;grid-template-columns:1fr 44px 1fr;gap:6px;align-items:stretch;margin:12px 0}.arrow{align-self:center;text-align:center;font-size:28px;color:var(--mute)}
+.end{border:2px solid var(--line);border-radius:12px;padding:10px;text-align:center;background:#fff;color:#1f2a37}.end b{display:block;font-size:17px}.end small{color:#52606d;font-size:14px;display:block;line-height:1.3;min-height:36px}.end svg,.end .pic{width:100%;max-width:260px;height:180px;display:block;margin:6px auto 0}
+.end .espw{position:relative;max-width:190px;margin:6px auto 0}.end .espw img{width:100%;display:block;border-radius:6px}.end .espw i{position:absolute;width:20px;height:20px;margin:-10px 0 0 -10px;border:4px solid #ff1744;border-radius:50%;box-shadow:0 0 0 2px #fff}
+.acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}.acts .sp{flex:1}
+.title{font-size:23px;font-weight:700;line-height:1.25;margin:2px 0 4px}
+.prep{max-width:380px;width:100%;border-radius:10px;display:block;margin:10px 0}
+#mini{margin-top:16px}#mini[hidden]{display:none}
+table{border-collapse:collapse;width:100%;font-size:15px}th,td{border-bottom:1px solid var(--line);padding:8px 8px;text-align:left;vertical-align:top}th{color:var(--mute);font-weight:600;font-size:14px}
+td.n{text-align:right;white-space:nowrap}.tw{overflow-x:auto}.tag{font-size:13px;color:var(--mute);display:block}.why{display:block;color:var(--mute);margin-top:2px}.low{color:#c62828;font-weight:600}
+ol.check li{margin-bottom:8px}.fixed li{margin-bottom:6px}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}.acts .btn{flex:1 1 40%}#sections{position:static;max-height:220px}.pair{grid-template-columns:1fr}.arrow{transform:rotate(90deg);height:28px;line-height:28px}#info{grid-template-columns:1fr}}
+@media print{header,.tools,#info,.warn,.noprint{display:none!important}body{background:#fff}.paper{border:0}main{padding:0;max-width:none}@page{size:A3 landscape;margin:8mm}}
+/*STYLE*/
+</style></head><body>
+<header><div class="bar"><h1>Силовой ключ на 4 × IRFB4110</h1>
+<nav role="tablist" aria-label="Разделы">
+<button role="tab" data-tab="schema">Схема</button><button role="tab" data-tab="build">Сборка</button><button role="tab" data-tab="buy">Закупка</button><button role="tab" data-tab="test">Проверка</button>
+</nav></div></header>
+<main>
+
+<section id="p-schema" hidden>
+<div class="warn"><b>Три вещи, которые нельзя перепутать</b><ul>
+<li>Радиатор соединён со стоками D. На нём может быть почти плюс аккумулятора: не должен касаться корпуса и GND.</li>
+<li>D3 и U2 на радиатор транзисторов не ставить: у них на площадке другой потенциал.</li>
+<li>Выходы драйвера 5 и 7 между собой не соединять.</li></ul></div>
+<div class="tools" role="group" aria-label="Масштаб схемы">
+<button class="btn pri" data-view="all">Вся схема</button><button class="btn" data-view="1">1 Силовая</button><button class="btn" data-view="2">2 Питание</button><button class="btn" data-view="3">3 Драйвер</button><button class="btn" data-view="4">4 Затворы</button>
+<button class="btn" onclick="print()">Печать</button>
+</div>
+<div class="paper"><svg id="sch" class="sc" viewBox="0 0 1600 1130" role="img" aria-label="Электрическая схема силового ключа"><!--SCHEMA--></svg></div>
+<div class="panel" id="info" style="margin-top:16px" aria-live="polite"><div><h3>Как читать схему</h3>
+<p>Одинаковые метки (например <b>+12V</b> или <b>GND</b>) — это один и тот же провод, даже если линии между ними нет. Точка на пересечении — соединение; пересечение без точки — провода не соединены.</p>
+<p class="mute">Нажми на деталь или провод: подсветится вся цепь, а здесь появятся выводы и шаги сборки.</p></div></div>
+</section>
+
+<section id="p-build" hidden><div class="grid">
+<div class="panel" id="sections" aria-label="Этапы сборки"></div>
+<div>
+<div class="panel" id="step"></div>
+<div class="paper" id="mini"></div>
+</div></div></section>
+
+<section id="p-buy" hidden>
+<div class="panel"><h2>Закупка: только необходимое</h2><p id="buysum"></p>
+<p class="mute">Цены БелЧип проверены 07.11.2026, без доставки. Перед покупкой сверь цену и наличие: <b>U1 осталось мало</b>. Радиатор не покупается: берётся свой старый алюминиевый с ровной площадкой под 4 транзистора, изолированный от корпуса. Аккумулятор с BMS, ESP32 с её питанием и инструмент сюда не входят. У F2 и S1 указаны только требования: конкретная модель не выбрана.</p><div class="tw" id="buytable"></div></div>
+</section>
+
+<section id="p-test" hidden>
+<div class="panel"><h2>Проверка перед полной мощностью</h2>
+<ol class="check">
+<li><b>Без питания.</b> Прозвони замыкания D–S и радиатор на корпус и GND. Сверь полярность C1, C2, C4, C6, C8, TV1, TV2, Z1–Z4, D1, D2.</li>
+<li><b>Первое включение без электролизёра, с ограничением тока.</b> На ножке 6 U1 должно быть около 12 В, на ENA и ENB около 3,8 В.</li>
+<li><b>Управление на малой тестовой нагрузке.</b> GPIO32 LOW: все G–S около 0 В. GPIO32 HIGH: все G–S около 12 В. Разомкни T1: все G–S около 0 В.</li>
+<li><b>ШИМ, если будешь его делать.</b> Осциллографом смотри VGS и VDS с короткой земляной пружиной. Земляной щуп только на S/GND, никогда на D или радиатор.</li>
+<li><b>Ток поднимай постепенно.</b> Измеряй ток и температуру транзисторов, радиатора, диодов, шин, конденсаторов и соединений. Жди установившейся температуры в корпусе.</li>
+</ol>
+<p class="mute">Режим 50–60 А подтвердит только такое испытание: это проект соединений, а не испытанная плата. T1 не спасает от короткого замыкания, а после остывания сам замыкается снова.</p></div>
+<div class="panel"><h2>Что исправлено при проверке 07.11.2026</h2><ul class="fixed">
+<li><b>Ошибка: метка GND на фото ESP32 стояла на выводе GPIO13.</b> На этом выводе кнопка SB1, поэтому плата всё время видела бы её нажатой. Если уже паял по старой схеме, перепаяй на вывод с подписью GND.</li>
+<li><b>Неточность: метка GPIO32 стояла между выводами 32 и 33.</b> Теперь точно на 32.</li>
+<li>Цены обновлены, у предохранителя F1 уточнён номер.</li><li>08.11.2026 удешевлено без потери тока 58 А: убран второй MBR60100CT (D4), радиатор — свой, S1 — выключатель массы, силовой провод — сварочный кабель.</li>
+<li>Все соединения и 19 цепей сверены со схемой, распиновки U1, Q, U2, D3 и полярность TV1 — по документации. Других ошибок в соединениях не найдено.</li>
+</ul></div>
+</section>
+</main>
+<script>
+const D=/*DATA*/null;
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function load(k){try{return JSON.parse(localStorage.getItem(k)||'{}')}catch{return{}}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
+
+/* вкладки */
+const tabs=$$('nav button');
+function show(t,push=true){tabs.forEach(b=>{const on=b.dataset.tab===t;b.setAttribute('aria-selected',on)});$$('main>section').forEach(s=>s.hidden=s.id!=='p-'+t);if(push)try{history.replaceState(null,'','#'+t)}catch{}scrollTo(0,0)}
+tabs.forEach(b=>b.onclick=()=>show(b.dataset.tab));
+
+/* схема */
+const sch=$('#sch'),VIEWS={all:[0,0,1600,1130],1:[15,15,1570,430],2:[15,450,780,375],3:[805,450,780,375],4:[15,830,1570,285]};
+function netsOfPart(id){return[...new Set(Object.entries(D.ports).filter(([k])=>k.split('.')[0]===id).map(([,p])=>p.net))]}
+function clearHL(svg){svg.classList.remove('focus');$$('.on,.sel',svg).forEach(e=>e.classList.remove('on','sel'));$$('.ring',svg).forEach(e=>e.remove())}
+function hlNets(svg,nets){svg.classList.add('focus');$$('.w',svg).forEach(w=>{if(nets.includes(w.dataset.net))w.classList.add('on')});
+ $$('.part',svg).forEach(p=>{if(netsOfPart(p.dataset.part).some(n=>nets.includes(n)))p.classList.add('on')})}
+function ring(svg,pid){const p=D.ports[pid];if(!p)return;const c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('class','ring');c.setAttribute('cx',p.x);c.setAttribute('cy',p.y);c.setAttribute('r',13);svg.append(c)}
+function stepsOf(id){return D.steps.map((s,i)=>[s,i]).filter(([s])=>s.primary.includes(id)||(s.a&&s.a.split('.')[0]===id)||(s.b&&s.b.split('.')[0]===id))}
+const PHOTO=id=>/^Q\d/.test(id)?'mos':id==='U1'?'u1':id==='U2'?'reg':/^R\d/.test(id)?'res':/^Z\d/.test(id)?'zen':/^D[12]$/.test(id)?'d1':/^D[34]$/.test(id)?'mbr':id==='TV2'?'tv2':id==='TV1'?'tv1':id==='T1'?'t1':null;
+function showPart(id){clearHL(sch);const nets=netsOfPart(id);hlNets(sch,nets);$$(`[data-part="${CSS.escape(id)}"]`,sch).forEach(e=>e.classList.add('on','sel'));
+ const pins=Object.keys(D.ports).filter(k=>k.split('.')[0]===id);const st=stepsOf(id);const ph=PHOTO(id);
+ $('#info').innerHTML=`<div><h3>${esc(D.parts[id]||id)}</h3><ul>${pins.map(k=>`<li>${esc(D.labels[k]||k)} → <span class="chip" style="background:${D.colors[D.ports[k].net]}">${esc(D.ports[k].net)}</span> ${esc(D.netnames[D.ports[k].net]||'')}</li>`).join('')}</ul>
+ ${st.length?`<p>Шаги сборки: ${st.slice(0,12).map(([s,i])=>`<button class="link" data-go="${i}">${i+1}</button>`).join(', ')}${st.length>12?' …':''}</p>`:''}<p><button class="link" id="clr">Снять подсветку</button></p></div>${ph?`<img src="${D.photos[ph]}" alt="Фото: ${esc(id)}">`:''}`;bindInfo()}
+function showNet(n){clearHL(sch);hlNets(sch,[n]);const pins=Object.keys(D.ports).filter(k=>D.ports[k].net===n);
+ $('#info').innerHTML=`<div><h3><span class="chip" style="background:${D.colors[n]}">${esc(n)}</span> ${esc(D.netnames[n]||'')}</h3><p>${pins.map(k=>esc(D.labels[k]||k)).join('; ')}.</p><p><button class="link" id="clr">Снять подсветку</button></p></div>`;bindInfo()}
+function bindInfo(){const c=$('#clr');if(c)c.onclick=()=>clearHL(sch);$$('[data-go]',$('#info')).forEach(b=>b.onclick=()=>{goStep(+b.dataset.go);show('build')})}
+sch.addEventListener('click',e=>{const p=e.target.closest('.part');if(p)return showPart(p.dataset.part);const w=e.target.closest('.w');if(w)return showNet(w.dataset.net);clearHL(sch)});
+sch.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const p=e.target.closest('.part');if(p){e.preventDefault();showPart(p.dataset.part)}}});
+$$('[data-view]').forEach(b=>b.onclick=()=>{$$('[data-view]').forEach(x=>x.classList.toggle('pri',x===b));sch.setAttribute('viewBox',VIEWS[b.dataset.view].join(' '))});
+
+/* рисунки деталей: подсвечен нужный вывод */
+const HL='#d50032',INK='#1f2a37';
+const nice=p=>String(D.labels[p]).replace('левый конец','конец 1, любой').replace('правый конец','конец 2, оставшийся').replace('первый вывод','вывод 1, любой').replace('второй вывод','вывод 2, оставшийся');
+function legs(xs,top,bot,hit,labs){return xs.map((x,i)=>{const h=hit===i;return `<line x1="${x}" y1="${top}" x2="${x}" y2="${bot}" stroke="${h?HL:'#8a97a3'}" stroke-width="${h?9:7}" stroke-linecap="round"/>${h?`<circle cx="${x}" cy="${bot}" r="11" fill="none" stroke="${HL}" stroke-width="4"/>`:''}<text x="${x}" y="${bot+26}" text-anchor="middle" font-size="14" font-weight="${h?700:400}" fill="${h?HL:INK}">${labs[i]}</text>`}).join('')}
+function to220(mark,hit,labs){return `<svg viewBox="0 0 240 190" role="img"><rect x="70" y="4" width="100" height="34" fill="#c9d1d9" stroke="${INK}"/><circle cx="120" cy="21" r="9" fill="#fff" stroke="${INK}"/><rect x="60" y="36" width="120" height="70" rx="3" fill="#2b3640"/><text x="120" y="70" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">${mark}</text><text x="120" y="90" text-anchor="middle" fill="#c9d1d9" font-size="12">надпись к себе</text>${legs([70,120,170],106,146,hit,labs)}</svg>`}
+function soic(hit){const lab=['1 ENA','2 INA','3 GND','4 INB','5 OUTB','6 VDD','7 OUTA','8 ENB'];let o='',t='';for(let i=0;i<4;i++){const y=38+i*34;[[i,40,14,'start',48],[7-i,200,226,'end',192]].forEach(([n,x1,x2,an,tx])=>{const on=hit===n;o+=`<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="${on?HL:'#8a97a3'}" stroke-width="${on?7:5}"/>`+(on?`<circle cx="${x2}" cy="${y}" r="9" fill="#fff" stroke="${HL}" stroke-width="4"/>`:'');t+=`<text x="${tx}" y="${y+5}" text-anchor="${an}" font-size="15" font-weight="${on?700:400}" fill="${on?'#ffd5dc':'#fff'}">${lab[n]}</text>`})}
+ return `<svg viewBox="0 0 240 180" role="img">${o}<rect x="40" y="14" width="160" height="142" rx="4" fill="#2b3640"/><path d="M106 14a14 14 0 0 0 28 0" fill="#fff"/>${t}<text x="120" y="174" text-anchor="middle" font-size="13" fill="${INK}">вид сверху, выемка сверху</text></svg>`}
+function axial(body,hit,leftLab,rightLab,band){const lc=hit===0?HL:'#8a97a3',rc=hit===1?HL:'#8a97a3';return `<svg viewBox="0 0 240 150" role="img"><line x1="14" y1="62" x2="226" y2="62" stroke="#8a97a3" stroke-width="5"/><line x1="14" y1="62" x2="74" y2="62" stroke="${lc}" stroke-width="${hit===0?8:5}"/><line x1="166" y1="62" x2="226" y2="62" stroke="${rc}" stroke-width="${hit===1?8:5}"/>
+ <rect x="74" y="42" width="92" height="40" rx="10" fill="${body}"/>${band?`<rect x="148" y="42" width="14" height="40" fill="#e8edf2"/>`:''}${hit===0?`<circle cx="18" cy="62" r="11" fill="none" stroke="${HL}" stroke-width="4"/>`:''}${hit===1?`<circle cx="222" cy="62" r="11" fill="none" stroke="${HL}" stroke-width="4"/>`:''}
+ <text x="50" y="108" text-anchor="middle" font-size="15" font-weight="${hit===0?700:400}" fill="${hit===0?HL:INK}">${leftLab}</text><text x="190" y="108" text-anchor="middle" font-size="15" font-weight="${hit===1?700:400}" fill="${hit===1?HL:INK}">${rightLab}</text></svg>`}
+function capPic(polar,hit){return `<svg viewBox="0 0 200 180" role="img"><rect x="64" y="10" width="72" height="104" rx="8" fill="${polar?'#22415c':'#e0a95a'}"/>${polar?`<rect x="112" y="10" width="24" height="104" fill="#d7dee5"/><text x="124" y="66" text-anchor="middle" font-size="24" font-weight="700" fill="${INK}">−</text>`:''}
+ ${legs([84,116],114,146,hit,polar?['+ длинный','− у полосы']:['вывод','вывод'])}</svg>`}
+function tvs1(hit){return `<svg viewBox="0 0 240 170" role="img"><rect x="30" y="34" width="120" height="84" rx="4" fill="${hit===0?'#ffd5dc':'#d7dee5'}" stroke="${hit===0?HL:INK}" stroke-width="${hit===0?4:2}"/><text x="90" y="72" text-anchor="middle" font-size="15" fill="${INK}" font-weight="700">A</text><text x="90" y="92" text-anchor="middle" font-size="12" fill="${INK}">большая площадка</text><rect x="150" y="60" width="52" height="32" fill="${hit===1?'#ffd5dc':'#2b3640'}" stroke="${hit===1?HL:INK}" stroke-width="${hit===1?4:2}"/><text x="176" y="81" text-anchor="middle" font-size="15" font-weight="700" fill="${hit===1?INK:'#fff'}">K</text><text x="120" y="146" text-anchor="middle" font-size="12" fill="${INK}">вид снизу; площадка корпуса — анод</text></svg>`}
+function term(title,labs,hit){return `<svg viewBox="0 0 240 150" role="img"><rect x="50" y="24" width="140" height="62" rx="8" fill="#eef2f6" stroke="${INK}" stroke-width="2"/><text x="120" y="61" text-anchor="middle" font-size="16" font-weight="700" fill="${INK}">${esc(title)}</text>${[0,1].map(i=>{const x=i?190:50,h=hit===i;return `<circle cx="${x}" cy="55" r="${h?11:7}" fill="${h?HL:'#8a97a3'}"/><text x="${i?186:54}" y="118" text-anchor="${i?'end':'start'}" font-size="15" font-weight="${h?700:400}" fill="${h?HL:INK}">${esc(labs[i])}</text>`}).join('')}</svg>`}
+function picture(pid){const[id,pin]=pid.split(/\.(.*)/s);
+ if(id==='ESP'){const y=pin==='32'?312.5:565;return `<div class="espw"><img src="${D.photos.esp}" alt="Плата ESP32: вывод отмечен кругом"><i style="left:5.3%;top:${y/837*100}%"></i></div>`}
+ if(/^Q\d/.test(id))return to220('IRFB4110',+pin-1,['1 G','2 D','3 S']);
+ if(id==='U2')return to220('L7812CV',+pin-1,['1 IN','2 GND','3 OUT']);
+ if(/^D[34]$/.test(id))return to220('MBR60100CT',+pin-1,['1 анод','2 катод','3 анод']);
+ if(id==='U1')return soic(+pin-1);
+ if(/^R\d/.test(id)){const b=id==='R13'?'#7a8794':'#d9b382';return axial(b,+pin-1,'конец 1','конец 2',false)}
+ if(/^Z\d/.test(id))return axial('#d9652b',pin==='K'?1:0,'A, без полоски','K, полоска',true);
+ if(/^D[12]$/.test(id)||id==='TV2')return axial('#2b3640',pin==='K'?1:0,'A, без полоски','K, полоска',true);
+ if(/^C\d/.test(id))return capPic(['C1','C2','C4','C6','C8'].includes(id),pin==='+'?0:1);
+ if(id==='TV1')return tvs1(pin==='A'?0:1);
+ if(id==='АКБ')return term('Аккумулятор',['P+','P−'],pin==='P+'?0:1);
+ if(id==='НАГРУЗКА')return term('Электролизёр',['плюс','минус'],pin==='+'?0:1);
+ if(id==='F1'||id==='F2')return term(id,['вход','выход'],+pin-1);
+ if(id==='S1')return term('S1',['вход','выход'],+pin-1);
+ if(id==='T1')return term('T1, 70 °C',['провод 1','провод 2'],+pin-1);
+ return''}
+
+/* шаги: прогресс совместим со старой версией */
+const KEY='irfb4110-assembly-2026-10-24-v1';const s0=load(KEY);
+let idx=Math.max(0,Math.min(D.steps.length-1,Number(s0.index)||0));const done=new Set(Array.isArray(s0.completed)?s0.completed:[]);
+const sectionsList=[...new Set(D.steps.map(s=>s.section))];
+const INTRO={'Подготовка':'Сначала подготовь детали, ничего не подключая к аккумулятору.','Силовая проводка без питания':'Толстый плюс: аккумулятор → F1 → S1 → электролизёр. Провод 16 мм², F1 как можно ближе к аккумулятору.','Кабели аккумулятора':'Минус аккумулятора и минус электролизёра: провод 16 мм².','Общие силовые шины':'Шины D и S из меди. К транзисторам — четыре коротких одинаковых ответвления 4 мм². Радиатор вместо шины не использовать.','Вход ESP32':'Сигнал управления. GPIO32 и GND веди парой, короткими проводами.','Термостат':'При перегреве радиатора драйвер отключает транзисторы. T1 крепи к радиатору рядом с транзисторами.','Силовая защита':'Диод и защита от выбросов напряжения. D3 не прикручивать к радиатору транзисторов.','Питание драйвера 12 В':'Маломощная цепь: от неё питается только драйвер. L7812 на радиатор транзисторов не ставить.','Конденсаторы у драйвера':'Ставь максимально близко к ножкам 6 и 3 драйвера.','Конденсаторы силовой шины':'Рядом с транзисторами, следи за полярностью.','Проверка':'Последний шаг. Подробный порядок — на вкладке «Проверка».'};
+function renderSections(){const cur=D.steps[idx].section;$('#sections').innerHTML=sectionsList.map(n=>{const all=D.steps.map((s,i)=>[s,i]).filter(([s])=>s.section===n),c=all.filter(([s])=>done.has(s.id)).length,full=c===all.length;return `<button data-first="${all[0][1]}" class="${n===cur?'cur':''} ${full?'done':''}"><span>${full?'✓ ':''}${esc(n)}</span><span>${c}/${all.length}</span></button>`}).join('');$$('#sections button').forEach(b=>b.onclick=()=>goStep(+b.dataset.first))}
+const miniSvg=sch.cloneNode(true);miniSvg.id='minisch';$('#mini').append(miniSvg);$$('[tabindex]',miniSvg).forEach(e=>{e.removeAttribute('tabindex');e.removeAttribute('role')});
+function renderStep(){const s=D.steps[idx],isDone=done.has(s.id);const sec=D.steps.map((x,i)=>[x,i]).filter(([x])=>x.section===s.section),pos=sec.findIndex(([,i])=>i===idx)+1;
+ const a=s.a,b=s.b;let body='';
+ if(a&&b)body=`<div class="pair"><div class="end"><b>${esc(a.split('.')[0]==='НАГРУЗКА'?'Электролизёр':a.split('.')[0]==='АКБ'?'Аккумулятор':a.split('.')[0])}</b><small>${esc(nice(a))}</small>${picture(a)}</div><div class="arrow" aria-hidden="true">↔</div><div class="end"><b>${esc(b.split('.')[0]==='НАГРУЗКА'?'Электролизёр':b.split('.')[0]==='АКБ'?'Аккумулятор':b.split('.')[0])}</b><small>${esc(nice(b))}</small>${picture(b)}</div></div>`;
+ else if(s.kind==='adapter')body=`<img class="prep" src="${D.photos.adapter}" alt="Как ставить микросхему на переходник">${''}`;
+ else if(s.kind==='mount')body=`<img class="prep" style="max-width:300px" src="${D.photos.mos}" alt="IRFB4110: надпись к себе, ножки вниз">`;
+ $('#step').innerHTML=`<div class="mute">Шаг ${idx+1} из ${D.steps.length} · ${esc(s.section)}, ${pos} из ${sec.length}</div><div class="progress" aria-hidden="true"><i style="width:${done.size/D.steps.length*100}%"></i></div>
+ <div class="title">${a&&b?'Соедини: ':''}${esc(s.title)}</div>${pos===1&&INTRO[s.section]?`<p class="mute">${esc(INTRO[s.section])}</p>`:''}${body}<p>${esc(s.note)}</p>
+ <div class="acts"><button class="btn" id="prev" ${idx?'':'disabled'}>← Назад</button><button class="btn pri" id="doneb">${isDone?'✓ Сделано, дальше':'Сделал, дальше →'}</button><button class="btn" id="next" ${idx<D.steps.length-1?'':'disabled'}>Пропустить</button>${isDone?'<button class="btn" id="undo">Снять отметку</button>':''}<span class="sp"></span><span class="mute">Сделано: ${done.size} из ${D.steps.length}</span></div>`;
+ $('#prev').onclick=()=>goStep(idx-1);$('#next').onclick=()=>goStep(idx+1);$('#doneb').onclick=()=>{done.add(s.id);goStep(Math.min(idx+1,D.steps.length-1))};const u=$('#undo');if(u)u.onclick=()=>{done.delete(s.id);renderStep();renderSections();store()};
+ clearHL(miniSvg);let vb=VIEWS.all;
+ if(a&&b){const A=D.ports[a],B=D.ports[b];hlNets(miniSvg,[A.net,B.net]);ring(miniSvg,a);ring(miniSvg,b);$$('.part',miniSvg).forEach(p=>{if(p.dataset.part===a.split('.')[0]||p.dataset.part===b.split('.')[0])p.classList.add('sel')});
+  const block=P=>P.y<445?'1':P.y>825?'4':P.x<800?'2':'3';if(block(A)===block(B))vb=VIEWS[block(A)]}
+ miniSvg.setAttribute('viewBox',vb.join(' '));$('#mini').hidden=!(a&&b);renderSections();store()}
+function store(){save(KEY,{index:idx,completed:[...done]})}
+function goStep(i){idx=Math.max(0,Math.min(D.steps.length-1,i));renderStep();if(!$('#p-build').hidden)scrollTo({top:0})}
+addEventListener('keydown',e=>{if($('#p-build').hidden||e.target.closest('input,button,a'))return;if(e.key==='ArrowRight')goStep(idx+1);if(e.key==='ArrowLeft')goStep(idx-1)});
+
+/* закупка */
+const PK='irfb4110-purchases-v1';const bought=load(PK);
+function renderBuy(){const groups=[...new Set(D.items.map(i=>i.group))];const req=D.items.filter(i=>!i.optional);
+ $('#buysum').innerHTML=`Отмечено: <b>${req.filter(i=>bought[i.id]).length} из ${req.length}</b>. Сумма позиций с известной ценой: <b>${D.subtotal.toFixed(2).replace('.',',')} BYN</b>. Это не вся закупка: у остальных позиций цены не проверены.`;
+ $('#buytable').innerHTML=groups.map(g=>{const it=D.items.filter(i=>i.group===g);return `<h3 style="margin-top:14px">${esc(it[0].title)}</h3><table><thead><tr><th>Есть</th><th>Обозначение</th><th>Что купить и зачем</th><th>Кол-во</th><th style="text-align:right">Цена, BYN</th></tr></thead><tbody>${it.map(i=>`<tr><td><input type="checkbox" data-b="${esc(i.id)}" ${bought[i.id]?'checked':''} aria-label="Есть: ${esc(i.name)}" style="width:20px;height:20px"></td><td>${esc(i.ref||'–')}</td><td>${i.url?`<a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.name)}</a>`:i.search?`${esc(i.name)} <a href="${esc(i.search)}" target="_blank" rel="noopener" class="tag">искать в БелЧип</a>`:esc(i.name)}<span class="why">${esc(i.why)}</span>${i.stock?`<span class="tag ${/осталось/.test(i.stock)?'low':''}">${esc(i.stock)}</span>`:''}</td><td>${esc(i.qty)}</td><td class="n">${i.price?i.price.toFixed(2).replace('.',','):'–'}</td></tr>`).join('')}</tbody></table>`}).join('');
+ $$('[data-b]').forEach(c=>c.onchange=()=>{bought[c.dataset.b]=c.checked;save(PK,bought);renderBuy()})}
+
+renderStep();renderBuy();
+const h=(location.hash||'').slice(1);const m=h.match(/^step-(\d+)$/);if(m){idx=Math.max(0,Math.min(D.steps.length-1,+m[1]-1));renderStep()}
+show(m?'build':h==='zakupka'?'buy':['schema','build','buy','test'].includes(h)?h:'schema',false);
+</script></body></html>
