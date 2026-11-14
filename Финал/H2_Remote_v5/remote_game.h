@@ -83,10 +83,26 @@ class RemoteDino {
     if (y10_ == 0) velocity10_ = 33;
   }
   int height() const { return y10_ / 10; }
+  static const uint32_t STEP_MS = 20;
+  static const uint32_t MAX_CATCHUP = 4;  // Longer gap = pause: one step, no burst.
+
+  // Fixed 20 ms steps: a slow loop (OLED redraw) is caught up, so speed does not
+  // depend on display time. Work per call stays bounded.
   void update(uint32_t now) {
-    if (!active || dead || uint32_t(now - lastStep_) < 20) return;
-    // At most one bounded step per loop, including after a long pause.
-    lastStep_ = now;
+    if (!active || dead) return;
+    uint32_t due = uint32_t(now - lastStep_) / STEP_MS;
+    if (due == 0) return;
+    if (due > MAX_CATCHUP) {
+      lastStep_ = now;
+      step();
+      return;
+    }
+    lastStep_ += due * STEP_MS;
+    while (due-- && !dead) step();
+  }
+
+ private:
+  void step() {
     if (velocity10_ || y10_) {
       y10_ += velocity10_;
       velocity10_ -= 3;
@@ -110,7 +126,6 @@ class RemoteDino {
     if (score > best) best = score;
   }
 
- private:
   int16_t y10_ = 0;
   int16_t velocity10_ = 0;
   uint8_t ticks_ = 0;

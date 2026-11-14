@@ -7,6 +7,9 @@
 //  код экранов мозга и пульта почти не меняется. Строки печатаются в UTF-8 — русские
 //  буквы рисует шрифт GyverOLED. Байт 0xF8 (знак градуса из CP437, как было в старом
 //  коде) рисуется отдельным глифом.
+//  ⚡ v6.7: режим текста BUF_ADD. По умолчанию GyverOLED пишет букву с заменой (BUF_REPLACE)
+//  целого байта-столбца 8 px: строка с y, не кратным 8, стирала низ соседней строки
+//  («Е»→«F», «О»→«П») и линии под текстом.
 //  ИДЕНТИЧНАЯ копия лежит в H2_Brain_v5 и H2_Remote_v5 — править обе.
 // =====================================================================================
 #pragma once
@@ -32,6 +35,7 @@ class H2Oled : public Print {
     Wire.beginTransmission(_addr);
     if (Wire.endTransmission() != 0) return false;
     _d.init();
+    _d.textMode(BUF_ADD);
     _d.clear();
     _d.update();
     return true;
@@ -43,8 +47,17 @@ class H2Oled : public Print {
 
   void setCursor(int16_t x, int16_t y) { _x = x; _y = y; _d.setCursorXY(x, y); }
   void setTextSize(uint8_t s) { _s = constrain(s, 1, 4); _d.setScale(_s); _d.setCursorXY(_x, _y); }
-  void setTextColor(uint16_t c) { _d.invertText(c == SSD1306_BLACK); }
-  void setTextColor(uint16_t c, uint16_t) { setTextColor(c); }
+  // Прозрачный фон, как у Adafruit: белый текст дорисовывается (ADD), чёрный — стирает (SUBTRACT)
+  void setTextColor(uint16_t c) {
+    _d.invertText(false);
+    _d.textMode(c == SSD1306_BLACK ? BUF_SUBTRACT : BUF_ADD);
+  }
+  // Непрозрачный фон: знакоместо заменяется целиком
+  void setTextColor(uint16_t c, uint16_t bg) {
+    if (c == bg) { setTextColor(c); return; }
+    _d.invertText(c == SSD1306_BLACK);
+    _d.textMode(BUF_REPLACE);
+  }
 
   void drawPixel(int16_t x, int16_t y, uint16_t c) { _d.dot(x, y, c ? 1 : 0); restore(); }
   void drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t c) {
@@ -64,6 +77,8 @@ class H2Oled : public Print {
     _d.rect(x, y, x + w - 1, y + h - 1, c ? OLED_FILL : OLED_CLEAR);
     restore();
   }
+  // ⚡ v6.8: яркость (контраст SSD1306) 0..255
+  void setContrast(uint8_t v) { _d.setContrast(v); }
   void ssd1306_command(uint8_t cmd) {
     if (cmd == SSD1306_DISPLAYOFF)     _d.setPower(false);
     else if (cmd == SSD1306_DISPLAYON) _d.setPower(true);

@@ -1,7 +1,24 @@
 /*
  * =====================================================================================
- *  H2 CONTROL SYSTEM — МОЗГ v6.5  (ESP32 DevKit v1, WROOM-32D)
+ *  H2 CONTROL SYSTEM — МОЗГ v6.8  (ESP32 DevKit v1, WROOM-32D)
  * =====================================================================================
+ *
+ *  ⚡ НОВОЕ В v6.8 (протокол дополнен пакетом PKT_RSVC — прошивать вместе с пультом v6.8):
+ *    • Реле LOW-active (RELAY_ACTIVE_LOW true): клапан, поджиг, выводной вентилятор.
+ *    • РЕЖИМ ОТЛАДКИ: журнал «кто что нажал» (кнопки мозга и пульта, команды по радио,
+ *      веба и приложения) — GET /dbg (h2_debug.h); телеметрия пульта (батарея, доля
+ *      принятых пакетов, настройки) — поля r* в /status; настройки пульта — GET /rset.
+ *
+ *  ⚡ НОВОЕ В v6.7 (протокол дополнен пакетами PKT_RMEL — прошивать вместе с пультом v6.7):
+ *    • МЕЛОДИИ ПУЛЬТА: файл H2M1 из веба/приложения (POST /rmel/up) или из библиотеки
+ *      мозга (/rmel/send) мозг передаёт пульту по радио кусками с CRC-32 (h2_rmel.h);
+ *      опись пульта, выбор мелодии кнопки МЕЛОДИЯ и звука включения — /rmel/cfg|set|del.
+ *    • МЕЛОДИИ СОБЫТИЙ: своя мелодия назначается на загрузку, включение, выключение,
+ *      окончание продувки, тревогу и предупреждение (тревога/предупреждение — до 10 с).
+ *    • Формат H2M1 и CRC вынесены в общий h2_melody.h (копия у пульта).
+ *    • OLED: текст в режиме BUF_ADD — русские строки не стирают соседние (h2_oled.h).
+ *    • /cmd и WebSocket принимают только известные номера команд.
+ *    • Экран «целевое давление» не показывается при старте.
  *
  *  ⚡ НОВОЕ В v6.5 (30.10.2026, протокол не менялся — TonePacket теперь идёт и пульт → мозг):
  *    • ВЕСЬ ЗВУК СЛЕДУЕТ ВЫБОРУ «Где играть»: локальные звуки пульта (щелчки, «Бумер»)
@@ -272,13 +289,13 @@
  *          и только он держит MOSFET закрытым.
  *        Полярность НЕ зависит от RELAY_ACTIVE_LOW.
  *
- *    Реле (модули SRD-05VDC-SL-C или аналогичные, HIGH-active по умолчанию):
+ *    Реле (модули SRD-05VDC-SL-C или аналогичные, ⚡ v6.8: LOW-active — RELAY_ACTIVE_LOW true):
  *        Выводной вентилятор       → GPIO25   (бывший канал электролизёра)
  *        Клапан                   → GPIO26
  *        Пьезоподжиг              → GPIO27
  *        ⚠ Реле должны питаться от ОТДЕЛЬНОГО источника 5 В. ESP32 не вытянет
  *          ток нескольких модулей одновременно. Общая земля с ESP32 ОБЯЗАТЕЛЬНА.
- *        Если у вас LOW-active модули — установите RELAY_ACTIVE_LOW = true
+ *        Для HIGH-active модулей установите RELAY_ACTIVE_LOW = false
  *        (касается всех реле, включая выводной вентилятор).
  *
  *    ⚡ v6.0 ЗУММЕР МОЗГА → GPIO16 (пассивный, через NPN-ключ):
@@ -415,8 +432,9 @@
  *  --------------------------
  *    MIN_TARGET_PRESSURE  = 0.5 бар  (минимум регулировки)
  *    MAX_TARGET_PRESSURE  = 6.5 бар  (максимум регулировки)
- *    WARN_PRESSURE        = 6.0 бар  (предупреждение, флаг ovWarn)
- *    MAX_SAFE_PRESSURE    = 6.8 бар  (АВАРИЯ — защёлка ovLock, электролизер OFF)
+ *    WARN_PRESSURE        = 6.8 бар  (предупреждение, флаг ovWarn) — ⚡ v6.7, было 6.0
+ *    MAX_SAFE_PRESSURE    = 7.2 бар  (АВАРИЯ — защёлка ovLock, электролизер OFF) — ⚡ v6.7, было 6.8
+ *    OVP_UNLOCK_PRESSURE  = 6.0 бар  (ниже — LOCK/POWER снимают защёлку аварии)
  *    PURGE_ZERO_BAR       = 0.05 бар (порог окончания продувки до нуля)
  *    TILT_ANGLE_DEG       = 30°      (порог TILT-сработки)
  *    HYST_MAX             = 1.0 бар  (макс. гистерезис электролизёра)
@@ -440,7 +458,7 @@
  *
  *  ПОВЕДЕНИЕ ПРИ АВАРИЯХ
  *  ---------------------
- *    Превышение 6.8 бар:
+ *    Превышение 7.2 бар:
  *        → электролизер выключается принудительно
  *        → РЕПУЛЬСОР прерывается, клапан и пьезо обесточиваются
  *        → поднимается ovLock (защёлка), звучит тревога (повтор каждые 15 с)
@@ -544,7 +562,10 @@ const char* AP_PASSWORD = "hydrogen_2024";
 // =====================================================================================
 //  РЕЛЕ — УРОВЕНЬ АКТИВНОСТИ
 // =====================================================================================
-#define RELAY_ACTIVE_LOW    false
+// ⚡ v6.8: модули реле установки — LOW-active (вход IN к GND = реле включено). До setup()
+// пины в Z, и подтяжка IN на модуле держит реле выключенным; pinMode(OUTPUT) даёт LOW на
+// несколько микросекунд до allRelaysOff() — катушка за это время не срабатывает.
+#define RELAY_ACTIVE_LOW    true
 #define RELAY_ON            (RELAY_ACTIVE_LOW ? LOW  : HIGH)
 #define RELAY_OFF           (RELAY_ACTIVE_LOW ? HIGH : LOW)
 
@@ -552,8 +573,11 @@ const char* AP_PASSWORD = "hydrogen_2024";
 // =====================================================================================
 //  ПОРОГИ
 // =====================================================================================
-const float MAX_SAFE_PRESSURE   = 6.8f;   // аварийный порог (ovLock)
-const float WARN_PRESSURE       = 6.0f;   // предупредительный порог (ovWarn)
+// ⚡ v6.7: предупреждение 6.8 (было 6.0 — при цели до 6.5 оно звучало в обычной работе),
+// авария 7.2 (было 6.8). Защёлка аварии по-прежнему снимается только ниже 6.0 бар.
+const float MAX_SAFE_PRESSURE   = 7.2f;   // аварийный порог (ovLock)
+const float WARN_PRESSURE       = 6.8f;   // предупредительный порог (ovWarn)
+const float OVP_UNLOCK_PRESSURE = 6.0f;   // ниже — LOCK/POWER снимают защёлку аварии
 // MIN_TARGET_PRESSURE / MAX_TARGET_PRESSURE — в общем h2_protocol.h (0.5 / 6.5 бар)
 const float TARGET_STEP         = 0.5f;
 const float PURGE_ZERO_BAR      = 0.05f;
@@ -913,6 +937,8 @@ bool          tempResOk    = false;   // разрешение 10 бит выст
 // Подключается ЗДЕСЬ, после глобальных переменных: модуль использует radio,
 // radioMutex, remoteAckMs, otaInProgress, wsStateChanged и server.
 #include "h2_sound.h"
+#include "h2_rmel.h"    // ⚡ v6.7: мелодии пульта — передача по радио, /rmel/*
+#include "h2_debug.h"   // ⚡ v6.8: журнал нажатий (/dbg), телеметрия и настройки пульта (/rset)
 #include "h2_events.h"   // ⚡ v6.2: журнал аварий и событий (/log)
 #include <esp_task_wdt.h> // ⚡ v6.2: сторожевой таймер цикла управления
 
@@ -955,7 +981,7 @@ const char OTA_HTML[] PROGMEM = R"rawliteral(
   a{color:#00d4ff;font-size:.8em;text-decoration:none;display:inline-block;margin-top:18px;}
 </style></head><body>
 <h1>⬆ OTA ОБНОВЛЕНИЕ</h1>
-<div class="sub">H2 PRO Brain v6.3</div>
+<div class="sub">H2 PRO Brain v6.8</div>
 <div class="box">
   <div class="warn">⚠ Загрузите файл <b>.bin</b>, собранный в Arduino IDE
     (Sketch → Export Compiled Binary). НЕ выключайте питание во время прошивки!</div>
@@ -1699,6 +1725,12 @@ volatile bool maintDoneRequested    = false;   // ⚡ v6.2: /maint?done=1
 volatile bool gasResetRequested     = false;   // ⚡ v6.2: /setgas?reset=1
 volatile uint32_t timeSyncValue     = 0;       // ⚡ v6.2: /settime — unix-время к применению
 
+// ⚡ v6.7: команды, которые принимают веб и WebSocket (как список COMMANDS приложения)
+bool webCommandKnown(long id) {
+  switch (id) { case 1: case 2: case 3: case 4: case 5: case 7: case 8: case 9: case 12: case 99: return true; }
+  return false;
+}
+
 // Поставить команду веба в очередь (вызывается на ядре 0). false — очередь полна.
 bool queueWebCommand(uint8_t cmd) {
   if (webCmdQueue == nullptr) return false;
@@ -1758,7 +1790,7 @@ void executeCommand(uint8_t cmd) {
   switch (cmd) {
     case 1:  // POWER
       if (!systemOn) {
-        if (overpressureLock && currentPressure < WARN_PRESSURE) overpressureLock = false;
+        if (overpressureLock && currentPressure < OVP_UNLOCK_PRESSURE) overpressureLock = false;
         systemOn = true;
         runStartMs    = millis();   // ⚡ v6.2: отсчёт таймера работы
         runTimerEnded = false;
@@ -1776,7 +1808,7 @@ void executeCommand(uint8_t cmd) {
         bool stillTilted = mpuOk && !tiltCalibrating && currentTiltDeg > TILT_ANGLE_DEG;
         leakLock = false;              // ⚡ v6.2: защёлка сильной утечки
         leakWarn = leakWarnStatic = leakWarnHold = false;
-        if (currentPressure < WARN_PRESSURE) overpressureLock = false;
+        if (currentPressure < OVP_UNLOCK_PRESSURE) overpressureLock = false;
         if (stillTilted) { tiltLock = true;  isLocked = true; }   // остаёмся заблокированными
         else             { tiltLock = false; isLocked = false; }
       } else {
@@ -2030,7 +2062,7 @@ void maintCheck() {
   bool due = maintHoursLeft() <= 0;
   if (due && !maintDue) {
     evtLog(EVT_MAINT_DUE, (int32_t)(runtimeSeconds / 3600UL));
-    if (sndAlarms) soundPlay(MEL_WARN, SND_PRIO_WARN);   // ⚡ v6.3: не обрывает тревогу
+    if (sndAlarms) soundPlay(soundEventId(SND_EV_WARN), SND_PRIO_WARN);   // ⚡ v6.3: не обрывает тревогу
   }
   maintDue = due;
 }
@@ -2145,7 +2177,7 @@ void updateDisplayLCD() {
   char tgt[6]; dtostrf(targetPressure, 3, 1, tgt);
 
   // ── Экран установки целевого давления: значение и шкала из 20 знакомест ──
-  if (now - lastTargetChange < T_SHOW_TARGET) {
+  if (lastTargetChange != 0 && now - lastTargetChange < T_SHOW_TARGET) {   // ⚡ v6.7: 0 — цель не меняли (не при старте)
     snprintf(l[0], sizeof(l[0]), "TARGET PRESSURE");
     snprintf(l[1], sizeof(l[0]), "      %s bar", tgt);
     int n = constrain((int)roundf(targetPressure / MAX_TARGET_PRESSURE * 20.0f), 0, 20);
@@ -2205,8 +2237,8 @@ void updateDisplay() {
   oled.clearDisplay();
   oled.setTextColor(SSD1306_WHITE);
 
-  // ── Экран установки целевого давления ──────────────────────────────────
-  if (now - lastTargetChange < T_SHOW_TARGET) {
+  // ── Экран установки целевого давления (⚡ v6.7: не при старте — цель не меняли) ──
+  if (lastTargetChange != 0 && now - lastTargetChange < T_SHOW_TARGET) {
     oled.setTextSize(1);
     oled.setCursor(8, 0); oled.print("ЦЕЛЕВОЕ ДАВЛЕНИЕ");
     oled.drawLine(0, 9, 127, 9, SSD1306_WHITE);
@@ -2252,7 +2284,7 @@ void updateDisplay() {
   else                 { oled.print("---"); }
 
   // ── Полоска давления 0..6 бар + маркер цели ─────────────────────────────
-  const float SCALE = 7.0f;   // шкала давления 0..7 бар (запас над аварийным 6.8)
+  const float SCALE = 7.5f;   // шкала давления 0..7.5 бар (запас над аварийным 7.2)
   int bw = constrain((int)(currentPressure / SCALE * 127.0f), 0, 127);
   oled.drawRect(0, 30, 128, 5, SSD1306_WHITE);
   if (bw > 0) oled.fillRect(1, 31, bw, 3, SSD1306_WHITE);
@@ -2321,7 +2353,7 @@ void maybeUpdateDisplay(unsigned long now) {
     (int)roundf(currentTemp), tempSensorOk ? 1 : 0, fanOn[0] ? 1 : 0, fanOn[1] ? 1 : 0,
     pressureFault, leakLock, leakWarn, maintDue, runTimerLeft(), remoteOnline ? 1 : 0,
     mpuFault ? 1 : 0);
-  bool animated = (now - lastTargetChange < T_SHOW_TARGET) || repulsorActive;
+  bool animated = (lastTargetChange != 0 && now - lastTargetChange < T_SHOW_TARGET) || repulsorActive;
   bool forced   = (now - lastDispDraw >= 1000);
   // ⚡ v6.3: самовосстановление LCD после помехи. Теневой буфер раньше не давал экрану
   // восстановиться, пока не изменятся сами знаки. Раз в 20 с одна строка (по кругу)
@@ -2452,8 +2484,9 @@ void handlePowerBtn(unsigned long now) {
     pwrStable = raw;
     if (pwrStable == LOW) {
       soundClick();   // ⚡ v6.0: щелчок физической кнопки (если включён и вывод — мозг)
-      if ((now - pwrLastClick) < T_DOUBLE_CLICK) executeCommand(99);
-      else                                        executeCommand(1);
+      bool dbl = (now - pwrLastClick) < T_DOUBLE_CLICK;
+      dbgLog(DBG_SRC_BRAIN, BBTN_POWER, dbl ? BACT_DOUBLE : BACT_PRESS, dbl ? 99 : 1);   // ⚡ v6.8
+      executeCommand(dbl ? 99 : 1);
       pwrLastClick = now;
     }
   }
@@ -2465,7 +2498,7 @@ void handleLockBtn(unsigned long now) {
   if (raw != lckLastRaw) lckDebTime = now;
   if ((now - lckDebTime) > T_DEBOUNCE && raw != lckStable) {
     lckStable = raw;
-    if (lckStable == LOW) { soundClick(); executeCommand(2); }
+    if (lckStable == LOW) { soundClick(); dbgLog(DBG_SRC_BRAIN, BBTN_LOCK, BACT_PRESS, 2); executeCommand(2); }
   }
   lckLastRaw = raw;
 }
@@ -2475,7 +2508,7 @@ void handlePurgeBtn(unsigned long now) {
   if (raw != prgLastRaw) prgDebTime = now;
   if ((now - prgDebTime) > T_DEBOUNCE && raw != prgStable) {
     prgStable = raw;
-    if (prgStable == LOW) { soundClick(); executeCommand(5); }
+    if (prgStable == LOW) { soundClick(); dbgLog(DBG_SRC_BRAIN, BBTN_PURGE, BACT_PRESS, 5); executeCommand(5); }
   }
   prgLastRaw = raw;
 }
@@ -2516,7 +2549,7 @@ void buildStatusJson(char* buf, size_t bufLen) {
     "\"rce\":%lu,\"rcv\":%lu,\"rcp\":%lu,\"rcf1\":%lu,\"rcf2\":%lu,\"relw\":%d,"
     "\"pco\":%.3f,\"pcs\":%.3f,\"rfc\":%d,\"rfh\":%lu,"
     "\"sout\":%u,\"svol\":%u,\"sp\":%d,\"fsok\":%d,"
-    "\"oledok\":%d,\"lcdok\":%d,\"mpuok\":%d,\"nrfok\":%d,\"mpuf\":%d}",
+    "\"oledok\":%d,\"lcdok\":%d,\"mpuok\":%d,\"nrfok\":%d,\"mpuf\":%d,\"dbgs\":%lu,",
     currentPressure, targetPressure, pressureVolts, pressureFault?1:0, leakWarn?1:0, leakLock?1:0,
     (unsigned)runTimerMin, runTimerLeft(), runTimerEnded?1:0, alarmMuted?1:0,
     gasTankL, gasTotalNL, gasSessionNL, gD, gW, gasRateNLh, electroDuty * 100.0f,
@@ -2535,7 +2568,14 @@ void buildStatusJson(char* buf, size_t bufLen) {
     presCalOffset, presCalScale, RF_CHANNELS[rfChannelIdx], (unsigned long)rfHopCount,
     (unsigned)soundOut, (unsigned)soundVol, soundIsPlaying()?1:0, fsOk?1:0,
     (oledOk || lcdOk)?1:0, lcdOk?1:0, mpuOk?1:0, radioOk?1:0,
-    mpuFault?1:0);   // ⚡ v6.3: "mpuf" — MPU6050 перестал отвечать в работе (TILT без данных)
+    mpuFault?1:0,    // ⚡ v6.3: "mpuf" — MPU6050 перестал отвечать в работе (TILT без данных)
+    (unsigned long)dbgSeq);   // ⚡ v6.8: "dbgs" — номер последней записи журнала нажатий
+  // ⚡ v6.8: телеметрия пульта (батарея, доля пакетов, настройки) и закрывающая скобка
+  if (n >= 0 && (size_t)n < bufLen) {
+    int m = rsvcJson(buf + n, bufLen - n);
+    n = (m < 0) ? -1 : n + m;
+    if (n >= 0 && (size_t)n + 1 < bufLen) { buf[n++] = '}'; buf[n] = '\0'; } else n = (int)bufLen;
+  }
   if (n < 0 || (size_t)n >= bufLen) {
     // Не должно случаться; обрезанный JSON сломал бы веб — отдаём минимальный
     Serial.printf("[JSON] статус обрезан (%d из %u)\n", n, (unsigned)bufLen);
@@ -2583,7 +2623,7 @@ void onWsEvent(AsyncWebSocket* s, AsyncWebSocketClient* c, AwsEventType type,
       int ci = msg.indexOf("\"cmd\":");
       if (ci >= 0) {
         int cmd = msg.substring(ci + 6).toInt();
-        queueWebCommand((uint8_t)cmd);   // ⚡ v6.1: выполнит loop на ядре 1
+        if (webCommandKnown(cmd)) { dbgLog(DBG_SRC_WEB, DBG_BTN_NONE, 0, (uint8_t)cmd); queueWebCommand((uint8_t)cmd); }   // ⚡ v6.1: выполнит loop на ядре 1
       }
     }
   }
@@ -2606,20 +2646,20 @@ void soundEvents(unsigned long now) {
   // Мелодия загрузки — один раз, через SND_BOOT_DELAY_MS после старта
   if (!bootPlayed && now - bootMs >= SND_BOOT_DELAY_MS) {
     bootPlayed = true;
-    if (sndBoot != MEL_NONE) soundPlay(melEventId(sndBoot, MEL_BOOT), SND_PRIO_MELODY);
+    soundPlay(soundEventId(SND_EV_BOOT), SND_PRIO_MELODY);   // MEL_NONE soundPlay не ставит
   }
 
   // Включение / выключение системы и окончание продувки. Выключение, вызванное
   // продувкой (она сама гасит систему в конце), звучит как «продувка завершена».
   bool on = systemOn, purging = isPurging;
   if (on && !prevOn) {
-    if (sndOn != MEL_NONE) soundPlay(melEventId(sndOn, MEL_ON), SND_PRIO_MELODY);
+    soundPlay(soundEventId(SND_EV_ON), SND_PRIO_MELODY);
   } else if (!on && prevOn && !prevPurging && !purging) {
-    soundPlay(MEL_OFF, SND_PRIO_MELODY);
+    soundPlay(soundEventId(SND_EV_OFF), SND_PRIO_MELODY);
   }
   if (!purging && prevPurging) {
     // Продувку прервали кнопкой LOCK — это выключение, а не «продувка завершена»
-    soundPlay(purgeAborted ? MEL_OFF : MEL_PURGED, SND_PRIO_MELODY);
+    soundPlay(soundEventId(purgeAborted ? SND_EV_OFF : SND_EV_PURGED), SND_PRIO_MELODY);
     purgeAborted = false;
   }
   prevOn = on; prevPurging = purging;
@@ -2644,7 +2684,7 @@ void soundEvents(unsigned long now) {
   if (!alarmActive && !leakWarn && !maintDue) alarmMuted = false;   // всё прошло — сброс
   bool alarmPlayed = false;
   if (sndAlarms && (alarmEdge || (alarmActive && !alarmMuted && now - lastAlarmMs >= SND_ALARM_REPEAT_MS))) {
-    soundPlay(MEL_ALARM, SND_PRIO_ALARM);
+    soundPlay(soundEventId(SND_EV_ALARM), SND_PRIO_ALARM);
     lastAlarmMs = now;
     alarmPlayed = true;
   }
@@ -2662,7 +2702,7 @@ void soundEvents(unsigned long now) {
   bool warnEdge = (wd && !prevWd) || ovWarnEdge || (lkw && !prevLeakW);
   prevWd = wd; prevLeakW = lkw;
   // ⚡ v6.3: свой приоритет — предупреждение не обрывает звучащую тревогу
-  if (sndAlarms && warnEdge && !alarmPlayed) soundPlay(MEL_WARN, SND_PRIO_WARN);
+  if (sndAlarms && warnEdge && !alarmPlayed) soundPlay(soundEventId(SND_EV_WARN), SND_PRIO_WARN);
 
   // ⚡ v6.2: отказ датчика температуры — только в журнал (фронт)
   static bool prevTok = true;
@@ -2730,7 +2770,7 @@ void setup() {
   buzzerInit();
 
   Serial.begin(115200);
-  Serial.println("\n=== H2 PRO Brain v6.6 ===");
+  Serial.println("\n=== H2 PRO Brain v6.8 ===");
   bootMs = millis();
 
   // ⚡ v4.3: Загружаем сохранённые настройки из NVS (цель, вентиляторы, звук, таймер…)
@@ -2780,7 +2820,7 @@ void setup() {
     memset(lcdShadow, ' ', sizeof(lcdShadow));
     for (uint8_t r = 0; r < 4; r++) lcdShadow[r][20] = '\0';
     lcdOk = true;
-    lcdLine(0, "H2 PRO  Brain v6.6");
+    lcdLine(0, "H2 PRO  Brain v6.8");
     lcdLine(1, "LCD2004 OK");
     lcdLine(2, "MPU6050 calibrating");
     lcdLine(3, "Do not move!");
@@ -2860,6 +2900,7 @@ void setup() {
 
   // ⚡ v6.0: звук — LittleFS + библиотека мелодий, очередь и задача плеера
   soundInit();
+  rmelInit();     // ⚡ v6.7: очередь служебных пакетов мелодий пульта
   // ⚡ v6.2: журнал событий (LittleFS уже смонтирована в soundInit) + запись о загрузке
   evtInit();
   evtLog(EVT_BOOT, (int32_t)esp_reset_reason());
@@ -2903,7 +2944,17 @@ void setup() {
   });
   server.on("/cmd", HTTP_GET, [](AsyncWebServerRequest* req) {
     // ⚡ v6.1: команда выполняется в loop на ядре 1 (очередь), ответ — сразу
-    if (req->hasParam("id") && !queueWebCommand((uint8_t)req->getParam("id")->value().toInt())) {
+    // ⚡ v6.7: только известные номера. Раньше toInt() + (uint8_t) превращал «257» в 1
+    // (POWER), «355» в 99 (продувка), а «abc» — в 0.
+    if (!req->hasParam("id")) { req->send(400, "text/plain", "bad id"); return; }
+    const String& sid = req->getParam("id")->value();
+    char* end = nullptr;
+    long  id  = strtol(sid.c_str(), &end, 10);
+    if (sid.length() == 0 || *end != '\0' || !webCommandKnown(id)) { req->send(400, "text/plain", "bad id"); return; }
+    // ⚡ v6.8: src=app — команда из Android-приложения (для журнала отладки)
+    bool app = req->hasParam("src") && req->getParam("src")->value() == "app";
+    dbgLog(app ? DBG_SRC_APP : DBG_SRC_WEB, DBG_BTN_NONE, 0, (uint8_t)id);
+    if (!queueWebCommand((uint8_t)id)) {
       req->send(503, "text/plain", "busy");
       return;
     }
@@ -3119,6 +3170,8 @@ void setup() {
 
   // ⚡ v6.0: звук — /snd/cfg, /snd/set, /snd/play, /snd/stop, /snd/up, /snd/del, /snd/get
   soundRegisterHttp();
+  rmelRegisterHttp();   // ⚡ v6.7
+  dbgRegisterHttp();    // ⚡ v6.8
   // ⚡ v6.2: журнал событий — /log, /log/clear
   evtRegisterHttp();
 
@@ -3150,7 +3203,8 @@ void setup() {
   Serial.printf("Вентиляторы: корпус от постоянного питания; выводной реле GPIO25, режим %d %d/%d°C\n",
     (int)fanMode[1], (int)fanTOn[1], (int)fanTOff[1]);
   Serial.printf("Звук: вывод %u, громкость %u, тревоги %d, щелчки %d, загрузка %d, вкл %d\n",
-    (unsigned)soundOut, (unsigned)soundVol, sndAlarms ? 1 : 0, sndClicks ? 1 : 0, (int)sndBoot, (int)sndOn);
+    (unsigned)soundOut, (unsigned)soundVol, sndAlarms ? 1 : 0, sndClicks ? 1 : 0,
+    (int)sndEvent[SND_EV_BOOT], (int)sndEvent[SND_EV_ON]);
 
   // ⚡ v4.4 + v5.0: инициализация таймеров
   wdStart         = millis();
@@ -3289,6 +3343,8 @@ void loop() {
   uint8_t    rxCmdN  = 0;
   TonePacket rxTones[3];
   uint8_t    rxToneN = 0;
+  uint8_t    rxRmel[3][RF_PAYLOAD_MAX];   // ⚡ v6.7: ответы пульта о мелодиях; ⚡ v6.8: и PKT_RSVC
+  uint8_t    rxRmelN = 0;
   if (radioOk) {
     RadioLock rl(pdMS_TO_TICKS(5));
     for (uint8_t n = 0; rl.ok && n < 3 && radio.available(); n++) {
@@ -3302,6 +3358,8 @@ void loop() {
         rxCmds[rxCmdN++] = pkt.cmd;
       } else if (buf[0] == PKT_TONE && len >= sizeof(TonePacket)) {
         memcpy(&rxTones[rxToneN++], buf, sizeof(TonePacket));
+      } else if (buf[0] == PKT_RMEL || buf[0] == PKT_RSVC) {
+        memcpy(rxRmel[rxRmelN++], buf, RF_PAYLOAD_MAX);
       }
     }
   }
@@ -3314,12 +3372,20 @@ void loop() {
   }
   for (uint8_t i = 0; i < rxCmdN; i++) {
     uint8_t rxCode = rxCmds[i];
+    dbgLog(DBG_SRC_RADIO, DBG_BTN_NONE, 0, rxCode);   // ⚡ v6.8: команда дошла до мозга
     executeCommand(rxCode);
     lastRfRx = now;
     rfLastActivity = now;          // ⚡ v5.0: связь жива, канал хороший
     wsStateChanged = true;         // ⚡ v5.0: пушим в WebSocket немедленно
     Serial.print("[RF] cmd="); Serial.println(rxCode);
   }
+  for (uint8_t i = 0; i < rxRmelN; i++) {   // ⚡ v6.7: опись / результат передачи
+    if (rxRmel[i][0] == PKT_RSVC) rsvcOnPacket(rxRmel[i]);   // ⚡ v6.8: телеметрия / нажатие кнопки пульта
+    else                          rmelOnPacket(rxRmel[i], RF_PAYLOAD_MAX);
+    lastRfRx = now;
+    rfLastActivity = now;
+  }
+  rmelLoop(now);                             // ⚡ v6.7: передача мелодии на пульт
   // ⚡ v6.1: команды веба (поставлены в очередь на ядре 0) — исполняем здесь, на ядре 1
   drainWebCommands();
   // ⚡ v6.3: метки старта (purgeStart, purgeShortStart, repulsorStart, piezoStart,

@@ -157,24 +157,34 @@ public class MainActivity extends Activity {
         if ("POST".equals(method)) {
             if (contentType == null || u.getQuery() != null
                 || !contentType.matches("multipart/form-data; boundary=[A-Za-z0-9_.\\-]{1,70}")) return -1;
-            if ("/snd/up".equals(ep)) return bodyLength > 0 && bodyLength <= MAX_MELODY_BODY ? LANE_UPLOAD : -1;
+            if ("/snd/up".equals(ep) || "/rmel/up".equals(ep))
+                return bodyLength > 0 && bodyLength <= MAX_MELODY_BODY ? LANE_UPLOAD : -1;
             if ("/update".equals(ep)) return bodyLength > 0 && bodyLength <= MAX_FIRMWARE_BODY ? LANE_UPLOAD : -1;
             return -1;
         }
         if (!"GET".equals(method) || bodyLength != 0) return -1;
         Set<String> q = u.getQueryParameterNames();
         switch (ep) {
-            case "/status": case "/log": case "/snd/cfg":
+            case "/status": case "/log": case "/snd/cfg": case "/rmel/cfg":
                 return q.isEmpty() ? LANE_POLL : -1;
             case "/snd/stop": case "/log/clear": case "/resetcycles": case "/resetruntime":
                 return q.isEmpty() ? LANE_CMD : -1;
+            case "/dbg":   // v1.5.0: журнал нажатий (режим отладки)
+                return only(q, "since") && intIn(u, "since", 0, 4_294_967_295L) ? LANE_POLL : -1;
+            case "/rset": {   // v1.5.0: настройки пульта — любое непустое подмножество
+                if (q.isEmpty() || !Arrays.asList("bat", "sleep", "con").containsAll(q)) return -1;
+                return (!q.contains("bat") || intIn(u, "bat", 0, 1)) && (!q.contains("sleep") || intIn(u, "sleep", 0, 60))
+                    && (!q.contains("con") || intIn(u, "con", 1, 10)) ? LANE_CMD : -1;
+            }
             case "/settime":
                 return only(q, "t") && intIn(u, "t", 1_700_000_000L, 4_294_967_295L) ? LANE_POLL : -1;
             case "/snd/get":
                 return only(q, "id") && melodyId(u, "id") ? LANE_POLL : -1;
             case "/cmd": {
                 Long c = intParam(u, "id");
-                if (!only(q, "id") || c == null || c < 0 || c > 99 || !COMMANDS.contains(c.intValue())) return -1;
+                // v1.5.0: src=app — пометка для журнала отладки мозга
+                boolean names = only(q, "id") || (only(q, "id", "src") && "app".equals(param(u, "src")));
+                if (!names || c == null || c < 0 || c > 99 || !COMMANDS.contains(c.intValue())) return -1;
                 return c == 99 ? LANE_SOS : LANE_CMD;
             }
             case "/setpressure":
@@ -196,17 +206,30 @@ public class MainActivity extends Activity {
                 return only(q, "offset", "scale") && numIn(u, "offset", 0, 2) && numIn(u, "scale", 0.1, 10)
                     ? LANE_CMD : -1;
             case "/snd/set": {
-                boolean events = q.contains("boot") || q.contains("on");
-                boolean names = events ? only(q, "out", "vol", "alm", "clk", "boot", "on")
+                // v1.4.0: мелодии событий передаются все шесть сразу или ни одной
+                boolean events = q.contains("boot");
+                boolean names = events ? only(q, "out", "vol", "alm", "clk", "boot", "on", "off", "pur", "alr", "wrn")
                                        : only(q, "out", "vol", "alm", "clk");
                 return names && intIn(u, "out", 0, 3) && intIn(u, "vol", 1, 10) && intIn(u, "alm", 0, 1)
-                    && intIn(u, "clk", 0, 1) && (!events || (eventId(u, "boot") && eventId(u, "on"))) ? LANE_CMD : -1;
+                    && intIn(u, "clk", 0, 1) && (!events || (eventId(u, "boot", true) && eventId(u, "on", true)
+                    && eventId(u, "off", true) && eventId(u, "pur", true) && eventId(u, "alr", false)
+                    && eventId(u, "wrn", false))) ? LANE_CMD : -1;
             }
             case "/snd/play":
                 return (only(q, "id") || (only(q, "id", "out") && intIn(u, "out", -1, 3)))
                     && melodyId(u, "id") ? LANE_CMD : -1;
             case "/snd/del":
                 return only(q, "id") && intIn(u, "id", 0, 15) ? LANE_CMD : -1;
+            // v1.4.0: мелодии пульта (мозг передаёт их по радио)
+            case "/rmel/send":
+                return only(q, "id") && intIn(u, "id", 0, 15) ? LANE_CMD : -1;
+            case "/rmel/del":
+                return only(q, "id") && intIn(u, "id", 0, 7) ? LANE_CMD : -1;
+            case "/rmel/set": {
+                Long a = intParam(u, "act"), b = intParam(u, "boot");
+                return only(q, "act", "boot") && a != null && b != null && (a == -1 || (a >= 0 && a <= 7))
+                    && (b == -9 || (b >= 0 && b <= 7)) ? LANE_CMD : -1;
+            }
             default:
                 return -1;
         }
@@ -240,13 +263,15 @@ public class MainActivity extends Activity {
         return Double.isFinite(v) && v >= min && v <= max;
     }
 
+    /** Встроенные мелодии событий −6..−1 или слот 0..15 (как melKnown() в прошивке). */
     private static boolean melodyId(Uri u, String name) {
-        return intIn(u, name, -3, -1) || intIn(u, name, 0, 15);
+        return intIn(u, name, -6, -1) || intIn(u, name, 0, 15);
     }
 
-    private static boolean eventId(Uri u, String name) {
+    /** Мелодия события: «Нет» (−9, если можно), встроенная −6..−1 или слот 0..15. */
+    private static boolean eventId(Uri u, String name, boolean allowNone) {
         Long v = intParam(u, name);
-        return v != null && (v == -9 || v == -1 || v == -2 || (v >= 0 && v <= 15));
+        return v != null && ((allowNone && v == -9) || (v >= -6 && v <= -1) || (v >= 0 && v <= 15));
     }
 
     private void send(int id, int lane, String method, String path, String contentType, byte[] body) {

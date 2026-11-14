@@ -106,6 +106,113 @@ struct __attribute__((packed)) TonePacket {
   uint8_t  volume;    // 1..10
 };
 
+// ── ⚡ v6.7: мелодии пульта (PKT_RMEL) ──────────────────────────────────────
+// Свои мелодии пульта хранятся в его LittleFS (/rmel/N.h2m, формат H2M1). Файл
+// приходит из веба/приложения в мозг и передаётся мозгом по радио кусками; пульт
+// проверяет CRC-32 и формат, пишет файл и отвечает результатом и описью. Подтверждение
+// доставки каждого куска — аппаратный ACK nRF24 (мозг повторяет кусок, пока ACK нет).
+// Повтор END безопасен: пульт помнит результат последней передачи.
+const uint8_t PKT_RMEL   = 0xC3;
+const uint8_t RMEL_SLOTS = 8;      // слотов мелодий на пульте
+const uint8_t RMEL_CHUNK = 26;     // байт файла в одном пакете DATA
+const int8_t  RMEL_BOOMER = -1;    // активная мелодия кнопки МЕЛОДИЯ — встроенный «Бумер»
+const int8_t  RMEL_NONE   = -9;    // звук загрузки пульта — нет
+const uint8_t RMEL_AUTO_SLOT = 0xFF;   // BEGIN: первый свободный слот
+
+enum : uint8_t {
+  RMEL_BEGIN   = 1,     // мозг → пульт: начать приём файла
+  RMEL_DATA    = 2,     // мозг → пульт: кусок файла
+  RMEL_END     = 3,     // мозг → пульт: файл передан — проверить и сохранить
+  RMEL_DEL     = 4,     // мозг → пульт: удалить слот
+  RMEL_CFG     = 5,     // мозг → пульт: активная мелодия кнопки и звук загрузки
+  RMEL_QUERY   = 6,     // мозг → пульт: прислать опись
+  RMEL_SUMMARY = 0x80,  // пульт → мозг: опись (общая часть)
+  RMEL_SLOT    = 0x81,  // пульт → мозг: опись одного занятого слота
+  RMEL_RESULT  = 0x82,  // пульт → мозг: результат передачи
+};
+enum : uint8_t {          // RmelResult.code
+  RMEL_OK = 0, RMEL_E_SEQ = 1, RMEL_E_CRC = 2, RMEL_E_FORMAT = 3, RMEL_E_FULL = 4, RMEL_E_FS = 5,
+};
+
+struct __attribute__((packed)) RmelBegin {
+  uint8_t  type, op;      // PKT_RMEL, RMEL_BEGIN
+  uint8_t  xfer;          // номер передачи (меняется с каждой новой)
+  uint8_t  slot;          // 0..RMEL_SLOTS-1 или RMEL_AUTO_SLOT
+  uint16_t size;          // размер файла H2M1
+  uint32_t crc;           // CRC-32 файла
+};
+struct __attribute__((packed)) RmelData {
+  uint8_t  type, op;      // PKT_RMEL, RMEL_DATA
+  uint8_t  xfer;
+  uint16_t off;           // смещение куска в файле
+  uint8_t  n;             // 1..RMEL_CHUNK
+  uint8_t  data[RMEL_CHUNK];
+};
+struct __attribute__((packed)) RmelEnd    { uint8_t type, op, xfer; };
+struct __attribute__((packed)) RmelDel    { uint8_t type, op, slot; };
+struct __attribute__((packed)) RmelCfg    { uint8_t type, op; int8_t act, boot; };
+struct __attribute__((packed)) RmelQuery  { uint8_t type, op; };
+struct __attribute__((packed)) RmelSummary {
+  uint8_t type, op;       // PKT_RMEL, RMEL_SUMMARY
+  int8_t  act;            // RMEL_BOOMER или слот
+  int8_t  boot;           // RMEL_NONE или слот
+  uint8_t fsOk;           // LittleFS пульта смонтирована
+  uint8_t used;           // битовая маска занятых слотов
+};
+struct __attribute__((packed)) RmelSlot {
+  uint8_t  type, op;      // PKT_RMEL, RMEL_SLOT
+  uint8_t  slot;
+  uint16_t n;             // нот
+  uint32_t ms;            // длительность
+  uint8_t  nameLen;       // ≤ 22 (название укорочено по границе символа UTF-8)
+  char     name[22];
+};
+struct __attribute__((packed)) RmelResult { uint8_t type, op, xfer, code, slot; };
+
+static_assert(sizeof(RmelData) == 32 && sizeof(RmelSlot) == 32, "RMEL payload");
+
+// ── ⚡ v6.8: служебный канал пульта (PKT_RSVC) ───────────────────────────────
+// Настройки пульта из веба/приложения (через мозг), телеметрия пульта (батарея, доля
+// принятых пакетов статуса) и отчёт о каждом нажатии кнопки пульта — для режима отладки.
+const uint8_t PKT_RSVC  = 0xC4;
+const uint8_t RSVC_KEEP = 0xFF;    // RsvcSet: поле не менять
+enum : uint8_t {
+  RSVC_SET  = 1,      // мозг → пульт: настройки
+  RSVC_INFO = 0x81,   // пульт → мозг: телеметрия и настройки (раз в 5 с и после изменения)
+  RSVC_BTN  = 0x82,   // пульт → мозг: нажатие кнопки
+};
+// Кнопки пульта (RsvcBtn.btn)
+enum : uint8_t { RBTN_POWER, RBTN_LOCK, RBTN_REPULSOR, RBTN_MANUAL, RBTN_PIEZO, RBTN_TGT_UP, RBTN_TGT_DOWN, RBTN_MELODY };
+// Действие (RsvcBtn.act и журнал мозга)
+enum : uint8_t {
+  BACT_PRESS = 1,     // короткое нажатие
+  BACT_DOUBLE = 2,    // двойное
+  BACT_HOLD = 3,      // удержание ≥ 1 с
+  BACT_MENU = 4,      // нажатие поглощено меню пульта
+  BACT_GAME = 5,      // нажатие поглощено игрой
+};
+struct __attribute__((packed)) RsvcSet {
+  uint8_t type, op;   // PKT_RSVC, RSVC_SET
+  uint8_t bat;        // 0/1 — измерять и показывать батарею, RSVC_KEEP — не менять
+  uint8_t sleepMin;   // минут до сна, 0 — никогда, RSVC_KEEP
+  uint8_t contrast;   // яркость OLED 1..10, RSVC_KEEP
+};
+struct __attribute__((packed)) RsvcInfo {
+  uint8_t  type, op;  // PKT_RSVC, RSVC_INFO
+  uint8_t  fw;        // версия прошивки ×10 (68 = v6.8)
+  uint16_t batMv;     // напряжение батареи, мВ (0 — не измеряется / нет батареи)
+  uint8_t  batPct;    // заряд 0..100, RSVC_KEEP — нет данных
+  uint8_t  rxPct;     // доля принятых пакетов статуса за 5 с, 0..100
+  uint8_t  bat, sleepMin, contrast;   // текущие настройки
+};
+struct __attribute__((packed)) RsvcBtn {
+  uint8_t type, op;   // PKT_RSVC, RSVC_BTN
+  uint8_t seq;        // счётчик нажатий (повтор пакета — тот же seq)
+  uint8_t btn;        // RBTN_*
+  uint8_t act;        // BACT_*
+  uint8_t cmd;        // отправленная команда (0 — локальное действие пульта)
+};
+
 static_assert(sizeof(CmdPacket)    == 2,  "CmdPacket size");
 static_assert(sizeof(StatusPacket) == 16, "StatusPacket size");
 static_assert(sizeof(TonePacket)   == 7,  "TonePacket size");

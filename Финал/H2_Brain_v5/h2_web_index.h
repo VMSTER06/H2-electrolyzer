@@ -18,7 +18,7 @@
 const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html><html lang="ru"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>H2 PRO v6.5</title>
+<title>H2 PRO v6.8</title>
 <style>
   /* Системные шрифты: страница работает без доступа к интернету. */
   :root{
@@ -448,7 +448,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     <div class="ok-msg" id="cmdMsg"></div>
 
     <div class="block warn">
-      <div class="blk-lbl">Целевое давление (max 6.0 бар)</div>
+      <div class="blk-lbl">Целевое давление (max 6.5 бар)</div>
       <div class="row" style="justify-content:center;">
         <button class="t-pm" onclick="stepTgt(-0.5)">−</button>
         <span class="t-val"><span id="tval">1.0</span><span class="t-unit"> бар</span></span>
@@ -635,6 +635,22 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         <div class="sub-lbl">Мелодия при включении системы</div>
         <select class="inp" id="sndOn" onchange="sndDirty=true"></select>
       </div>
+      <div class="fld">
+        <div class="sub-lbl">Мелодия при выключении</div>
+        <select class="inp" id="sndOff" onchange="sndDirty=true"></select>
+      </div>
+      <div class="fld">
+        <div class="sub-lbl">Продувка завершена</div>
+        <select class="inp" id="sndPur" onchange="sndDirty=true"></select>
+      </div>
+      <div class="fld">
+        <div class="sub-lbl">Тревога (своя — не длиннее 10 с)</div>
+        <select class="inp" id="sndAlr" onchange="sndDirty=true"></select>
+      </div>
+      <div class="fld">
+        <div class="sub-lbl">Предупреждение (своё — не длиннее 10 с)</div>
+        <select class="inp" id="sndWrn" onchange="sndDirty=true"></select>
+      </div>
       <div class="btn-row">
         <button class="apply-btn" onclick="sndApply()">Применить</button>
         <button class="data-btn" onclick="sndTest()">Тест</button>
@@ -648,6 +664,26 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       <div id="melList"><div class="mel-empty">Загрузка…</div></div>
       <div class="data-note" id="melInfo"></div>
       <div class="ok-msg" id="melOk"></div>
+    </div>
+
+    <div class="block">
+      <div class="blk-head"><span class="blk-lbl">Мелодии пульта</span><span class="pill" id="rmSt">…</span></div>
+      <div id="rmList"><div class="mel-empty">Загрузка…</div></div>
+      <div class="fld">
+        <div class="sub-lbl">Кнопка МЕЛОДИЯ на пульте играет</div>
+        <select class="inp" id="rmAct" onchange="rmDirty=true"></select>
+      </div>
+      <div class="fld">
+        <div class="sub-lbl">Звук при включении пульта</div>
+        <select class="inp" id="rmBoot" onchange="rmDirty=true"></select>
+      </div>
+      <div class="btn-row">
+        <button class="apply-btn" onclick="rmApply()">Применить на пульте</button>
+        <button class="data-btn" onclick="rmLoad(true)">Обновить</button>
+      </div>
+      <div class="prog" id="rmProg"><i id="rmProgBar"></i></div>
+      <div class="ok-msg" id="rmOk"></div>
+      <div class="data-note">До 8 своих мелодий хранятся в памяти пульта и передаются по радио через мозг — пульт должен быть включён и на связи. Мелодию из библиотеки мозга можно отправить в пульт кнопкой со стрелкой.</div>
     </div>
 
     <details class="block fold" id="melAdd">
@@ -665,6 +701,8 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         <div class="sub-lbl">Дорожка MIDI</div>
         <select class="inp" id="melTrk" onchange="melOnTrack()"></select>
       </div>
+      <div class="sub-lbl" id="melSegLbl" style="display:none">Отрезки трека</div>
+      <div id="melSeg"></div>
       <details class="fold sub">
         <summary>Параметры подготовки</summary>
         <div class="row lw"><label>Октавы</label>
@@ -681,7 +719,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
           <input type="range" id="melMax" min="5" max="120" step="5" value="30" oninput="melOnParam()"><span class="val" id="melMaxV"></span></div>
         <div class="row lw"><label>Анализ аудио</label>
           <input type="range" id="melSecs" min="5" max="120" step="5" value="30" oninput="melOnSecs()"><span class="val" id="melSecsV"></span></div>
-        <div class="hint" style="margin:6px 0 0">Пауза нот разделяет соседние ноты, чтобы повторы не сливались в один тон. «Анализ аудио» — сколько первых секунд аудиофайла распознавать.</div>
+        <div class="hint" style="margin:6px 0 0">Пауза нот разделяет соседние ноты, чтобы повторы не сливались в один тон. «Анализ аудио» — сколько первых секунд аудиофайла распознавать, если отрезки не выбраны. «Макс. длина» — предел каждой готовой мелодии.</div>
       </details>
       <button class="apply-btn" id="melPrepBtn" onclick="melPrepareClick()">Подготовить</button>
       <div class="prog" id="melProg"><i id="melProgBar"></i></div>
@@ -689,17 +727,25 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       <div class="mel-res" id="melRes">
         <div class="mel-stat" id="melStat"></div>
         <div class="hint" id="melStat2"></div>
+        <div id="melPieces"></div>
+        <div class="row lw"><label>Слушать как</label>
+          <select class="inp" id="melPvAs" onchange="melOnPvAs()">
+            <option value="brain">зуммер мозга (мелодия события)</option>
+            <option value="remote">пульт, кнопка МЕЛОДИЯ</option>
+          </select></div>
         <div class="fld">
           <div class="sub-lbl">Название</div>
           <input class="inp" id="melName" maxlength="48" oninput="melNameAuto=false">
         </div>
-        <div class="btn-row two">
+        <div class="btn-row">
           <button class="data-btn" id="melListenBtn" onclick="melListen()">Прослушать</button>
           <button class="apply-btn" id="melSaveBtn" onclick="melSave()">Сохранить в мозг</button>
+          <button class="apply-btn" id="melRmBtn" onclick="melSaveRemote()">В пульт</button>
         </div>
         <div class="msg" id="melSaveMsg"></div>
       </div>
       <div class="mel-tips">
+        <p>Отрезки: проведите по шкале трека — выделится кусок; несколько кусков можно склеить в одну мелодию (с паузой после каждого или без) или сохранить каждый отдельно. «Прослушать» звучит как зуммер устройства на выбранной громкости, «▶» у отрезка — оригинал.</p>
         <p>Лучше всего подходят MIDI и RTTTL рингтонов. Аудио распознаётся по высоте тона — хорошо работает с простыми одноголосыми рингтонами, хуже — с песнями и аккордами.</p>
         <p>Мелодию из фильма «Бумер» (рингтон) загрузите сами: найдите файл .mid или RTTTL-текст рингтона (например, по запросу «бумер rtttl» / «бумер midi») или mp3 рингтона, выберите его здесь и нажмите «Подготовить» → «Сохранить в мозг», затем выберите её как мелодию загрузки.</p>
       </div>
@@ -738,6 +784,415 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
   </div>
 </div>
 
+<script>
+/*H2MEL-BEGIN*/
+/* ═══════════════════════════════════════════════════════════════════════════════
+   H2Mel — общий модуль мелодий веб-интерфейса мозга и Android-приложения (v6.7)
+   ───────────────────────────────────────────────────────────────────────────────
+   ИСХОДНИК — Финал/web_shared/h2_mel_edit.js. Копии делает tools/sync_shared_js.py:
+   вставка в H2_Brain_v5/h2_web_index.h (между маркерами H2MEL) и файл
+   H2_Android_App/app/src/main/assets/h2_mel_edit.js. Правьте только исходник.
+
+   Состав:
+   • play()        — прослушивание «как на зуммере»: импульсный сигнал со скважностью
+                     громкости прошивки (BUZZER_VOL_DUTY), резонанс маленького зуммера,
+                     огибающая музыки пульта (атака 8 мс, разрыв 20 мс, спад 10 мс);
+   • pitchTrack()  — распознавание высоты тона в аудио (YIN) на заданном отрезке;
+   • slice()/pieces() — нарезка «сырой» мелодии [{m,d}] на отрезки, склейка с паузами;
+   • SegEditor     — редактор отрезков: волна аудио или ноты MIDI/RTTTL, выделение
+                     пальцем/мышью, точная правка чисел, пауза после отрезка, прослушивание
+                     оригинала;
+   • uploadRemote() — загрузка нескольких мелодий в пульт по очереди с ожиданием итога.
+   Без внешних библиотек: устройство работает в офлайн-сети.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+(function (global) {
+'use strict';
+const H2Mel = {};
+
+/* ── Зуммер ──────────────────────────────────────────────────────────────────── */
+// Скважность ШИМ по громкости 0..10 (из 1024) — как BUZZER_VOL_DUTY в прошивках
+const DUTY = [0, 6, 12, 24, 40, 64, 96, 144, 220, 340, 512];
+const MUSIC_MAX_VOL = 8, MUSIC_ATTACK = 0.008, MUSIC_RELEASE = 0.010, MUSIC_GATE = 0.020;
+const waveCache = new WeakMap();
+
+// Импульсный сигнал скважности D: ряд Фурье a_n = 2·sin(nπD)/(nπ) (косинусные члены)
+function pulseWave(ac, duty) {
+  let m = waveCache.get(ac); if (!m) { m = new Map(); waveCache.set(ac, m); }
+  if (m.has(duty)) return m.get(duty);
+  const N = 64, re = new Float32Array(N), im = new Float32Array(N), D = duty / 1024;
+  for (let n = 1; n < N; n++) re[n] = 2 * Math.sin(n * Math.PI * D) / (n * Math.PI);
+  const w = ac.createPeriodicWave(re, im, { disableNormalization: true });
+  m.set(duty, w);
+  return w;
+}
+
+/* Проиграть ноты [{f,d}] «как на зуммере».
+   o.vol — громкость 1..10 (как в «Звуке»); o.music — огибающая музыки пульта;
+   o.onEnd — по окончании. Возвращает {stop(), t0, dur}. */
+H2Mel.play = function (ac, notes, o) {
+  o = o || {};
+  let vol = Math.max(1, Math.min(10, o.vol || 10));
+  if (o.music) vol = Math.min(vol, MUSIC_MAX_VOL);
+  const osc = ac.createOscillator(), env = ac.createGain(), out = ac.createGain();
+  // Маленький магнитный зуммер: резонанс ~2.7 кГц, слабые низы, завал верхов
+  const res = ac.createBiquadFilter(); res.type = 'peaking'; res.frequency.value = 2700; res.Q.value = 1.4; res.gain.value = 9;
+  const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 380;
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 9000;
+  osc.setPeriodicWave(pulseWave(ac, DUTY[vol]));
+  out.gain.value = 0.22;
+  env.gain.value = 0;
+  osc.connect(env); env.connect(res); res.connect(hp); hp.connect(lp); lp.connect(out); out.connect(ac.destination);
+  const t0 = ac.currentTime + 0.05; let t = t0;
+  const R = 0.004;
+  for (const n of notes) {
+    const d = n.d / 1000;
+    if (n.f > 0) {
+      osc.frequency.setValueAtTime(n.f, t);
+      if (o.music) {   // как updateSound() пульта: атака, звучание до d−20 мс, спад 10 мс
+        const gateAt = d > MUSIC_GATE ? d - MUSIC_GATE : d;
+        const atk = Math.min(MUSIC_ATTACK, gateAt / 2), rel = Math.min(MUSIC_RELEASE, gateAt / 2);
+        env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(1, t + atk);
+        env.gain.setValueAtTime(1, t + gateAt - rel); env.gain.linearRampToValueAtTime(0, t + gateAt);
+      } else if (d > 3 * R) {
+        env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(1, t + R);
+        env.gain.setValueAtTime(1, t + d - R); env.gain.linearRampToValueAtTime(0, t + d);
+      } else { env.gain.setValueAtTime(1, t); env.gain.setValueAtTime(0, t + d); }
+    }
+    t += d;
+  }
+  osc.start(t0); osc.stop(t + 0.02);
+  let done = false;
+  const h = {
+    t0, dur: t - t0,
+    stop() { if (done) return; done = true; try { osc.onended = null; osc.stop(); } catch (e) {}
+      try { osc.disconnect(); out.disconnect(); } catch (e) {} }
+  };
+  osc.onended = () => { if (!done) { done = true; try { out.disconnect(); } catch (e) {} if (o.onEnd) o.onEnd(); } };
+  return h;
+};
+
+/* ── Сырая мелодия [{m,d}] (m — нота MIDI, m<0 — пауза; d — мс) ───────────────── */
+H2Mel.duration = raw => raw.reduce((s, x) => s + (x.d > 0 ? x.d : 0), 0);
+
+// Часть мелодии между a и b мс (ноты на границах обрезаются)
+H2Mel.slice = function (raw, a, b) {
+  const out = []; let t = 0;
+  for (const x of raw) {
+    const s = t, e = t + x.d; t = e;
+    if (e <= a) continue;
+    if (s >= b) break;
+    const d = Math.min(e, b) - Math.max(s, a);
+    if (d > 0) out.push({ m: x.m, d });
+  }
+  return out;
+};
+
+/* Мелодии из отрезков: segs [{a,b,gap}] мс, join — склеить в одну (паузы gap после
+   каждого отрезка, кроме последнего), иначе каждый отрезок отдельно.
+   rawOf(seg) — сырая мелодия отрезка. Без отрезков — одна мелодия whole(). */
+H2Mel.pieces = function (segs, join, rawOf, whole) {
+  if (!segs.length) return [whole()];
+  const parts = segs.map(rawOf);
+  if (!join) return parts;
+  const one = [];
+  parts.forEach((p, i) => {
+    one.push(...p);
+    const g = segs[i].gap | 0;
+    if (g > 0 && i < parts.length - 1) one.push({ m: -1, d: g });
+  });
+  return [one];
+};
+
+/* ── Аудио ────────────────────────────────────────────────────────────────────── */
+H2Mel.decode = function (ac, ab) {
+  return new Promise((res, rej) => { const pr = ac.decodeAudioData(ab, res, rej); if (pr && pr.then) pr.then(res, rej); })
+    .catch(() => { throw new Error('Не удалось декодировать аудио — этот формат не поддерживается'); });
+};
+
+// Огибающая для рисования волны: n значений 0..1 (максимум модуля по моно-сумме)
+H2Mel.peaks = function (buf, n) {
+  const chs = buf.numberOfChannels, len = buf.length, out = new Float32Array(n), step = len / n;
+  const data = []; for (let c = 0; c < chs; c++) data.push(buf.getChannelData(c));
+  let mx = 0;
+  for (let i = 0; i < n; i++) {
+    const s = Math.floor(i * step), e = Math.min(len, Math.floor((i + 1) * step)), inc = Math.max(1, Math.floor((e - s) / 400));
+    let p = 0;
+    for (let j = s; j < e; j += inc) { let v = 0; for (let c = 0; c < chs; c++) v += data[c][j]; v = Math.abs(v / chs); if (v > p) p = v; }
+    out[i] = p; if (p > mx) mx = p;
+  }
+  if (mx > 0) for (let i = 0; i < n; i++) out[i] /= mx;
+  return out;
+};
+
+/* Высота тона на отрезке [a,b] мс: моно, ~11 кГц, YIN (окно 512, шаг 12 мс, 70–2000 Гц),
+   порог тишины −35 дБ, полутона, медиана по 5 кадрам, склейка, отбрасывание < 50 мс.
+   Считается кусками с отдачей управления; prog(доля) — ход анализа. */
+H2Mel.pitchTrack = async function (buf, a, b, prog) {
+  const sr0 = buf.sampleRate, fac = Math.max(1, Math.round(sr0 / 11025)), sr = sr0 / fac, chs = buf.numberOfChannels;
+  const i0 = Math.max(0, Math.floor(a / 1000 * sr0)), i1 = Math.min(buf.length, Math.floor(b / 1000 * sr0));
+  const n = Math.max(0, Math.floor((i1 - i0) / fac)), ch = [];
+  for (let c = 0; c < chs; c++) ch.push(buf.getChannelData(c));
+  const x = new Float32Array(n), kk = 1 / (fac * chs);
+  for (let i = 0; i < n; i++) { let s = 0; const o = i0 + i * fac;
+    for (let c = 0; c < chs; c++) { const q = ch[c]; for (let j = 0; j < fac; j++) s += q[o + j]; } x[i] = s * kk; }
+  const W = 512, tMin = Math.max(2, Math.floor(sr / 2000)), tMax = Math.min(Math.ceil(sr / 70), W >> 1), L = W - tMax;
+  const hop = Math.max(1, Math.round(sr * 0.012)), nf = n >= W ? Math.floor((n - W) / hop) + 1 : 0;
+  if (nf < 5) throw new Error('Отрезок аудио слишком короткий');
+  const f0 = new Float32Array(nf), rms = new Float32Array(nf), d = new Float32Array(tMax + 1);
+  let tY = performance.now();
+  for (let fi = 0; fi < nf; fi++) {
+    const o = fi * hop; let e = 0;
+    for (let j = 0; j < W; j++) { const v = x[o + j]; e += v * v; }
+    rms[fi] = Math.sqrt(e / W);
+    if (e > 0) {
+      let run = 0;   // разностная функция + кумулятивная нормировка (CMNDF)
+      for (let t = 1; t <= tMax; t++) { let s = 0; for (let j = 0; j < L; j++) { const v = x[o + j] - x[o + j + t]; s += v * v; }
+        run += s; d[t] = run > 0 ? s * t / run : 1; }
+      let bt = -1;
+      for (let t = tMin; t <= tMax; t++) if (d[t] < 0.15) { while (t < tMax && d[t + 1] < d[t]) t++; bt = t; break; }
+      if (bt > 0) { let tau = bt;
+        if (bt > 1 && bt < tMax) { const p = d[bt - 1], q = d[bt + 1], den = p - 2 * d[bt] + q; if (den > 1e-9) tau = bt + 0.5 * (p - q) / den; }
+        const f = sr / tau; if (f >= 70 && f <= 2000) f0[fi] = f; }
+    }
+    if (performance.now() - tY > 30) { if (prog) prog(fi / nf); await new Promise(r => setTimeout(r, 0)); tY = performance.now(); }
+  }
+  let mx = 0; for (let i = 0; i < nf; i++) if (rms[i] > mx) mx = rms[i];
+  const thr = mx * Math.pow(10, -35 / 20), mi = new Int16Array(nf), md = new Int16Array(nf), w = [0, 0, 0, 0, 0];
+  for (let i = 0; i < nf; i++) mi[i] = (f0[i] > 0 && mx > 0 && rms[i] >= thr) ? Math.round(69 + 12 * Math.log2(f0[i] / 440)) : 0;
+  for (let i = 0; i < nf; i++) { for (let k = -2; k <= 2; k++) w[k + 2] = mi[Math.min(nf - 1, Math.max(0, i + k))];
+    md[i] = w.slice().sort((p, q) => p - q)[2]; }
+  const fms = hop / sr * 1000, out = [];
+  for (let i = 0; i < nf;) { let j = i; while (j < nf && md[j] === md[i]) j++;
+    const sg = { m: md[i] > 0 ? md[i] : -1, d: (j - i) * fms }, Lp = out[out.length - 1];
+    if (Lp && (sg.d < 50 || Lp.m === sg.m)) Lp.d += sg.d; else out.push(sg);
+    i = j; }
+  // Хвост отрезка — пауза до его конца (точная длительность при склейке)
+  const tot = H2Mel.duration(out), want = b - a;
+  if (want > tot) out.push({ m: -1, d: want - tot });
+  return out;
+};
+
+/* ── Редактор отрезков ───────────────────────────────────────────────────────── */
+const CSS = `
+.h2seg{margin:10px 0 4px}
+.h2seg-cv{width:100%;height:96px;display:block;border:1px solid var(--border,var(--line,#888));border-radius:8px;
+  background:var(--card,var(--paper,transparent));touch-action:none;cursor:crosshair}
+.h2seg-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}
+.h2seg-bar label{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--text,var(--ink,inherit))}
+.h2seg-row{display:grid;grid-template-columns:auto 1fr 1fr 1fr auto auto;gap:6px;align-items:center;margin:4px 0;font-size:13px}
+.h2seg-row.sel{outline:2px solid var(--accent,#0af);outline-offset:2px;border-radius:6px}
+.h2seg-row input{width:100%;min-width:0;padding:6px;border:1px solid var(--border,var(--line,#888));border-radius:6px;
+  background:transparent;color:var(--text,var(--ink,inherit));font:inherit}
+.h2seg-row span.n{font-weight:600;color:var(--accent,#0af)}
+.h2seg-b{padding:6px 10px;border:1px solid var(--border,var(--line,#888));border-radius:6px;background:transparent;
+  color:var(--text,var(--ink,inherit));font:inherit;font-size:13px}
+.h2seg-hint{font-size:12px;color:var(--muted,#888);margin:4px 0}
+.h2seg-head{display:grid;grid-template-columns:auto 1fr 1fr 1fr auto auto;gap:6px;font-size:11px;color:var(--muted,#888)}
+@media (max-width:380px){.h2seg-row,.h2seg-head{grid-template-columns:auto 1fr 1fr 1fr auto}.h2seg-row .pl{display:none}}
+`;
+function ensureCss() {
+  if (document.getElementById('h2seg-css')) return;
+  const st = document.createElement('style'); st.id = 'h2seg-css'; st.textContent = CSS; document.head.appendChild(st);
+}
+const fmtS = ms => (ms / 1000).toFixed(1);
+const MIN_SEG = 200;   // мс — минимальный отрезок
+
+/* new SegEditor(box, {onChange, getCtx})
+   setSource({kind:'audio', buffer}) | setSource({kind:'notes', raw}) | setSource(null)
+   segs — [{a,b,gap}] мс; join — склеить в одну мелодию. */
+class SegEditor {
+  constructor(box, o) {
+    ensureCss();
+    this.o = o || {}; this.box = box; this.src = null; this.segs = []; this.sel = -1; this.join = true;
+    this.pl = null; this.raf = 0; this.drag = null;
+    box.classList.add('h2seg'); box.hidden = true;
+    box.innerHTML = '<canvas class="h2seg-cv" aria-label="Шкала трека: проведите по ней, чтобы выделить отрезок"></canvas>'
+      + '<div class="h2seg-hint">Проведите по шкале — выделится отрезок. Края отрезка можно тянуть. Без отрезков берётся начало трека.</div>'
+      + '<div class="h2seg-bar"><button type="button" class="h2seg-b" data-a="add">+ Отрезок</button>'
+      + '<button type="button" class="h2seg-b" data-a="clear">Убрать все</button>'
+      + '<label><input type="radio" name="h2segj" value="1" checked> Склеить в одну</label>'
+      + '<label><input type="radio" name="h2segj" value="0"> Каждый отдельно</label></div>'
+      + '<div class="h2seg-head" hidden><span>№</span><span>Начало, с</span><span>Конец, с</span><span>Пауза после, мс</span><span></span><span></span></div>'
+      + '<div class="h2seg-list"></div>';
+    this.cv = box.querySelector('canvas'); this.list = box.querySelector('.h2seg-list'); this.head = box.querySelector('.h2seg-head');
+    box.querySelector('[data-a=add]').onclick = () => this.add();
+    box.querySelector('[data-a=clear]').onclick = () => { this.stopPl(); this.segs = []; this.sel = -1; this.changed(); };
+    box.querySelectorAll('input[name=h2segj]').forEach(r => r.onchange = () => { this.join = r.value === '1' ? r.checked : !r.checked; this.paintList(); this.fire(); });
+    this.cv.addEventListener('pointerdown', e => this.down(e));
+    this.cv.addEventListener('pointermove', e => this.move(e));
+    this.cv.addEventListener('pointerup', e => this.up(e));
+    this.cv.addEventListener('pointercancel', e => this.up(e));
+    this.ro = new ResizeObserver(() => this.draw()); this.ro.observe(this.cv);
+  }
+  get dur() { return this.src ? this.src.dur : 0; }
+  setSource(src) {
+    this.stopPl();
+    this.src = null; this.segs = []; this.sel = -1; this.peaks = null;
+    if (src && src.kind === 'audio') this.src = { kind: 'audio', buffer: src.buffer, dur: src.buffer.duration * 1000 };
+    else if (src && src.kind === 'notes') this.src = { kind: 'notes', raw: src.raw, dur: H2Mel.duration(src.raw) };
+    this.box.hidden = !this.src;
+    this.changed();
+  }
+  // Ноты сменились (другая дорожка MIDI) — отрезки по времени сохраняются
+  updateNotes(raw) { if (!this.src || this.src.kind !== 'notes') return this.setSource({ kind: 'notes', raw });
+    this.src.raw = raw; this.src.dur = H2Mel.duration(raw);
+    this.segs = this.segs.filter(s => s.a < this.src.dur).map(s => ({ ...s, b: Math.min(s.b, this.src.dur) })); this.changed(); }
+  fire() { if (this.o.onChange) this.o.onChange(); }
+  changed() { this.segs.sort((x, y) => x.a - y.a); this.paintList(); this.draw(); this.fire(); }
+  add() {
+    if (!this.src) return;
+    const last = this.segs[this.segs.length - 1], a = last ? Math.min(last.b, this.dur - MIN_SEG) : 0;
+    this.segs.push({ a: Math.max(0, a), b: Math.min(this.dur, a + 5000), gap: 0 });
+    this.sel = this.segs.length - 1; this.changed();
+  }
+  xToMs(e) { const r = this.cv.getBoundingClientRect(); return Math.max(0, Math.min(this.dur, (e.clientX - r.left) / r.width * this.dur)); }
+  hit(ms) {   // край отрезка под пальцем (в пределах 12 px) или сам отрезок
+    const tol = 12 / Math.max(1, this.cv.clientWidth) * this.dur;
+    for (let i = 0; i < this.segs.length; i++) { const s = this.segs[i];
+      if (Math.abs(ms - s.a) <= tol) return { i, edge: 'a' };
+      if (Math.abs(ms - s.b) <= tol) return { i, edge: 'b' }; }
+    for (let i = 0; i < this.segs.length; i++) if (ms > this.segs[i].a && ms < this.segs[i].b) return { i, edge: null };
+    return null;
+  }
+  down(e) {
+    if (!this.src) return;
+    this.cv.setPointerCapture(e.pointerId);
+    const ms = this.xToMs(e), h = this.hit(ms);
+    if (h && h.edge) this.drag = { i: h.i, edge: h.edge };
+    else if (h) { this.sel = h.i; this.drag = null; this.paintList(); this.draw(); return; }
+    else { this.segs.push({ a: ms, b: ms, gap: 0 }); this.drag = { i: this.segs.length - 1, edge: 'b', fresh: true, from: ms }; }
+    this.sel = this.drag.i; this.draw();
+  }
+  move(e) {
+    if (!this.drag) return;
+    const ms = this.xToMs(e), s = this.segs[this.drag.i];
+    if (this.drag.fresh) { s.a = Math.min(this.drag.from, ms); s.b = Math.max(this.drag.from, ms); }
+    else if (this.drag.edge === 'a') s.a = Math.min(ms, s.b - MIN_SEG);
+    else s.b = Math.max(ms, s.a + MIN_SEG);
+    s.a = Math.max(0, s.a); s.b = Math.min(this.dur, s.b);
+    this.draw();
+  }
+  up() {
+    if (!this.drag) return;
+    const s = this.segs[this.drag.i];
+    if (this.drag.fresh && s.b - s.a < MIN_SEG) { this.segs.splice(this.drag.i, 1); this.sel = -1; }
+    this.drag = null;
+    const keep = this.segs[this.sel]; this.segs.sort((x, y) => x.a - y.a); this.sel = keep ? this.segs.indexOf(keep) : -1;
+    this.changed();
+  }
+  paintList() {
+    this.head.hidden = !this.segs.length;
+    this.list.textContent = '';
+    this.segs.forEach((s, i) => {
+      const row = document.createElement('div'); row.className = 'h2seg-row' + (i === this.sel ? ' sel' : '');
+      const num = document.createElement('span'); num.className = 'n'; num.textContent = i + 1;
+      const inp = (v, step, set, lbl, dis) => { const x = document.createElement('input'); x.type = 'number'; x.step = step; x.min = 0;
+        x.value = v; x.inputMode = 'decimal'; x.setAttribute('aria-label', lbl + ' отрезка ' + (i + 1)); x.disabled = !!dis;
+        x.onchange = () => { const n = parseFloat(String(x.value).replace(',', '.')); if (isFinite(n)) set(n); this.clamp(s); this.changed(); }; return x; };
+      const lastJoin = this.join && i < this.segs.length - 1;
+      row.append(num,
+        inp(fmtS(s.a), 0.1, n => s.a = n * 1000, 'Начало'),
+        inp(fmtS(s.b), 0.1, n => s.b = n * 1000, 'Конец'),
+        inp(s.gap | 0, 50, n => s.gap = Math.max(0, Math.min(10000, Math.round(n))), 'Пауза после', !lastJoin));
+      const pl = document.createElement('button'); pl.type = 'button'; pl.className = 'h2seg-b pl';
+      pl.textContent = this.pl && this.pl.i === i ? '■' : '▶'; pl.title = 'Прослушать оригинал отрезка';
+      pl.setAttribute('aria-label', 'Прослушать оригинал отрезка ' + (i + 1)); pl.onclick = () => this.playSeg(i);
+      const del = document.createElement('button'); del.type = 'button'; del.className = 'h2seg-b'; del.textContent = '✕';
+      del.setAttribute('aria-label', 'Удалить отрезок ' + (i + 1));
+      del.onclick = () => { if (this.pl && this.pl.i === i) this.stopPl(); this.segs.splice(i, 1); this.sel = -1; this.changed(); };
+      row.append(pl, del);
+      row.onclick = ev => { if (ev.target === row || ev.target === num) { this.sel = i; this.paintList(); this.draw(); } };
+      this.list.appendChild(row);
+    });
+  }
+  clamp(s) {
+    s.a = Math.max(0, Math.min(s.a, this.dur - MIN_SEG));
+    s.b = Math.max(s.a + MIN_SEG, Math.min(s.b, this.dur));
+  }
+  // Оригинал отрезка: аудио — как есть; ноты — чистым тоном
+  playSeg(i) {
+    if (this.pl && this.pl.i === i) { this.stopPl(); return; }
+    this.stopPl();
+    const s = this.segs[i], ac = this.o.getCtx && this.o.getCtx(); if (!ac || !s) return;
+    let h;
+    if (this.src.kind === 'audio') {
+      const n = ac.createBufferSource(), g = ac.createGain(); g.gain.value = 0.8;
+      n.buffer = this.src.buffer; n.connect(g); g.connect(ac.destination);
+      const t0 = ac.currentTime + 0.03; n.start(t0, s.a / 1000, (s.b - s.a) / 1000);
+      h = { t0, stop() { try { n.onended = null; n.stop(); n.disconnect(); } catch (e) {} } };
+      n.onended = () => { if (this.pl && this.pl.h === h) this.stopPl(); };
+    } else {
+      const notes = H2Mel.slice(this.src.raw, s.a, s.b).map(x => ({ f: x.m >= 0 ? Math.round(440 * Math.pow(2, (x.m - 69) / 12)) : 0, d: Math.max(1, Math.round(x.d)) }));
+      h = H2Mel.play(ac, notes, { vol: 10, onEnd: () => { if (this.pl && this.pl.h === h) this.stopPl(); } });
+    }
+    this.pl = { i, h, a: s.a, b: s.b, ac };
+    this.paintList(); this.tick();
+  }
+  stopPl() { if (!this.pl) return; const p = this.pl; this.pl = null; p.h.stop(); cancelAnimationFrame(this.raf); this.paintList(); this.draw(); }
+  tick() { this.draw(); if (this.pl) this.raf = requestAnimationFrame(() => this.tick()); }
+  draw() {
+    const cv = this.cv, w = cv.clientWidth, hh = cv.clientHeight; if (!w || !this.src) return;
+    const dpr = global.devicePixelRatio || 1; if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(hh * dpr); }
+    const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, hh);
+    const css = getComputedStyle(this.box), col = n => css.getPropertyValue(n).trim();
+    const acc = col('--accent') || '#0af', fg = col('--text') || col('--ink') || '#888', mut = col('--muted') || '#888';
+    const X = ms => ms / this.dur * w;
+    // отрезки
+    this.segs.forEach((s, i) => { g.fillStyle = acc; g.globalAlpha = i === this.sel ? 0.30 : 0.18; g.fillRect(X(s.a), 0, X(s.b) - X(s.a), hh);
+      g.globalAlpha = 1; g.fillRect(X(s.a) - 1, 0, 2, hh); g.fillRect(X(s.b) - 1, 0, 2, hh);
+      g.fillStyle = acc; g.font = '600 11px sans-serif'; g.fillText(String(i + 1), X(s.a) + 4, 12); });
+    // содержимое
+    g.fillStyle = fg; g.globalAlpha = 0.75;
+    if (this.src.kind === 'audio') {
+      const n = Math.max(32, Math.floor(w)); if (!this.peaks || this.peaks.length !== n) this.peaks = H2Mel.peaks(this.src.buffer, n);
+      const mid = hh / 2 + 6, amp = (hh - 22) / 2;
+      for (let i = 0; i < n; i++) { const v = Math.max(0.5, this.peaks[i] * amp); g.fillRect(i * w / n, mid - v, Math.max(1, w / n - 0.5), 2 * v); }
+    } else {
+      let lo = 127, hi = 0; for (const x of this.src.raw) if (x.m >= 0) { lo = Math.min(lo, x.m); hi = Math.max(hi, x.m); }
+      const span = Math.max(12, hi - lo), top = 18, ah = hh - top - 6; let t = 0;
+      for (const x of this.src.raw) { if (x.m >= 0) { const y = top + ah - (x.m - lo) / span * ah; g.fillRect(X(t), y - 1.5, Math.max(1, X(t + x.d) - X(t) - 0.5), 3); } t += x.d; }
+    }
+    g.globalAlpha = 1;
+    // шкала времени
+    g.fillStyle = mut; g.font = '10px sans-serif';
+    const stepS = [1, 2, 5, 10, 15, 30, 60, 120].find(v => this.dur / 1000 / v <= w / 60) || 300;
+    for (let s = 0; s * 1000 <= this.dur; s += stepS) { const x = X(s * 1000); g.fillRect(x, hh - 4, 1, 4); if (x < w - 24) g.fillText(s + ' с', x + 2, hh - 6); }
+    // позиция воспроизведения
+    if (this.pl) { const p = Math.min(this.pl.b, this.pl.a + Math.max(0, this.pl.ac.currentTime - this.pl.h.t0) * 1000);
+      g.fillStyle = acc; g.fillRect(X(p) - 1, 0, 2, hh); }
+  }
+}
+H2Mel.SegEditor = SegEditor;
+
+/* ── Загрузка в пульт ────────────────────────────────────────────────────────── */
+/* files — [{name, bytes}] (готовые H2M1). upload(bytes) → Promise<{ok,err}> (POST /rmel/up),
+   cfg() → Promise<объект /rmel/cfg>. Мелодии идут по одной: следующая — после итога
+   предыдущей («done»/«err»). onStep(текст) — ход загрузки. Возвращает число загруженных. */
+H2Mel.uploadRemote = async function (files, upload, cfg, onStep) {
+  let ok = 0;
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i], tag = files.length > 1 ? (i + 1) + '/' + files.length + ' «' + f.name + '»' : '«' + f.name + '»';
+    onStep('Отправка ' + tag + ' в мозг…');
+    const r = await upload(f.bytes);
+    if (!r || !r.ok) throw new Error((r && r.err) || 'мозг не принял мелодию');
+    const t0 = Date.now(); let seen = false;
+    for (;;) {
+      await new Promise(res => setTimeout(res, 400));
+      const c = await cfg(), j = c.job || {};
+      if (j.st === 'send' || j.st === 'check') { seen = true; onStep('Передача ' + tag + ' в пульт… ' + (j.pct | 0) + ' %'); }
+      else if (j.st === 'done' && (seen || Date.now() - t0 > 800)) break;
+      else if (j.st === 'err' && (seen || Date.now() - t0 > 800)) throw new Error(j.err || 'ошибка передачи');
+      if (Date.now() - t0 > 60000) throw new Error('пульт не ответил за минуту');
+    }
+    ok++;
+  }
+  return ok;
+};
+
+global.H2Mel = H2Mel;
+})(window);
+/*H2MEL-END*/
+</script>
 <script>
 /* ══════════ ⚡ v6.3: ПОМОЩНИКИ DOM ══════════
    Статус приходит раз в секунду. Элементы кэшируются, а в DOM пишется только то,
@@ -825,7 +1280,7 @@ function showPage(p,btn){
   byId('page-'+p).classList.add('active');
   btn.classList.add('active');
   if(p==='graph') drawCharts();
-  if(p==='sound') sndLoadCfg();   // ⚡ v6.0: свежий список мелодий и настроек звука
+  if(p==='sound'){ sndLoadCfg(); rmLoad(true); }   // ⚡ v6.0: свежий список мелодий и настроек звука; ⚡ v6.7: мелодии пульта
   if(p==='diag')  logLoad();      // ⚡ v6.2: журнал событий
 }
 
@@ -1126,7 +1581,8 @@ function drawCharts(){
    правку (sndDirty). Остальное — из /snd/cfg при открытии вкладки. */
 let sndCfg=null, sndDirty=false;
 const sndUi={out:2,vol:10};
-const SND_BUILTIN=[{id:-1,name:'H2 PRO',bi:1},{id:-2,name:'Сигнал включения',bi:1},{id:-3,name:'Тревога',bi:1}];
+const SND_BUILTIN=[{id:-1,name:'H2 PRO',bi:1},{id:-2,name:'Сигнал включения',bi:1},{id:-3,name:'Тревога',bi:1},
+  {id:-4,name:'Выключение',bi:1},{id:-5,name:'Предупреждение',bi:1},{id:-6,name:'Продувка завершена',bi:1}];
 // ⚡ v6.5: «Где играть» применяется СРАЗУ (/snd/set?out= — только вывод, прочие
 // несохранённые правки не трогаем): тревоги, события, щелчки, «Бумер» пульта и уже
 // звучащая мелодия переходят на выбранное устройство без «Применить». Пока запрос в
@@ -1144,29 +1600,35 @@ function sndSetOut(v){
 function sndPaintOut(){ document.querySelectorAll('#sndOutSeg .seg-opt').forEach(b=>b.classList.toggle('active',+b.dataset.v===sndUi.out)); }
 function sndOnVol(v){ sndUi.vol=+v; sndDirty=true; sndPaintVol(); }
 function sndPaintVol(){ setRng(byId('sndVol'),sndUi.vol); txt('sndVolVal',sndUi.vol); }
+// ⚡ v6.7: мелодии событий — [ключ /snd/cfg, id списка, встроенная по умолчанию, можно «Нет», предел своей, мс]
+const SND_EVENTS=[['boot','sndBoot',-1,1,0],['on','sndOn',-2,1,0],['off','sndOff',-4,1,0],['pur','sndPur',-6,1,0],
+  ['alr','sndAlr',-3,0,10000],['wrn','sndWrn',-5,0,10000]];
 function sndLoadCfg(){
   return getJson('/snd/cfg').then(r=>r.json())
     .then(c=>{ sndCfg=c;
       if(!sndOutPending){ sndUi.out=sndOutOk=c.out; sndPaintOut(); }   // ⚡ v6.5: вывод — всегда с мозга
       if(!sndDirty){ sndUi.vol=c.vol; sndPaintVol();
         const a=byId('sndAlm'), k=byId('sndClk'); if(a) a.checked=!!c.alm; if(k) k.checked=!!c.clk; }
-      sndFillSel('sndBoot',c.boot,-1); sndFillSel('sndOn',c.on,-2); melRenderLib(); })
+      SND_EVENTS.forEach(e=>sndFillSel(e,c[e[0]]));
+      melRenderLib(); })
     .catch(()=>{ txt('melInfo','Нет ответа от мозга — список мелодий недоступен'); });
 }
-// Список «мелодия события»: Нет / встроенные / пользовательские. Во время правки выбор не сбрасываем.
-function sndFillSel(id,val,def){
-  const s=byId(id); if(!s) return;
-  const want=(sndDirty&&s.value!=='')?s.value:String(val);
+// Список «мелодия события»: Нет / встроенные / свои (для тревог — только короткие). Во время правки выбор не сбрасываем.
+function sndFillSel(ev,val){
+  const [,id,def,none,max]=ev, s=byId(id); if(!s) return;
+  const want=(sndDirty&&s.value!=='')?s.value:String(val===undefined?def:val);
   s.innerHTML='';
   const add=(v,t)=>{ const o=document.createElement('option'); o.value=String(v); o.textContent=t; s.appendChild(o); };
-  add(-9,'Нет'); add(-1,'H2 PRO (встроенная)'); add(-2,'Сигнал включения (встроенный)');
-  ((sndCfg&&sndCfg.list)||[]).forEach(m=>add(m.id,m.name));
+  if(none) add(-9,'Нет');
+  const bi=SND_BUILTIN.find(b=>b.id===def); add(def,(bi?bi.name:'Стандартная')+' (встроенная)');
+  [-1,-2].filter(v=>v!==def).forEach(v=>add(v,SND_BUILTIN.find(b=>b.id===v).name+' (встроенная)'));
+  ((sndCfg&&sndCfg.list)||[]).filter(m=>!max||m.ms<=max).forEach(m=>add(m.id,m.name));
   s.value=want; if(s.value!==want) s.value=String(def);
 }
 function sndApply(){
   if(!sndCfg){ flash('sndOk','✗ нет данных от мозга — повторите',true); sndLoadCfg(); return; }
   const q='out='+sndUi.out+'&vol='+sndUi.vol+'&alm='+(byId('sndAlm').checked?1:0)+'&clk='+(byId('sndClk').checked?1:0)
-    +'&boot='+byId('sndBoot').value+'&on='+byId('sndOn').value;
+    +SND_EVENTS.map(e=>'&'+e[0]+'='+byId(e[1]).value).join('');
   getJson('/snd/set?'+q).then(()=>{ sndDirty=false; flash('sndOk','✓ настройки звука сохранены'); sndLoadCfg(); })
     .catch(e=>flash('sndOk','✗ '+netErr(e),true));
 }
@@ -1185,15 +1647,17 @@ const ICO={
   play:'<svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></svg>',
   ear:'<svg viewBox="0 0 24 24"><path d="M4 18v-5a8 8 0 0 1 16 0v5"/><path d="M4 15h3v6H5a1 1 0 0 1-1-1zM20 15h-3v6h2a1 1 0 0 0 1-1z"/></svg>',
   stop:'<svg viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/></svg>',
-  del:'<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>'
+  del:'<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>',
+  send:'<svg viewBox="0 0 24 24"><path d="M5 12h12M13 7l5 5-5 5"/></svg>'
 };
 function melFmtBytes(b){ return b>=1048576?(b/1048576).toFixed(2)+' МБ':Math.round(b/1024)+' КБ'; }
 function melRowHtml(m){
   const meta=m.bi?'встроенная':(m.n+' нот · '+(m.ms/1000).toFixed(1)+' с');
   return `<div class="mel-row"><div class="mel-main"><div class="mel-name">${esc(m.name)}</div><div class="mel-meta">${meta}</div></div>`
     +`<button class="ico-btn" title="Сыграть на устройстве" aria-label="Сыграть мелодию на устройстве" onclick="melDevPlay(${m.id})">${ICO.play}</button>`
-    +`<button class="ico-btn" data-pv="${m.id}" title="Прослушать в браузере" aria-label="Прослушать мелодию в браузере" onclick="melPreview(${m.id})">${ICO.ear}</button>`
-    +(m.bi?'<span class="ico-ph"></span>':`<button class="ico-btn del" title="Удалить" aria-label="Удалить мелодию" onclick="melDel(${m.id})">${ICO.del}</button>`)
+    +`<button class="ico-btn" data-pv="${m.id}" title="Прослушать в браузере (как на зуммере)" aria-label="Прослушать мелодию в браузере" onclick="melPreview(${m.id})">${ICO.ear}</button>`
+    +(m.bi?'<span class="ico-ph"></span><span class="ico-ph"></span>':`<button class="ico-btn" title="Отправить в пульт" aria-label="Отправить мелодию в пульт" onclick="rmSendBrain(${m.id})">${ICO.send}</button>`
+      +`<button class="ico-btn del" title="Удалить" aria-label="Удалить мелодию" onclick="melDel(${m.id})">${ICO.del}</button>`)
     +'</div>';
 }
 function melRenderLib(){
@@ -1213,7 +1677,7 @@ function melPreview(id){
   if(melPl&&melPl.owner==='lib'+id){ melStopPreview(); return; }
   try{ melCtx(); }catch(e){ flash('melOk','✗ '+e.message,true); return; }   // AudioContext — строго в обработчике нажатия (iOS)
   getJson('/snd/get?id='+id).then(r=>r.arrayBuffer())
-    .then(ab=>melPlay(melParseH2M(ab).notes,'lib'+id))
+    .then(ab=>melPlay(melParseH2M(ab).notes,'lib'+id,false))
     .catch(e=>flash('melOk','✗ '+(e.status?'мелодия не найдена':netErr(e)),true));
 }
 function melDel(id){
@@ -1224,8 +1688,70 @@ function melDel(id){
     .catch(e=>flash('melOk','✗ '+netErr(e),true));
 }
 
-/* ══════════ ⚡ v6.0: ПРОСЛУШИВАНИЕ В БРАУЗЕРЕ (WebAudio) ══════════
-   Одна OscillatorNode 'square' + GainNode; вся мелодия планируется сразу. */
+/* ══════════ ⚡ v6.7: МЕЛОДИИ ПУЛЬТА (/rmel/*) ══════════
+   Опись пульта мозг получает по радио; пока идёт передача — опрос раз в 0.5 с. */
+let rmCfg=null, rmDirty=false, rmTimer=0, rmBusy=false;
+function rmLoad(force){
+  clearTimeout(rmTimer);
+  return getJson('/rmel/cfg').then(r=>r.json()).then(c=>{ rmCfg=c; rmRender();
+      const st=c.job&&c.job.st, active=st==='send'||st==='check';
+      // опись ещё не пришла (пульт отвечает через мозг) или идёт передача — спросить ещё раз
+      if(byId('page-sound').classList.contains('active')&&(active||(c.online&&!c.complete)||force===true&&!c.known))
+        rmTimer=setTimeout(rmLoad,active?500:900);
+    })
+    .catch(()=>{ txt('rmSt','нет ответа'); cn('rmSt','pill bad'); });
+}
+function rmFillSel(id,val,first){
+  const s=byId(id); if(!s) return;
+  const want=(rmDirty&&s.value!=='')?s.value:String(val);
+  s.innerHTML='';
+  const add=(v,t)=>{ const o=document.createElement('option'); o.value=String(v); o.textContent=t; s.appendChild(o); };
+  add(first[0],first[1]); ((rmCfg&&rmCfg.list)||[]).forEach(m=>add(m.id,m.name));
+  s.value=want; if(s.value!==want) s.value=String(first[0]);
+}
+function rmRender(){
+  const c=rmCfg; if(!c) return;
+  setPill('rmSt',c.online,c.known?(c.list.length+' из '+c.slots):'на связи','нет связи');
+  const j=c.job||{}, p=byId('rmProg');
+  if(j.st==='send'||j.st==='check'){ p.classList.add('show'); byId('rmProgBar').style.width=(j.pct|0)+'%'; }
+  else p.classList.remove('show');
+  let h='';
+  if(!c.known) h='<div class="mel-empty">'+(c.online?'Запрашиваю список у пульта…':'Пульт не на связи — включите его')+'</div>';
+  else if(!c.fsok) h='<div class="mel-empty">Память пульта (LittleFS) недоступна</div>';
+  else if(!c.list.length) h='<div class="mel-empty">В пульте только «Бумер» — добавьте свою мелодию ниже («В пульт»)</div>';
+  else h=c.list.map(m=>`<div class="mel-row"><div class="mel-main"><div class="mel-name">${esc(m.name)}${m.id===c.act?' · ▶ кнопка':''}${m.id===c.boot?' · при включении':''}</div>`
+    +`<div class="mel-meta">${m.ms?m.n+' нот · '+(m.ms/1000).toFixed(1)+' с':'…'}</div></div>`
+    +`<span class="ico-ph"></span><span class="ico-ph"></span><button class="ico-btn del" title="Удалить из пульта" aria-label="Удалить мелодию из пульта" onclick="rmDel(${m.id})">${ICO.del}</button></div>`).join('');
+  byId('rmList').innerHTML=h;
+  if(c.known){ rmFillSel('rmAct',c.act,[-1,'«Бумер» (встроенный)']); rmFillSel('rmBoot',c.boot,[-9,'Нет']); }
+}
+function rmApply(){
+  if(!rmCfg||!rmCfg.known){ flash('rmOk','✗ список пульта ещё не получен',true); rmLoad(true); return; }
+  getJson('/rmel/set?act='+byId('rmAct').value+'&boot='+byId('rmBoot').value).then(r=>r.json()).then(j=>{
+      if(!j.ok) throw new Error(j.err); rmDirty=false; flash('rmOk','✓ отправлено на пульт'); setTimeout(()=>rmLoad(true),600); })
+    .catch(e=>flash('rmOk','✗ '+(e.message||netErr(e)),true));
+}
+function rmDel(id){
+  const m=((rmCfg&&rmCfg.list)||[]).find(x=>x.id===id);
+  if(!confirm('Удалить из пульта «'+(m?m.name:id)+'»?')) return;
+  getJson('/rmel/del?id='+id).then(r=>r.json()).then(j=>{ if(!j.ok) throw new Error(j.err); flash('rmOk','✓ удалено'); setTimeout(()=>rmLoad(true),600); })
+    .catch(e=>flash('rmOk','✗ '+(e.message||netErr(e)),true));
+}
+// Отправка мелодии из библиотеки мозга в пульт
+function rmSendBrain(id){
+  if(rmBusy) return;
+  rmBusy=true;
+  H2Mel.uploadRemote([{name:(((sndCfg&&sndCfg.list)||[]).find(x=>x.id===id)||{}).name||'мелодия',bytes:null}],
+      ()=>getJson('/rmel/send?id='+id).then(r=>r.json()), rmCfgJson, t=>flash('melOk',t))
+    .then(()=>{ flash('melOk','✓ мелодия в пульте — выберите её в блоке «Мелодии пульта»'); rmLoad(true); })
+    .catch(e=>flash('melOk','✗ '+(e.message||netErr(e)),true))
+    .finally(()=>{ rmBusy=false; });
+}
+function rmCfgJson(){ return getJson('/rmel/cfg').then(r=>r.json()).then(c=>{ rmCfg=c; rmRender(); return c; }); }
+
+/* ══════════ ⚡ v6.0/v6.7: ПРОСЛУШИВАНИЕ В БРАУЗЕРЕ (WebAudio) ══════════
+   ⚡ v6.7: «как на зуммере» — H2Mel.play: скважность громкости из «Звука», резонанс
+   зуммера; music — огибающая кнопки МЕЛОДИЯ пульта. */
 let melAc=null, melPl=null;
 function melCtx(){
   if(!melAc){ const AC=window.AudioContext||window.webkitAudioContext;
@@ -1233,34 +1759,21 @@ function melCtx(){
   if(melAc.state==='suspended') melAc.resume();
   return melAc;
 }
-function melPlay(notes,owner){
+function melPlay(notes,owner,music,onEnd){
   melStopPreview();
-  const ac=melCtx(), osc=ac.createOscillator(), g=ac.createGain();
-  const V=0.1, R=0.004;   // громкость 0.1 и короткие фронты против щелчков
-  osc.type='square'; g.gain.value=0; osc.connect(g); g.connect(ac.destination);
-  const t0=ac.currentTime+0.05; let t=t0;
-  for(const n of notes){ const d=n.d/1000;
-    if(n.f>0){ osc.frequency.setValueAtTime(n.f,t);
-      if(d>3*R){ g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(V,t+R);
-        g.gain.setValueAtTime(V,t+d-R); g.gain.linearRampToValueAtTime(0,t+d); }
-      else{ g.gain.setValueAtTime(V,t); g.gain.setValueAtTime(0,t+d); } }
-    t+=d; }
-  osc.start(t0); osc.stop(t+0.02);
-  melPl={osc,g,owner};
-  osc.onended=()=>{ if(melPl&&melPl.osc===osc){ melPl=null; melPlUi(); } };
+  const h=H2Mel.play(melCtx(),notes,{vol:sndUi.vol,music,onEnd:()=>{ if(melPl&&melPl.h===h){ melPl=null; melPlUi(); if(onEnd) onEnd(); } }});
+  melPl={h,owner};
   melPlUi();
 }
 function melStopPreview(){
   if(!melPl) return;
-  const p=melPl; melPl=null;
-  try{ p.osc.onended=null; p.osc.stop(); }catch(e){}
-  try{ p.osc.disconnect(); p.g.disconnect(); }catch(e){}
+  const p=melPl; melPl=null; p.h.stop();
   melPlUi();
 }
 function melPlUi(){
   const own=melPl?melPl.owner:'';
   txt('melListenBtn',own==='res'?'■ Стоп':'Прослушать');
-  document.querySelectorAll('[data-pv]').forEach(b=>{ const on=own==='lib'+b.dataset.pv;
+  document.querySelectorAll('[data-pv]').forEach(b=>{ const on=own===(b.dataset.pv.charAt(0)==='p'?b.dataset.pv:'lib'+b.dataset.pv);
     if(b.classList.contains('on')!==on||!b.innerHTML){ b.classList.toggle('on',on); b.innerHTML=on?ICO.stop:ICO.ear; } });
 }
 
@@ -1400,55 +1913,6 @@ function melMidiRaw(mid,sel){
   return raw;
 }
 
-// Аудио → мелодия: моно, ~11 кГц, YIN (окно 512, шаг 12 мс, 70–2000 Гц), порог тишины −35 дБ,
-// полутона, медиана по 5 кадрам, склейка, отбрасывание < 50 мс. Считается кусками с отдачей управления.
-async function melAudioRaw(file,secs){
-  melProg(0,'Декодирование аудио…');
-  const ab=await melReadFile(file,false), ac=melCtx();
-  let buf;
-  try{ buf=await new Promise((res,rej)=>{ const pr=ac.decodeAudioData(ab,res,rej); if(pr&&pr.then) pr.then(res,rej); }); }
-  catch(e){ throw new Error('Не удалось декодировать аудио — этот формат не поддерживается браузером'); }
-  const sr0=buf.sampleRate, fac=Math.max(1,Math.round(sr0/11025)), sr=sr0/fac, chs=buf.numberOfChannels;
-  const n=Math.floor(Math.min(buf.length,Math.floor(secs*sr0))/fac), ch=[];
-  for(let c=0;c<chs;c++) ch.push(buf.getChannelData(c));
-  const x=new Float32Array(n), kk=1/(fac*chs);
-  for(let i=0;i<n;i++){ let s=0; const o=i*fac;   // понижение частоты усреднением + сведение в моно
-    for(let c=0;c<chs;c++){ const a=ch[c]; for(let j=0;j<fac;j++) s+=a[o+j]; } x[i]=s*kk; }
-  const W=512, tMin=Math.max(2,Math.floor(sr/2000)), tMax=Math.min(Math.ceil(sr/70),W>>1), L=W-tMax;
-  const hop=Math.max(1,Math.round(sr*0.012)), nf=n>=W?Math.floor((n-W)/hop)+1:0;
-  if(nf<5) throw new Error('Аудиофрагмент слишком короткий');
-  const f0=new Float32Array(nf), rms=new Float32Array(nf), d=new Float32Array(tMax+1);
-  let tY=performance.now();
-  for(let fi=0;fi<nf;fi++){
-    const o=fi*hop; let e=0;
-    for(let j=0;j<W;j++){ const v=x[o+j]; e+=v*v; }
-    rms[fi]=Math.sqrt(e/W);
-    if(e>0){
-      let run=0;   // разностная функция + кумулятивная нормировка (CMNDF)
-      for(let t=1;t<=tMax;t++){ let s=0; for(let j=0;j<L;j++){ const v=x[o+j]-x[o+j+t]; s+=v*v; }
-        run+=s; d[t]=run>0?s*t/run:1; }
-      let bt=-1;
-      for(let t=tMin;t<=tMax;t++) if(d[t]<0.15){ while(t<tMax&&d[t+1]<d[t]) t++; bt=t; break; }
-      if(bt>0){ let tau=bt;
-        if(bt>1&&bt<tMax){ const a=d[bt-1], c=d[bt+1], den=a-2*d[bt]+c; if(den>1e-9) tau=bt+0.5*(a-c)/den; }   // парабола
-        const f=sr/tau; if(f>=70&&f<=2000) f0[fi]=f; }
-    }
-    if(performance.now()-tY>30){ melProg(fi/nf,'Анализ аудио…'); await new Promise(r=>setTimeout(r,0)); tY=performance.now(); }
-  }
-  let mx=0; for(let i=0;i<nf;i++) if(rms[i]>mx) mx=rms[i];
-  const thr=mx*Math.pow(10,-35/20), mi=new Int16Array(nf), md=new Int16Array(nf), w=[0,0,0,0,0];
-  for(let i=0;i<nf;i++) mi[i]=(f0[i]>0&&mx>0&&rms[i]>=thr)?Math.round(69+12*Math.log2(f0[i]/440)):0;
-  for(let i=0;i<nf;i++){ for(let k=-2;k<=2;k++) w[k+2]=mi[Math.min(nf-1,Math.max(0,i+k))];
-    md[i]=w.slice().sort((a,b)=>a-b)[2]; }
-  const fms=hop/sr*1000, out=[];
-  for(let i=0;i<nf;){ let j=i; while(j<nf&&md[j]===md[i]) j++;
-    const sg={m:md[i]>0?md[i]:-1,d:(j-i)*fms}, Lp=out[out.length-1];
-    if(Lp&&(sg.d<50||Lp.m===sg.m)) Lp.d+=sg.d; else out.push(sg);
-    i=j; }
-  if(!out.some(s=>s.m>=0)) throw new Error('В аудио не найдено устойчивых нот — лучше всего подходят простые одноголосые рингтоны');
-  return out;
-}
-
 /* ══════════ ⚡ v6.0: ПОДГОТОВКА ПОД ЗУММЕР ══════════ */
 function melHz(m){ return 440*Math.pow(2,(m-69)/12); }
 function melPrepare(raw,o){
@@ -1502,11 +1966,18 @@ function melPrepare(raw,o){
   return {notes,k,auto:o.oct==='auto',ms:prev,fmin,fmax,cutT,cutN,maxMs:o.maxMs};
 }
 
-/* ══════════ ⚡ v6.0: ИМПОРТ — ИНТЕРФЕЙС ══════════
-   Поток: файл / RTTTL-текст → «Подготовить» → «Прослушать» → «Сохранить в мозг».
+/* ══════════ ⚡ v6.0/v6.7: ИМПОРТ — ИНТЕРФЕЙС ══════════
+   Поток: файл / RTTTL-текст → (отрезки) → «Подготовить» → «Прослушать» → «Сохранить в мозг» / «В пульт».
+   ⚡ v6.7: шкала трека с отрезками (H2Mel.SegEditor): склеить в одну мелодию с паузами
+   или каждый отрезок отдельно. Аудио распознаётся только на выбранных отрезках.
    После первой подготовки смена параметров пересчитывает результат сразу. */
 const MEL_FILE_HINT='MIDI, RTTTL или аудио (mp3, wav, ogg, m4a)';
-let melSrc=null, melMidi=null, melAudio=null, melLastRaw=null, melRes=null, melBusy=false, melNameAuto=true;
+let melSrc=null, melMidi=null, melAudio=null, melRaw=null, melLastPieces=null, melRes=null, melBusy=false, melNameAuto=true, melSaving=false;
+let melSeg=null;
+function melSegInit(){
+  if(melSeg) return;
+  melSeg=new H2Mel.SegEditor(byId('melSeg'),{getCtx:()=>{ try{ return melCtx(); }catch(e){ return null; } },onChange:melOnSeg});
+}
 function melMsgSet(id,t,c){ const e=byId(id); if(!e) return; e.textContent=t; e.className='msg'+(c?' '+c:''); }
 function melProg(fr,label){
   const p=byId('melProg'); if(!p) return;
@@ -1518,11 +1989,12 @@ function melSetName(n){ if(melNameAuto){ const e=byId('melName'); if(e) e.value=
 function melOpts(){ const o=byId('melOct').value;
   return {oct:o==='auto'?'auto':+o,tempo:+byId('melTempo').value,gap:+byId('melGap').value,maxMs:+byId('melMax').value*1000}; }
 function melClearRes(){
-  if(melPl&&melPl.owner==='res') melStopPreview();
+  if(melPl&&(melPl.owner==='res'||melPl.owner.charAt(0)==='p')) melStopPreview();
   melRes=null; const r=byId('melRes'); if(r) r.classList.remove('show'); melMsgSet('melSaveMsg','','');
 }
-function melNewSource(){ melClearRes(); melLastRaw=null; melMidi=null; melNameAuto=true;
-  byId('melTrkFld').style.display='none'; melMsgSet('melMsg','',''); }
+function melShowSeg(src){ melSegInit(); melSeg.setSource(src); byId('melSegLbl').style.display=src?'':'none'; }
+function melNewSource(){ melClearRes(); melLastPieces=null; melMidi=null; melAudio=null; melRaw=null; melNameAuto=true;
+  byId('melTrkFld').style.display='none'; melMsgSet('melMsg','',''); melShowSeg(null); }
 async function melOnFile(inp){
   const f=inp.files[0]; inp.value=''; if(!f) return;
   melNewSource(); melSrc=null; byId('melText').value='';
@@ -1532,62 +2004,105 @@ async function melOnFile(inp){
     :(['mp3','wav','ogg','oga','opus','m4a','aac','flac','webm'].includes(ext)||/^audio\//.test(f.type))?'audio':null;
   txt('melFileName',f.name);
   if(!kind){ txt('melFileName',MEL_FILE_HINT); melMsgSet('melMsg','Формат не поддерживается: нужен .mid, .rtttl/.txt или аудиофайл','bad'); return; }
-  melSrc={kind,file:f}; melSetName(f.name.replace(/\.[^.]*$/,''));
-  if(kind==='midi'){
-    try{ melMidi=melParseMidi(await melReadFile(f,false)); }
-    catch(e){ melSrc=null; melMsgSet('melMsg',e.message,'bad'); return; }
-    const s=byId('melTrk'); s.innerHTML='';
-    const add=(v,t)=>{ const o=document.createElement('option'); o.value=String(v); o.textContent=t; s.appendChild(o); };
-    const lbl=t=>t.num+': '+(t.name||'Дорожка')+' ('+t.notes.length+' нот)';
-    add('auto','Авто — '+lbl(melMidi.tracks[melMidi.auto])); add('all','Все дорожки (верхний голос)');
-    melMidi.tracks.forEach((t,i)=>add(i,lbl(t)));
-    byId('melTrkFld').style.display='';
-  }
-  else if(kind==='audio') melMsgSet('melMsg','Аудио распознаётся при подготовке — это может занять несколько секунд.','');
+  const src={kind,file:f}; melSrc=src; melSetName(f.name.replace(/\.[^.]*$/,''));
+  try{
+    if(kind==='midi'){
+      melMidi=melParseMidi(await melReadFile(f,false));
+      const s=byId('melTrk'); s.innerHTML='';
+      const add=(v,t)=>{ const o=document.createElement('option'); o.value=String(v); o.textContent=t; s.appendChild(o); };
+      const lbl=t=>t.num+': '+(t.name||'Дорожка')+' ('+t.notes.length+' нот)';
+      add('auto','Авто — '+lbl(melMidi.tracks[melMidi.auto])); add('all','Все дорожки (верхний голос)');
+      melMidi.tracks.forEach((t,i)=>add(i,lbl(t)));
+      byId('melTrkFld').style.display='';
+      melRaw=melMidiRaw(melMidi,'auto'); melShowSeg({kind:'notes',raw:melRaw});
+    } else if(kind==='rtttl'){
+      const r=melParseRtttl(await melReadFile(f,true)); if(r.name) melSetName(r.name);
+      melRaw=r.raw; melShowSeg({kind:'notes',raw:melRaw});
+    } else {
+      melMsgSet('melMsg','Декодирование аудио…','');
+      const ab=await melReadFile(f,false), buf=await H2Mel.decode(melCtx(),ab);
+      if(src!==melSrc) return;   // файл сменили во время декодирования
+      melAudio={file:f,buffer:buf,cache:new Map()};
+      melShowSeg({kind:'audio',buffer:buf});
+      melMsgSet('melMsg','Длительность '+(buf.duration).toFixed(1)+' с. Выделите отрезки на шкале или нажмите «Подготовить» — возьмётся начало трека.','');
+    }
+  }catch(e){ if(src!==melSrc) return; melSrc=null; melShowSeg(null); melMsgSet('melMsg',(e&&e.message)||String(e),'bad'); }
 }
+let melTextT=0;
 function melOnText(){
   const has=byId('melText').value.trim()!=='';
   if(!melSrc||melSrc.kind!=='text'){ melNewSource(); txt('melFileName',MEL_FILE_HINT); }
   else melClearRes();
   melSrc=has?{kind:'text'}:null;
+  clearTimeout(melTextT);
+  melTextT=setTimeout(()=>{ if(!melSrc||melSrc.kind!=='text') return;
+    try{ const r=melParseRtttl(byId('melText').value); melSetName(r.name); melRaw=r.raw;
+      if(melSeg&&melSeg.src&&melSeg.src.kind==='notes') melSeg.updateNotes(melRaw); else melShowSeg({kind:'notes',raw:melRaw}); }
+    catch(e){ melRaw=null; melShowSeg(null); } },400);
 }
-async function melGetRaw(){
+function melSegs(){ return melSeg&&melSeg.src?melSeg.segs.map(s=>({a:Math.round(s.a),b:Math.round(s.b),gap:s.gap|0})):[]; }
+// «Сырые» мелодии [{m,d}] по отрезкам: одна (склеить / без отрезков) или несколько
+async function melGetPieces(){
   if(!melSrc) throw new Error('Выберите файл или вставьте RTTTL-текст');
-  if(melSrc.kind==='midi') return melMidiRaw(melMidi,byId('melTrk').value);
-  if(melSrc.kind==='text'||melSrc.kind==='rtttl'){
-    const isText=melSrc.kind==='text';
-    const r=melParseRtttl(isText?byId('melText').value:await melReadFile(melSrc.file,true));
-    if(r.name||isText) melSetName(r.name);   // у файла без имени в RTTTL остаётся имя файла
-    return r.raw;
+  const segs=melSegs(), join=!melSeg||melSeg.join;
+  if(melSrc.kind!=='audio'){
+    if(melSrc.kind==='text'){ const r=melParseRtttl(byId('melText').value); melSetName(r.name); melRaw=r.raw; }
+    if(!melRaw) throw new Error('В источнике не найдено нот');
+    return H2Mel.pieces(segs,join,s=>H2Mel.slice(melRaw,s.a,s.b),()=>melRaw);
   }
-  const secs=+byId('melSecs').value;   // аудио: результат анализа кэшируется
-  if(!(melAudio&&melAudio.file===melSrc.file&&melAudio.secs===secs))
-    melAudio={file:melSrc.file,secs,raw:await melAudioRaw(melSrc.file,secs)};
-  return melAudio.raw;
+  // аудио: распознаём только выбранные отрезки (результат кэшируется по границам)
+  const A=melAudio; if(!A) throw new Error('Аудио ещё не декодировано');
+  const parts=segs.length?segs:[{a:0,b:Math.min(A.buffer.duration*1000,+byId('melSecs').value*1000),gap:0}];
+  const tot=parts.reduce((s,x)=>s+x.b-x.a,0);
+  if(tot>180000) throw new Error('Отрезки длиннее 3 минут в сумме — распознавание будет слишком долгим, сократите их');
+  let done=0; const raws=[];
+  for(const p of parts){ const key=p.a+'-'+p.b;
+    if(!A.cache.has(key)) A.cache.set(key,await H2Mel.pitchTrack(A.buffer,p.a,p.b,fr=>melProg((done+fr*(p.b-p.a))/tot,'Анализ аудио…')));
+    done+=p.b-p.a; raws.push(A.cache.get(key)); }
+  if(!raws.some(r=>r.some(x=>x.m>=0))) throw new Error('В аудио не найдено устойчивых нот — лучше всего подходят простые одноголосые рингтоны');
+  let i=0;
+  return H2Mel.pieces(segs,join,()=>raws[i++],()=>raws[0]);
 }
-function melRunPrep(raw){
-  if(melPl&&melPl.owner==='res') melStopPreview();
-  melRes=melPrepare(raw,melOpts()); melLastRaw=raw;
-  const r=melRes, ex=['сдвиг октав '+(r.k>0?'+':'')+String(r.k).replace('-','−')+(r.auto?' (авто)':'')];
-  if(r.cutT) ex.push('обрезано до '+(r.maxMs/1000)+' с');
-  if(r.cutN) ex.push('обрезано до 1200 нот');
-  txt('melStat',r.notes.length+' нот · '+(r.ms/1000).toFixed(1)+' с · '+r.fmin+'–'+r.fmax+' Гц');
+function melRunPrep(pieces){
+  if(melPl&&(melPl.owner==='res'||melPl.owner.charAt(0)==='p')) melStopPreview();
+  const o=melOpts(), list=[], skipped=[];
+  pieces.forEach((p,i)=>{ try{ list.push(melPrepare(p,o)); }catch(e){ skipped.push(i+1); } });
+  if(!list.length) throw new Error('После подготовки не осталось нот');
+  melRes={list,skipped}; melLastPieces=pieces;
+  const r=list[0], ms=list.reduce((s,x)=>s+x.ms,0), n=list.reduce((s,x)=>s+x.notes.length,0);
+  const fmin=Math.min(...list.map(x=>x.fmin)), fmax=Math.max(...list.map(x=>x.fmax));
+  const ex=['сдвиг октав '+(r.k>0?'+':'')+String(r.k).replace('-','−')+(r.auto?' (авто)':'')];
+  if(list.some(x=>x.cutT)) ex.push('обрезано до '+(r.maxMs/1000)+' с');
+  if(list.some(x=>x.cutN)) ex.push('обрезано до 1200 нот');
+  if(skipped.length) ex.push('без нот, пропущены отрезки: '+skipped.join(', '));
+  txt('melStat',(list.length>1?list.length+' мелодии · ':'')+n+' нот · '+(ms/1000).toFixed(1)+' с · '+fmin+'–'+fmax+' Гц');
   txt('melStat2',ex.join(' · '));
-  byId('melRes').classList.add('show'); melMsgSet('melSaveMsg','','');
+  byId('melPieces').innerHTML=list.length>1?list.map((x,i)=>`<div class="mel-row"><div class="mel-main"><div class="mel-name">${i+1}. ${esc(melPieceName(i))}</div>`
+    +`<div class="mel-meta">${x.notes.length} нот · ${(x.ms/1000).toFixed(1)} с</div></div><span class="ico-ph"></span>`
+    +`<button class="ico-btn" data-pv="p${i}" aria-label="Прослушать мелодию ${i+1}" onclick="melListenPiece(${i})">${ICO.ear}</button><span class="ico-ph"></span></div>`).join(''):'';
+  byId('melRes').classList.add('show'); melMsgSet('melSaveMsg','',''); melPlUi();
 }
+function melPieceName(i){ const b=(byId('melName').value.trim()||'Мелодия'); return melRes&&melRes.list.length>1?b+' '+(i+1):b; }
 async function melPrepareClick(){
   if(melBusy) return;
   const btn=byId('melPrepBtn'), src=melSrc; melBusy=true; btn.disabled=true; melMsgSet('melMsg','','');
-  try{ if(src&&src.kind==='audio') melCtx();   // AudioContext — в обработчике нажатия (iOS)
-    const raw=await melGetRaw();
+  try{ melCtx();   // AudioContext — в обработчике нажатия (iOS)
+    const pieces=await melGetPieces();
     // ⚡ v6.3: файл/текст сменили во время анализа — результат устарел (иначе мелодия A сохранится под именем B)
     if(src!==melSrc){ melMsgSet('melMsg','Источник изменён — нажмите «Подготовить».',''); return; }
-    melRunPrep(raw); melMsgSet('melMsg','Готово — прослушайте и сохраните.','ok'); }
+    melRunPrep(pieces); melMsgSet('melMsg','Готово — прослушайте и сохраните.','ok'); }
   catch(e){ if(src!==melSrc) return; melClearRes(); melMsgSet('melMsg',(e&&e.message)||String(e),'bad'); }
   finally{ melBusy=false; btn.disabled=false; melProg(-1); }
 }
-function melReprep(raw){
-  try{ melRunPrep(raw); }catch(e){ melClearRes(); melMsgSet('melMsg',e.message,'bad'); }
+function melReprep(){
+  if(!melLastPieces) return;
+  try{ melRunPrep(melLastPieces); }catch(e){ melClearRes(); melMsgSet('melMsg',e.message,'bad'); }
+}
+// Отрезки изменились: ноты — пересчёт сразу; аудио — нужен новый анализ
+function melOnSeg(){
+  if(!melRes||melBusy) return;
+  if(melSrc&&melSrc.kind==='audio'){ melClearRes(); melLastPieces=null; melMsgSet('melMsg','Отрезки изменены — нажмите «Подготовить».',''); return; }
+  melGetPieces().then(melRunPrep).catch(e=>{ melClearRes(); melMsgSet('melMsg',e.message,'bad'); });
 }
 function melParamLabels(){
   const t=byId('melTempo'), g=byId('melGap'), m=byId('melMax'), s=byId('melSecs');
@@ -1596,33 +2111,61 @@ function melParamLabels(){
 }
 function melOnParam(){
   melParamLabels();
-  if(melRes&&melLastRaw&&!melBusy) melReprep(melLastRaw);
+  if(melRes&&!melBusy) melReprep();
 }
 function melOnSecs(){
   melParamLabels();
-  if(melSrc&&melSrc.kind==='audio'&&melRes&&!melBusy){ melClearRes(); melLastRaw=null;
+  if(melSrc&&melSrc.kind==='audio'&&!melSegs().length&&melRes&&!melBusy){ melClearRes(); melLastPieces=null;
     melMsgSet('melMsg','Длительность анализа изменена — нажмите «Подготовить».',''); }
 }
-function melOnTrack(){ if(melMidi&&melRes&&!melBusy) melReprep(melMidiRaw(melMidi,byId('melTrk').value)); }
+function melOnTrack(){
+  if(!melMidi) return;
+  melRaw=melMidiRaw(melMidi,byId('melTrk').value); melSeg.updateNotes(melRaw);
+}
+function melPvMusic(){ return byId('melPvAs').value==='remote'; }
+function melOnPvAs(){ if(melPl&&(melPl.owner==='res'||melPl.owner.charAt(0)==='p')) melListen(); }
+// Прослушать всё подряд (несколько мелодий — одна за другой)
 function melListen(){
   if(melPl&&melPl.owner==='res'){ melStopPreview(); return; }
   if(!melRes) return;
-  try{ melPlay(melRes.notes,'res'); }catch(e){ melMsgSet('melSaveMsg',e.message,'bad'); }
+  try{ const all=[]; melRes.list.forEach((x,i)=>{ if(i) all.push({f:0,d:600}); all.push(...x.notes); });
+    melPlay(all,'res',melPvMusic()); }catch(e){ melMsgSet('melSaveMsg',e.message,'bad'); }
 }
+function melListenPiece(i){
+  if(melPl&&melPl.owner==='p'+i){ melStopPreview(); return; }
+  try{ melPlay(melRes.list[i].notes,'p'+i,melPvMusic()); }catch(e){ melMsgSet('melSaveMsg',e.message,'bad'); }
+}
+function melFiles(){ return melRes.list.map((x,i)=>({name:melPieceName(i),bytes:melBuildH2M(melPieceName(i),x.notes)})); }
 async function melSave(){
-  if(!melRes) return;
+  if(!melRes||melSaving) return;
+  const files=melFiles();
   if(sndCfg&&!sndCfg.fsok){ melMsgSet('melSaveMsg','✗ Память мелодий (LittleFS) недоступна','bad'); return; }
-  if(sndCfg&&(sndCfg.list||[]).length>=16){ melMsgSet('melSaveMsg','✗ Все 16 слотов заняты — удалите ненужную мелодию','bad'); return; }
-  const fd=new FormData();
-  fd.append('f',new Blob([melBuildH2M(byId('melName').value.trim()||'Мелодия',melRes.notes)],{type:'application/octet-stream'}),'melody.h2m');
-  const btn=byId('melSaveBtn'); btn.disabled=true; melMsgSet('melSaveMsg','Загрузка…','');
+  if(sndCfg&&(sndCfg.list||[]).length+files.length>16){ melMsgSet('melSaveMsg','✗ Не хватит слотов мозга (16) — удалите ненужные мелодии','bad'); return; }
+  const btn=byId('melSaveBtn'); btn.disabled=true; melSaving=true;
+  let ok=0;
   try{
-    const r=await fetch('/snd/up',{method:'POST',body:fd}), t=await r.text();
-    let j=null; try{ j=JSON.parse(t); }catch(e){}
-    if(j&&j.ok){ melMsgSet('melSaveMsg','✓ Сохранено (слот '+j.id+'). Её можно выбрать мелодией события выше.','ok'); await sndLoadCfg(); }
-    else melMsgSet('melSaveMsg','✗ '+((j&&j.err)||t||('ошибка '+r.status)),'bad');
-  }catch(e){ melMsgSet('melSaveMsg','✗ '+netErr(e),'bad'); }
-  finally{ btn.disabled=false; }
+    for(const f of files){
+      melMsgSet('melSaveMsg','Загрузка «'+f.name+'»…','');
+      const fd=new FormData(); fd.append('f',new Blob([f.bytes],{type:'application/octet-stream'}),'melody.h2m');
+      const r=await fetch('/snd/up',{method:'POST',body:fd}), t=await r.text();
+      let j=null; try{ j=JSON.parse(t); }catch(e){}
+      if(!(j&&j.ok)) throw new Error((j&&j.err)||t||('ошибка '+r.status));
+      ok++;
+    }
+    melMsgSet('melSaveMsg','✓ Сохранено в мозг: '+ok+'. Мелодию можно выбрать для события выше.','ok');
+  }catch(e){ melMsgSet('melSaveMsg','✗ '+(ok?'сохранено '+ok+', затем ошибка: ':'')+(e.message||netErr(e)),'bad'); }
+  finally{ btn.disabled=false; melSaving=false; sndLoadCfg(); }
+}
+async function melSaveRemote(){
+  if(!melRes||melSaving) return;
+  const files=melFiles(), btn=byId('melRmBtn'); btn.disabled=true; melSaving=true;
+  try{
+    const n=await H2Mel.uploadRemote(files,b=>{ const fd=new FormData(); fd.append('f',new Blob([b],{type:'application/octet-stream'}),'melody.h2m');
+        return fetch('/rmel/up',{method:'POST',body:fd}).then(r=>r.text()).then(t=>{ try{ return JSON.parse(t); }catch(e){ return {ok:0,err:t}; } }); },
+      rmCfgJson,t=>melMsgSet('melSaveMsg',t,''));
+    melMsgSet('melSaveMsg','✓ В пульт загружено: '+n+'. Выберите её для кнопки МЕЛОДИЯ в блоке «Мелодии пульта».','ok');
+  }catch(e){ melMsgSet('melSaveMsg','✗ '+(e.message||netErr(e)),'bad'); }
+  finally{ btn.disabled=false; melSaving=false; rmLoad(true); }
 }
 
 /* ══════════ РЕНДЕР ══════════
@@ -1642,7 +2185,7 @@ function alertOf(d,p){
   if(d.mpuf) return ['tilt','⚠ ДАТЧИК НАКЛОНА НЕ ОТВЕЧАЕТ — ЭЛЕКТРОЛИЗЁР ЗАБЛОКИРОВАН'];   // ⚡ v6.3
   if(d.lkl)  return ['danger','⚠ УТЕЧКА — СИСТЕМА ВЫКЛЮЧЕНА. Проверьте клапан и магистраль, затем LOCK'];
   if(d.oh)   return ['danger','🔥 ПЕРЕГРЕВ '+(+d.t).toFixed(0)+'°C'];
-  if(d.ovw)  return ['','⚠ Приближение к аварии: '+p.toFixed(2)+' / 6.5 бар'];
+  if(d.ovw)  return ['','⚠ Приближение к аварии: '+p.toFixed(2)+' / 7.2 бар'];
   if(d.wd)   return ['','⚠ БАК НЕ НАБИРАЕТ ДАВЛЕНИЕ'];
   if(d.lkw)  return ['','⚠ ДАВЛЕНИЕ ПАДАЕТ ПРИ ЗАКРЫТОМ КЛАПАНЕ — возможна утечка'];
   if(d.mntd) return ['','⚙ ПОРА ОБСЛУЖИТЬ: долить воду/электролит (Настройки → Обслуживание)'];
