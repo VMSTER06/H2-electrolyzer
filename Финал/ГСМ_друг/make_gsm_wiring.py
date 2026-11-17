@@ -1,12 +1,14 @@
-"""Генератор «Устройство контроля ГСМ — схема подключения и монтажная ведомость».
+"""Генератор поэтапной паяльной схемы «Устройство контроля ГСМ».
 
-Оформление повторяет H2_Wiring_Full.html (тёмная тема, таблицы по модулям,
-монтажная ведомость, графические схемы). Все таблицы и рисунки строятся
-из одних данных ниже, поэтому расхождений между ними быть не может.
+Структура как в исходном PDF: этап 0 — как читать схему, этапы 1–15 — по
+одному на блок, с картой платы (ярко — что делаем сейчас, бледно — сделано
+раньше) и нумерованными шагами с проверкой. Оформление — тёмная тема
+H2_Wiring_Full.html. В конце справочник: монтажная ведомость и
+функциональная схема. Всё строится из одних данных ниже.
 
 Запуск:  python3 make_gsm_wiring.py   →   ГСМ_схема_подключения.html
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 OUT = Path(__file__).with_name("ГСМ_схема_подключения.html")
@@ -38,7 +40,7 @@ COLORS = {
     "brown":     ("#885522", "коричневый"),
 }
 
-# Цвета типов сигналов (легенда графической схемы, как в H2_Wiring_Full).
+# Цвета типов сигналов (легенда функциональной схемы, как в H2_Wiring_Full).
 SIG = {
     "i2c": ("#8a7bff", "I²C (дисплей)"),
     "adc": ("#56d364", "Аналоговый (MQ-2)"),
@@ -49,21 +51,23 @@ SIG = {
     "p5":  ("#ff6666", "+5 В"),
     "gnd": ("#888888", "GND"),
 }
+P5, GND = SIG["p5"][0], SIG["gnd"][0]
+PAD_COLOR = "#d4c044"
 
 
 @dataclass(frozen=True)
 class Group:
     key: str
+    stage: int      # этап, на котором паяются провода группы
     icon: str
     module: str     # название модуля с обозначением
-    detail: str     # уточнение для заголовка секции
-    css: str        # класс цвета секции (из H2_Wiring_Full)
-    board: str      # "main" — основная плата, "panel" — панельная
     length: str     # длина проводов
+    where: str      # где модуль стоит в корпусе
+    note: str = ""  # пояснение под картой (как внизу страницы PDF)
 
     @property
     def title(self) -> str:
-        return f"{self.icon} {self.module}" + (f" — {self.detail}" if self.detail else "")
+        return f"{self.icon} {self.module}"
 
 
 @dataclass(frozen=True)
@@ -82,73 +86,71 @@ class Wire:
 
 
 GROUPS = [
-    Group("harness", "🔗", "Жгут", "основная плата ↔ панельная (8 проводов)", "s-wires", "panel",
-          "20 см, МГТФ, скрутить в жгут"),
-    Group("lcd", "🖥", "Дисплей LCD-2004B-IIC (DA1)", "I²C", "s-i2c", "main", "20 см"),
-    Group("mq2", "📊", "Датчик газа MQ-2 (DD1)", "", "s-adc", "main", "12 см"),
-    Group("dht", "🌡", "Датчик температуры DHT11 (DD2)", "", "s-adc", "main", "12 см"),
-    Group("sr04", "📏", "Датчик расстояния HC-SR04 (DD3)", "", "s-nrf", "main", "10 см"),
-    Group("usb", "🔋", "Разъём питания USB Type-C (XP1)", "", "s-pwr", "main", "12 см"),
-    Group("buzz", "🔊", "Зуммер SFM-27 (BQ1)", "", "s-relay", "main", "12 см"),
+    Group("harness", 8, "🔗", "Жгут: основная плата ↔ панельная", "20 см, МГТФ",
+          "скрутить в жгут"),
+    Group("lcd", 9, "🖥", "Дисплей LCD-2004B-IIC (DA1)", "20 см", "дисплей стоит на крышке",
+          "Разъём платы I²C — сзади дисплея. Порядок выводов проверьте по надписям на ней."),
+    Group("mq2", 10, "📊", "Датчик газа MQ-2 (DD1)", "12 см", "стоит у задней стенки",
+          "DO не подключается: нужен только аналоговый выход AO."),
+    Group("dht", 11, "🌡", "Датчик температуры DHT11 (DD2)", "12 см", "у задней стенки",
+          "У разных модулей порядок выводов разный — смотрите надписи S / + / − на плате модуля."),
+    Group("sr04", 12, "📏", "Датчик расстояния HC-SR04 (DD3)", "10 см", "стоит на дне",
+          "Выводы HC-SR04 смотрят к основной плате, провода короткие."),
+    Group("usb", 13, "🔋", "Разъём питания USB Type-C (XP1)", "12 см", "правая стенка",
+          "Используются только VBUS (+5 В) и GND, остальные выводы переходника свободны."),
+    Group("buzz", 14, "🔊", "Зуммер SFM-27 (BQ1)", "12 см", "передняя стенка",
+          "Зуммер полярный: красный вывод — плюс. Свои провода зуммера можно нарастить, спайку изолировать."),
 ]
 GROUP = {g.key: g for g in GROUPS}
 
 WIRES = [
     Wire(1, "harness", "D8", "I6", "green", "led", nano="D8", panel="J3", panel_to="I3",
-         note="R1 → VD1 «OK» (зелёный)"),
+         note="к R1, светодиод VD1 «OK»"),
     Wire(2, "harness", "D10", "I4", "yellow", "led", nano="D10", panel="J7", panel_to="I7",
-         note="R2 → VD2 «LOW» (жёлтый)"),
+         note="R2, VD2 «LOW»"),
     Wire(3, "harness", "D9", "I5", "red", "led", nano="D9", panel="J11", panel_to="I11",
-         note="R3 → VD3 «GAS» (красный)"),
+         note="R3, VD3 «GAS»"),
     Wire(4, "harness", "D12", "I2", "darkred", "led", nano="D12", panel="J15", panel_to="I15",
-         note="R4 → VD4 «TEMP» (красный)"),
+         note="R4, VD4 «TEMP»"),
     Wire(5, "harness", "D7", "I7", "blue", "btn", nano="D7", panel="K6", panel_to="L6",
-         note="Кнопка SA1"),
+         note="кнопка SA1"),
     Wire(6, "harness", "D5", "I9", "lightblue", "btn", nano="D5", panel="K12", panel_to="L12",
-         note="Кнопка SA2"),
+         note="кнопка SA2"),
     Wire(7, "harness", "D6", "I8", "cyan", "btn", nano="D6", panel="K18", panel_to="L18",
-         note="Кнопка SA3"),
+         note="кнопка SA3"),
     Wire(8, "harness", "GND", "Q21", "black", "gnd", bus="GND", panel="P9", panel_to="O9",
-         note="Общий провод панели"),
+         note="GND панели"),
 
     Wire(9, "lcd", "GND", "M21", "black", "gnd", bus="GND"),
     Wire(10, "lcd", "VCC", "L24", "red", "p5", bus="+5 В"),
-    Wire(11, "lcd", "SDA", "A9", "pink", "i2c", nano="A4", note="Шина I²C, данные"),
-    Wire(12, "lcd", "SCL", "A10", "purple", "i2c", nano="A5", note="Шина I²C, тактирование"),
+    Wire(11, "lcd", "SDA", "A9", "pink", "i2c", nano="A4"),
+    Wire(12, "lcd", "SCL", "A10", "purple", "i2c", nano="A5"),
 
-    Wire(13, "mq2", "VCC", "E24", "red", "p5", bus="+5 В", note="Нагреватель, модуль тёплый — норма"),
+    Wire(13, "mq2", "VCC", "E24", "red", "p5", bus="+5 В"),
     Wire(14, "mq2", "GND", "F21", "black", "gnd", bus="GND"),
-    Wire(15, "mq2", "AO", "A5", "cyan", "adc", nano="A0", note="Аналоговый выход"),
+    Wire(15, "mq2", "AO", "A5", "cyan", "adc", nano="A0"),
 
     Wire(16, "dht", "DATA (S)", "I12", "brown", "dig", nano="D2",
-         note="Рядом I13 — там GND, не замкнуть!"),
+         note="Не замкните с I13 (там GND)!"),
     Wire(17, "dht", "VCC (+)", "G24", "red", "p5", bus="+5 В"),
     Wire(18, "dht", "GND (−)", "H21", "black", "gnd", bus="GND"),
 
     Wire(19, "sr04", "VCC", "J24", "red", "p5", bus="+5 В"),
-    Wire(20, "sr04", "Trig", "I11", "orange", "dig", nano="D3", note="Запуск измерения"),
-    Wire(21, "sr04", "Echo", "I10", "yellow", "dig", nano="D4", note="Эхо-импульс"),
+    Wire(20, "sr04", "Trig", "I11", "orange", "dig", nano="D3"),
+    Wire(21, "sr04", "Echo", "I10", "yellow", "dig", nano="D4"),
     Wire(22, "sr04", "GND", "K21", "black", "gnd", bus="GND"),
 
-    Wire(23, "usb", "VBUS", "C24", "red", "p5", bus="+5 В", note="Питание всего устройства"),
-    Wire(24, "usb", "GND", "D21", "black", "gnd", bus="GND"),
+    Wire(23, "usb", "VBUS (+5 В)", "C24", "red", "p5", bus="+5 В", note="Красный провод."),
+    Wire(24, "usb", "GND", "D21", "black", "gnd", bus="GND", note="Чёрный провод."),
 
-    Wire(25, "buzz", "+ (красный)", "I3", "red", "snd", nano="D11", note="Зуммер полярный"),
+    Wire(25, "buzz", "+ (красный)", "I3", "red", "snd", nano="D11"),
     Wire(26, "buzz", "− (чёрный)", "O21", "black", "gnd", bus="GND"),
 ]
 
 # Выводы модулей, которые не подключаются.
-UNUSED = {"mq2": [("DO", "Цифровой выход не нужен")]}
+UNUSED = {"mq2": [("DO", "оставить свободным")]}
 
-# Шины и перемычки основной платы (лужёный провод, снизу).
-BUSES = [
-    ("Шина +5 В", "столбец 24: A24 → R24", "пайка к A24, E24, J24, N24, R24", "p5"),
-    ("Перемычка 5V", "B13 (5V Nano) → A13 → по ряду A → A24", "A5, A9, A10 оставить свободными", "p5"),
-    ("Шина GND", "столбец 21: C21 → R21", "НЕ до A21 — по ряду A идёт +5 В", "gnd"),
-    ("Перемычка GND", "H13 (GND Nano) → I13 → по ряду I → I21", "I12 рядом — туда идёт DHT11", "gnd"),
-]
-
-# Панельная плата: детали и шина GND.
+# Панельная плата.
 PANEL_LEDS = [  # (обозн., цвет, анод, катод, резистор, верх R, низ R, подпись)
     ("VD1", "green", "C3", "C4", "R1", "D3", "I3", "OK"),
     ("VD2", "yellow", "C7", "C8", "R2", "D7", "I7", "LOW"),
@@ -160,83 +162,171 @@ PANEL_BUTTONS = [  # (обозн., четыре ножки, сигнал, GND)
     ("SA2", ("L7", "L12", "N7", "N12"), "L12", "N7"),
     ("SA3", ("L13", "L18", "N13", "N18"), "L18", "N13"),
 ]
-PANEL_GND = [  # (название, от, до, что к ней припаять)
-    ("ряд B", "B4", "B16", "катоды C4, C8, C12, C16"),
-    ("столбец 9", "B9", "O9", "соединяет ряды B и O"),
-    ("ряд O", "O1", "O18", "ножки N1, N7, N13"),
-]
+PANEL_GND = [("B4", "B16"), ("B9", "O9"), ("O1", "O18")]
+
+
+@dataclass(frozen=True)
+class Stage:
+    n: int
+    title: str
+    where: str                  # подзаголовок справа в шапке
+    views: tuple[str, ...]      # какие карты показать
+    steps: tuple[str, ...] = ()
+    check: str = ""
+    group: str = ""             # для этапов с проводами: группа из GROUPS
+    note: str = ""
+
+
+def wire_step(w: Wire) -> str:
+    """Шаг «вывод → отверстие» для провода модуля."""
+    if w.nano:
+        text = (f"<b>{w.pin}</b> → основная <b>{w.hole}</b>; снизу отогнуть к выводу "
+                f"{w.nano} Nano ({NANO_HOLE[w.nano]}) и пропаять вместе.")
+    else:
+        text = f"<b>{w.pin}</b> → основная <b>{w.hole}</b> (шина {w.bus})."
+    return f"{text} {w.note}".strip()
+
+
+def harness_step(w: Wire) -> str:
+    src = f"{w.hole} (вывод {w.nano})" if w.nano else f"{w.hole} (шина GND)"
+    return f"Основная <b>{src}</b> → панель <b>{w.panel}</b> ({w.note})."
+
+
+def wires_of(group: str) -> list[Wire]:
+    return [w for w in WIRES if w.group == group]
+
+
+def module_stage(g: Group, extra: tuple[str, ...], check: str) -> Stage:
+    steps = tuple(wire_step(w) for w in wires_of(g.key))
+    steps += tuple(f"<b>{pin}</b> — {text}." for pin, text in UNUSED.get(g.key, []))
+    count = len(wires_of(g.key))
+    return Stage(g.stage, g.module, f"{count} провода по {g.length} · {g.where}", ("main",),
+                 steps + extra, check, g.key, g.note)
+
 
 STAGES = [
-    ("Arduino Nano на основную плату",
-     "Отметить угол A1 с двух сторон. Nano штырьками со стороны деталей: верхний ряд B2–B16, "
-     "нижний H2–H16, USB к столбцу 1. Сначала две точки по диагонали (B2, H16), выровнять, затем остальные 28.",
-     "блестящие конусы, нет перемычек припоя между выводами"),
-    ("Шина +5 В и перемычка 5V",
-     "Лужёный провод ≈ 5 см снизу вдоль столбца 24 (A24–R24). Перемычка от 5V Nano (B13) через A13 по ряду A до A24.",
-     "B13 звонится с R24"),
-    ("Шина GND и перемычка GND",
-     "Провод ≈ 4,5 см вдоль столбца 21 (C21–R21). Перемычка от GND Nano (H13) через I13 по ряду I до I21.",
-     "H13 звонится с R21; между R24 и R21 НЕТ замыкания"),
-    ("Светодиоды VD1–VD4 (панель)",
-     "Отметить A1 на панели. Анод (длинная ножка) / катод: VD1 C3/C4, VD2 C7/C8, VD3 C11/C12, VD4 C15/C16. "
-     "Вплотную к плате — верх входит в отверстия крышки.",
-     "мультиметр «диод»: красный щуп на анод — светодиод слабо светится"),
-    ("Резисторы R1–R4 220 Ом (панель)",
-     "Выводы под шаг 5 отверстий. R1 D3–I3, R2 D7–I7, R3 D11–I11, R4 D15–I15, плашмя. "
-     "Анод отогнуть к верхнему выводу: C3–D3, C7–D7, C11–D11, C15–D15.",
-     "от I3 через R1 к аноду VD1 — 220 Ом (так же R2–R4)"),
-    ("Кнопки SA1–SA3 (панель)",
-     "SA1 L1, L6, N1, N6; SA2 L7, L12, N7, N12; SA3 L13, L18, N13, N18. До щелчка, ровно. "
-     "Сигнал — ножка L, GND — ножка N по диагонали.",
-     "кнопка стоит ровно, 12 ножек пропаяны"),
-    ("Общий провод (GND) панели",
-     "Лужёный провод по ряду B (B4–B16), к нему катоды C4, C8, C12, C16. Столбец 9 (B9–O9). "
-     "Ряд O (O1–O18), к нему N1, N7, N13. Ножки N6, N12, N18 НЕ отгибать.",
-     "L6–O1 звонится только при нажатой SA1; L12–O7 — SA2; L18–O13 — SA3"),
-    ("Жгут из 8 проводов",
-     "Провода 1–8 (МГТФ, 20 см). На основной плате конец снизу отогнуть к выводу Nano в ряду H; "
-     "на панели J → I, K6 → L6, K12 → L12, K18 → L18, P9 → O9. Подписать концы скотчем.",
-     "каждый провод звонится от вывода Nano до точки на панели"),
-    ("Дисплей LCD-2004B-IIC (DA1)",
-     "Провода 9–12 на штырьки платы I²C, на каждую пайку термоусадка.",
-     "A9 ↔ A4 Nano, A10 ↔ A5, VCC ↔ R24, GND ↔ R21"),
-    ("Датчик газа MQ-2 (DD1)", "Провода 13–15. DO оставить свободным.", "AO звонится с A0 Nano"),
-    ("Датчик DHT11 (DD2)",
-     "Провода 16–18. Порядок выводов у модулей разный — смотреть надписи S / + / −.",
-     "DATA звонится с D2 и НЕ звонится с GND"),
-    ("Датчик HC-SR04 (DD3)", "Провода 19–22, выводы датчика смотрят к основной плате.",
-     "Trig ↔ D3, Echo ↔ D4, между собой не замкнуты"),
-    ("Разъём USB Type-C (XP1)", "Провода 23–24: только VBUS и GND, остальные выводы свободны.",
-     "VBUS ↔ R24, GND ↔ R21, замыкания нет"),
-    ("Зуммер SFM-27 (BQ1)", "Провода 25–26. Красный — плюс. Свои провода зуммера можно нарастить, спайку изолировать.",
-     "красный провод звонится с D11"),
-    ("Проверка перед первым включением", "Пункты — в блоке «Перед первым включением» ниже.", "всё по чек-листу"),
-]
+    Stage(0, "Как читать эту схему", "сначала прочитайте этот этап", ("main", "panel"), (
+        "Отверстие называется буквой ряда и номером столбца: <b>I6</b> — ряд I, столбец 6.",
+        "Перед началом отметьте маркером <b>угол A1</b> на обеих платах С ДВУХ сторон. "
+        "Ориентируйтесь только по этой метке.",
+        "«Вид со стороны деталей» — плата лежит деталями вверх. «Вид со стороны пайки» — перевёрнута: "
+        "столбцы идут ЗЕРКАЛЬНО, столбец 1 оказывается справа.",
+        "<b>Перемычка</b> — конец провода или вывода детали, отогнутый с нижней стороны к соседнему "
+        "отверстию и пропаянный вместе с ним одной каплей припоя.",
+        "<b>Шина</b> — лужёный провод, уложенный снизу вдоль ряда отверстий и припаянный к пятачкам "
+        "через каждые 3–4 отверстия.",
+        "<b>Внешний провод:</b> зачистить и залудить 3–4 мм, вставить СВЕРХУ в отверстие, снизу отогнуть "
+        "к указанному выводу и пропаять вместе.",
+        "<b>Ярко</b> на каждом этапе выделено то, что делается на этом этапе. <b>Бледно</b> — уже "
+        "сделанное раньше.",
+        "После каждого этапа выполняйте проверку из последнего пункта. Пропущенная ошибка на раннем "
+        "этапе дорого стоит потом.",
+        "Паяльник 25–40 Вт, 1–2 секунды на точку, припой должен лечь блестящим конусом.",
+    ), note="Основная плата 5×7 см — 24 столбца, ряды A–R. Панельная плата — 18 столбцов, ряды A–X."),
 
-NOTES = [
-    ("Отверстие = буква ряда + номер столбца.", "I6 — ряд I, столбец 6. Основная плата 5×7 см: 24 столбца × ряды A–R; "
-     "панельная: 18 столбцов × ряды A–X."),
-    ("Угол A1 отметить маркером на обеих платах с двух сторон.", "Ориентироваться только по этой метке."),
-    ("Вид со стороны пайки — зеркальный.", "Плата перевёрнута, столбец 1 оказывается справа. "
-     "Все координаты в этой ведомости — со стороны деталей."),
-    ("Перемычка", "— конец провода или вывода детали, отогнутый снизу к соседнему отверстию и пропаянный вместе с ним одной каплей."),
-    ("Шина", "— лужёный провод снизу вдоль ряда отверстий, припаянный к пятачкам через каждые 3–4 отверстия."),
-    ("Внешний провод:", "зачистить и залудить 3–4 мм, вставить СВЕРХУ, снизу отогнуть к указанному выводу Nano и пропаять вместе."),
-    ("Паяльник 25–40 Вт, 1–2 с на точку.", "Припой должен лечь блестящим конусом."),
-    ("После каждого этапа — проверка из таблицы этапов.", "Ошибка, пропущенная на раннем этапе, дорого стоит потом."),
-    ("Все провода питания модулей — только на шины.", "+5 В — столбец 24, GND — столбец 21 основной платы."),
-]
+    Stage(1, "Arduino Nano на основную плату", "основная плата · детали сверху, пайка снизу",
+          ("main", "main_solder"), (
+              "Отметьте маркером угол A1 с обеих сторон основной платы.",
+              "Вставьте Nano штырьками в плату со стороны деталей: верхний ряд в <b>B2–B16</b> "
+              "(D13 → B2 … 5V → B13, GND → B15, VIN → B16), нижний в <b>H2–H16</b> (D12 → H2 … D2 → H12, "
+              "GND → H13, TX1 → H16). Разъём USB — к краю со столбцом 1. Сверьте надписи на самой Nano!",
+              "Прижмите Nano, переверните плату и припаяйте два крайних вывода по диагонали: "
+              "<b>B2 и H16</b> (на карте пайки обведены).",
+              "Проверьте, что Nano лежит ровно и плотно. Если перекосилась — прогрейте одну из двух "
+              "точек и поправьте.",
+              "Припаяйте остальные 28 выводов рядов B и H.",
+          ), "на каждом выводе блестящий конус, между соседними выводами нет перемычек из припоя."),
 
-CHECKLIST = [
-    ("Осмотр с лупой:", "нет капель припоя между соседними выводами Nano и в рядах A, I."),
-    ("R24–R21:", "нет короткого замыкания (не 0 Ом)."),
-    ("Прозвонить каждый провод из ведомости:", "вывод модуля ↔ нужный вывод Nano или шина."),
-    ("Светодиоды:", "режим «диод» — красный щуп на J3 (J7, J11, J15), чёрный на P9 — светодиод слабо светится."),
-    ("Кнопки:", "K6–P9 звонится только при нажатой SA1 (K12 — SA2, K18 — SA3)."),
-    ("Первое включение — от USB-C (XP1), без прошивки.", "На R24 должно быть 4,7–5,2 В. Что-то греется или пахнет — сразу отключить."),
-    ("MQ-2 тёплый — это норма", "(внутри нагреватель), показания стабилизируются через 1–2 мин."),
-    ("Прошить gsm_control_lcd2004.ino.", "Пустой экран при горящей подсветке — покрутить подстроечник контраста на плате I²C; "
-     "ничего — сменить адрес LCD_ADDR на 0x3F."),
+    Stage(2, "Шина +5 В и перемычка от вывода 5V", "основная плата · вид со стороны пайки",
+          ("main_solder",), (
+              "Отрежьте лужёный провод ≈ 5 см, выпрямите его (потяните плоскогубцами).",
+              "С нижней стороны уложите его вдоль столбца 24 от <b>A24 до R24</b>. Концы вставьте в A24 "
+              "и R24 и загните. Припаяйте к пятачкам A24, E24, J24, N24, R24.",
+              "Перемычка 5V: отрезок лужёного провода ≈ 3 см. Один конец пропаяйте вместе с выводом "
+              "5V Nano (<b>B13</b>) через соседнее отверстие A13.",
+              "Уложите этот провод вдоль ряда A от <b>A13 до A24</b> и припаяйте к шине в A24. "
+              "Отверстия A5, A9, A10 оставьте свободными — туда пойдут провода датчиков.",
+          ), "вывод 5V Nano (B13) звонится с R24."),
+
+    Stage(3, "Шина GND и перемычка от вывода GND", "основная плата · вид со стороны пайки",
+          ("main_solder",), (
+              "Лужёный провод ≈ 4,5 см уложите снизу вдоль столбца 21 от <b>C21 до R21</b> "
+              "(НЕ до A21 — по ряду A уже идёт +5 В). Припаяйте к C21, H21, M21, R21.",
+              "Перемычка GND: отрезок ≈ 3 см. Один конец пропаяйте вместе с выводом GND Nano "
+              "(<b>H13</b>) через соседнее отверстие I13.",
+              "Уложите его вдоль ряда I от <b>I13 до I21</b> и припаяйте к шине в I21. Осторожно: "
+              "I12 рядом — туда позже пойдёт сигнал D2, не залейте его припоем.",
+              "Проверка: вывод GND Nano (H13) звонится с R21.",
+          ), "между R24 (+5 В) и R21 (GND) НЕТ короткого замыкания — мультиметр показывает сотни Ом "
+             "и больше, но не 0."),
+
+    Stage(4, "Светодиоды VD1–VD4", "панельная плата", ("panel", "panel_solder"), (
+        "Отметьте угол A1 на панельной плате с двух сторон.",
+        "VD1 (зелёный): длинная ножка (анод, +) в <b>C3</b>, короткая (катод, −) в <b>C4</b>.",
+        "VD2 (жёлтый): анод в <b>C7</b>, катод в <b>C8</b>.",
+        "VD3 (красный): анод в <b>C11</b>, катод в <b>C12</b>. VD4 (красный): анод в <b>C15</b>, "
+        "катод в <b>C16</b>.",
+        "Прижмите все светодиоды ВПЛОТНУЮ к плате — их верх должен войти в отверстия крышки. "
+        "Припаяйте 8 ножек, лишнее пока не откусывайте.",
+    ), "мультиметр в режиме «диод», красный щуп на анод, чёрный на катод — светодиод слабо светится."),
+
+    Stage(5, "Резисторы R1–R4", "панельная плата", ("panel", "panel_solder"), (
+        "Согните выводы резисторов 220 Ом под шаг 5 отверстий (12,7 мм).",
+        "R1 — в <b>D3 и I3</b>, R2 — в <b>D7 и I7</b>, R3 — в <b>D11 и I11</b>, R4 — в <b>D15 и I15</b>. "
+        "Резисторы лежат плашмя, вплотную к плате.",
+        "Снизу отогните длинную ножку светодиода (анод) к верхнему выводу резистора и пропаяйте "
+        "вместе: C3–D3, C7–D7, C11–D11, C15–D15.",
+        "Нижние выводы резисторов (I3, I7, I11, I15) просто припаяйте, не обрезая, — к ним на этапе 8 "
+        "придут провода.",
+    ), "от I3 через R1 к аноду VD1 — 220 Ом (то же для R2–R4)."),
+
+    Stage(6, "Кнопки SA1–SA3", "панельная плата", ("panel", "panel_solder"), (
+        "SA1: ножки в <b>L1, L6, N1, N6</b>.",
+        "SA2: ножки в <b>L7, L12, N7, N12</b>.",
+        "SA3: ножки в <b>L13, L18, N13, N18</b>.",
+        "Вставляйте до упора (до щелчка), кнопка должна стоять ровно. Припаяйте все 12 ножек.",
+        "Неважно, какой стороной повернуть кнопку: сигнал берётся с ножки L, GND — с ножки N "
+        "по диагонали, это работает при любом повороте.",
+    ), "все кнопки стоят ровно, 12 ножек пропаяны."),
+
+    Stage(7, "Общий провод (GND) панели", "панельная плата", ("panel", "panel_solder"), (
+        "Лужёный провод снизу вдоль ряда B от <b>B4 до B16</b>.",
+        "Короткие ножки светодиодов (катоды C4, C8, C12, C16) отогните к ряду B и припаяйте к этому проводу.",
+        "Лужёный провод вдоль столбца 9 от <b>B9 до O9</b> (соединяет верх и низ платы).",
+        "Лужёный провод вдоль ряда O от <b>O1 до O18</b>.",
+        "Ножки кнопок N1, N7, N13 отогните к ряду O и припаяйте. Ножки N6, N12, N18 к шине НЕ отгибайте.",
+        "Откусите лишние концы выводов (≈ 1,5 мм над пайкой).",
+    ), "L6–O1 звонится только при нажатой SA1; L12–O7 — при SA2; L18–O13 — при SA3."),
+
+    Stage(8, "8 проводов: основная плата ↔ панельная", "провода МГТФ по 20 см, скрутить в жгут",
+          ("main", "panel"),
+          tuple(harness_step(w) for w in wires_of("harness")) + (
+              "Как паять: на основной плате конец провода снизу отогнуть к выводу Nano в ряду H "
+              "(I6 → H6 и т. д.); Q21 — прямо к шине. На панели: J → I (к выводу резистора), "
+              "K6 → L6, K12 → L12, K18 → L18, P9 → O9.",
+              "Подпишите концы проводов малярным скотчем.",
+          ), "прозвоните каждый провод от вывода Nano до точки на панели.", "harness",
+          "Номера в кружках на картах — номера проводов из таблицы выше."),
+
+    module_stage(GROUP["lcd"], ("Провода паять прямо на штырьки платы I²C, на каждую пайку — термоусадка.",),
+                 "A9 звонится с A4 Nano, A10 — с A5, VCC — с R24, GND — с R21."),
+    module_stage(GROUP["mq2"], (), "AO звонится с A0 Nano."),
+    module_stage(GROUP["dht"], (), "DATA звонится с D2 Nano и НЕ звонится с GND."),
+    module_stage(GROUP["sr04"], (), "Trig звонится с D3, Echo — с D4, Trig и Echo не замкнуты между собой."),
+    module_stage(GROUP["usb"], (), "VBUS звонится с R24, GND — с R21, между ними НЕТ замыкания."),
+    module_stage(GROUP["buzz"], (), "красный провод звонится с D11 Nano."),
+
+    Stage(15, "Проверка перед первым включением", "основная и панельная платы", ("main", "panel"), (
+        "Осмотр с лупой: нет капель припоя между соседними выводами Nano и в рядах A, I.",
+        "<b>R24–R21:</b> нет короткого замыкания (не 0 Ом).",
+        "Прозвонить каждый провод из ведомости (в конце документа): вывод модуля ↔ нужный вывод Nano или шина.",
+        "Светодиоды: «диод» — красный щуп на J3 (J7, J11, J15), чёрный на P9 — светодиод слабо светится.",
+        "Кнопки: K6–P9 звонится только при нажатой SA1 (K12 — SA2, K18 — SA3).",
+        "Первое включение — от USB-C (XP1), без прошивки. На R24 должно быть <b>4,7–5,2 В</b>. "
+        "Что-то греется или пахнет — сразу отключить.",
+        "MQ-2 тёплый — это норма (внутри нагреватель), показания стабилизируются через 1–2 мин.",
+    ), "прошить gsm_control_lcd2004.ino. Пустой экран при горящей подсветке — покрутить подстроечник "
+       "контраста на плате I²C; ничего — сменить адрес LCD_ADDR на 0x3F."),
 ]
 
 # ─────────────────────────── Утилиты ───────────────────────────
@@ -257,95 +347,324 @@ def swatch(color: str) -> str:
     return f'<span class="color-swatch" style="background:{COLORS[color][0]}"></span>{COLORS[color][1]}'
 
 
-def target(w: Wire) -> str:
-    """Куда приходит провод на основной плате — для таблиц."""
-    if w.nano:
-        return f"{w.nano} · {w.hole}"
-    return f"{w.bus} · {w.hole}"
+# ─────────────────────────── Карты плат ───────────────────────────
+
+STEP, PAD = 20, 34
 
 
-def wires_of(group: str) -> list[Wire]:
-    return [w for w in WIRES if w.group == group]
+@dataclass
+class Item:
+    stage: int
+    svg: str
+    dim: bool = True        # бледнеет на следующих этапах (подписи — нет)
+    only_cur: bool = False  # видно только на своём этапе (подсказки)
 
 
-# ─────────────────────────── HTML: таблицы ───────────────────────────
+@dataclass
+class BoardMap:
+    """Карта макетной платы. mirror=True — вид со стороны пайки."""
+    cols: int
+    rows: int
+    mirror: bool = False
+    items: list[Item] = field(default_factory=list)
+
+    def col_x(self, c: int) -> float:
+        return PAD + ((self.cols - c) if self.mirror else (c - 1)) * STEP
+
+    def xy(self, hole: str) -> tuple[float, float]:
+        r, c = hole_rc(hole)
+        return self.col_x(c), PAD + r * STEP
+
+    def size(self) -> tuple[int, int]:
+        return PAD * 2 + (self.cols - 1) * STEP, PAD * 2 + (self.rows - 1) * STEP
+
+    def add(self, stage: int, svg: str, dim: bool = True, only_cur: bool = False) -> None:
+        self.items.append(Item(stage, svg, dim, only_cur))
+
+    # Примитивы ------------------------------------------------------------
+
+    def line(self, stage: int, a: str, b: str, color: str, width: float = 3, dash: str = "") -> None:
+        (x1, y1), (x2, y2) = self.xy(a), self.xy(b)
+        d = f' stroke-dasharray="{dash}"' if dash else ""
+        self.add(stage, f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{color}" '
+                        f'stroke-width="{width}" stroke-linecap="round"{d}/>')
+
+    def path(self, stage: int, holes: list[str], color: str, width: float = 3, dash: str = "") -> None:
+        for a, b in zip(holes, holes[1:]):
+            self.line(stage, a, b, color, width, dash)
+
+    def pad(self, stage: int, hole: str, color: str = PAD_COLOR, r: float = 5) -> None:
+        x, y = self.xy(hole)
+        self.add(stage, f'<circle cx="{x}" cy="{y}" r="{r}" fill="{color}" stroke="#0d1117"/>')
+
+    def ring(self, stage: int, hole: str) -> None:
+        x, y = self.xy(hole)
+        self.add(stage, f'<circle cx="{x}" cy="{y}" r="10" fill="none" stroke="#ff9f1c" stroke-width="2.5"/>',
+                 only_cur=True)
+
+    def label(self, stage: int, hole: str, text: str, dx: float = 0, dy: float = 0,
+              color: str = "#c9d1d9", size: int = 8) -> None:
+        x, y = self.xy(hole)
+        self.add(stage, f'<text x="{x + dx}" y="{y + dy}" text-anchor="middle" fill="{color}" '
+                        f'font-size="{size}" font-family="monospace">{text}</text>', dim=False)
+
+    def rect(self, stage: int, a: str, b: str, margin: float, attrs: str) -> str:
+        (x1, y1), (x2, y2) = self.xy(a), self.xy(b)
+        x, y = min(x1, x2) - margin, min(y1, y2) - margin
+        svg = (f'<rect x="{x}" y="{y}" width="{abs(x2 - x1) + 2 * margin}" '
+               f'height="{abs(y2 - y1) + 2 * margin}" {attrs}/>')
+        self.add(stage, svg)
+        return svg
+
+    def wire_end(self, stage: int, hole: str, w: Wire) -> None:
+        x, y = self.xy(hole)
+        fill = COLORS[w.color][0]
+        self.add(stage, f'<circle cx="{x}" cy="{y}" r="8" fill="{fill}" stroke="#e0e0e0" stroke-width="1.5"/>'
+                        f'<text x="{x}" y="{y + 3}" text-anchor="middle" fill="{text_on(fill)}" font-size="8" '
+                        f'font-weight="bold" font-family="Arial">{w.n}</text>')
+
+    # Отрисовка ------------------------------------------------------------
+
+    def grid(self) -> str:
+        w, h = self.size()
+        out = [f'<rect x="{PAD - 14}" y="{PAD - 14}" width="{w - 2 * PAD + 28}" height="{h - 2 * PAD + 28}" '
+               f'rx="6" fill="#161b22" stroke="#30363d"/>',
+               f'<rect x="{PAD - STEP / 2}" y="{PAD - STEP / 2}" width="{self.cols * STEP}" '
+               f'height="{self.rows * STEP}" fill="url(#holes)"/>']
+        for c in range(1, self.cols + 1):
+            out.append(f'<text x="{self.col_x(c)}" y="{PAD - 18}" text-anchor="middle" fill="#6e7681" '
+                       f'font-size="9" font-family="monospace">{c}</text>')
+        for r in range(self.rows):
+            y = PAD + r * STEP + 3
+            for x in (PAD - 24, w - PAD + 24):
+                out.append(f'<text x="{x}" y="{y}" text-anchor="middle" fill="#6e7681" font-size="9" '
+                           f'font-family="monospace">{chr(65 + r)}</text>')
+        x, y = self.xy("A1")
+        out.append(f'<circle cx="{x}" cy="{y}" r="7" fill="none" stroke="#ff5577" stroke-width="2"/>')
+        return "\n".join(out)
+
+    def svg(self, current: int, label: str) -> str:
+        layers = {"done": [], "keep": [], "cur": []}
+        for it in self.items:
+            if it.stage > current or (it.only_cur and it.stage != current):
+                continue
+            layer = "cur" if it.stage == current else ("done" if it.dim else "keep")
+            layers[layer].append(it.svg)
+        w, h = self.size()
+        body = [self.grid()]
+        if layers["done"]:
+            body.append('<g class="done">' + "".join(layers["done"]) + "</g>")
+        body += layers["keep"]
+        if layers["cur"]:
+            body.append('<g class="cur">' + "".join(layers["cur"]) + "</g>")
+        return (f'<svg viewBox="0 0 {w} {h}" class="board" xmlns="http://www.w3.org/2000/svg" role="img" '
+                f'aria-label="{label}">\n' + "\n".join(body) + "\n</svg>")
 
 
-def section(title: str, css: str, rows: list[tuple[str, str, str, str]]) -> str:
-    """Секция карточки устройства: строки (вывод, точка, класс точки, заметка)."""
-    body = "\n".join(f'        <tr><td>{a}</td><td class="{cls}">{b}</td><td>{c}</td></tr>'
-                     for a, b, cls, c in rows)
-    return (f'    <div class="section">\n      <div class="section-title {css}">{title}</div>\n'
-            f'      <table>\n{body}\n      </table>\n    </div>')
+def build_main(mirror: bool) -> BoardMap:
+    b = BoardMap(24, 18, mirror)
+    under = "" if mirror else "6,3"   # шины снизу: на виде сверху — пунктир
+
+    # Этап 1 — Arduino Nano.
+    if mirror:
+        b.rect(1, "B2", "H16", 10, 'rx="5" fill="none" stroke="#2ea043" stroke-width="1.2" stroke-dasharray="4,3"')
+    else:
+        b.rect(1, "B2", "H16", 10, 'rx="5" fill="#0c1a10" stroke="#2ea043" stroke-width="1.5"')
+        ux, uy = b.xy("E1")
+        b.add(1, f'<rect x="{ux - 11}" y="{uy - 9}" width="22" height="18" rx="2" fill="#30363d" stroke="#6e7681"/>'
+                 f'<text x="{ux}" y="{uy + 3}" text-anchor="middle" fill="#c9d1d9" font-size="7" '
+                 f'font-family="Arial">USB</text>', dim=False)
+        b.label(1, "E9", "Arduino Nano", dy=4, color="#3fb950", size=13)
+    for pins, row, dy in ((NANO_TOP, "B", 14), (NANO_BOT, "H", -9)):
+        for i, pin in enumerate(pins):
+            hole = f"{row}{i + 2}"
+            b.pad(1, hole)
+            b.label(1, hole, pin, dy=dy, size=7)
+    if mirror:
+        b.ring(1, "B2")
+        b.ring(1, "H16")
+
+    # Этап 2 — шина +5 В, этап 3 — шина GND.
+    b.line(2, "A24", "R24", P5, 4, under)
+    b.path(2, ["B13", "A13", "A24"], P5, 3, under)
+    b.line(3, "C21", "R21", GND, 4, under)
+    b.path(3, ["H13", "I13", "I21"], GND, 3, under)
+    if mirror:
+        for hole in ("A24", "E24", "J24", "N24", "R24"):
+            b.pad(2, hole, P5, 4)
+        for hole in ("C21", "H21", "M21", "R21"):
+            b.pad(3, hole, "#bbbbbb", 4)
+    b.label(2, "R24", "+5 В", dy=26, color=P5, size=10)
+    b.label(3, "R21", "GND", dy=26, color=GND, size=10)
+
+    # Этапы 8–14 — внешние провода.
+    for w in WIRES:
+        stage = GROUP[w.group].stage
+        if w.nano:
+            b.line(stage, w.hole, NANO_HOLE[w.nano], COLORS[w.color][0], 2.5, "2,2")
+        b.wire_end(stage, w.hole, w)
+    return b
 
 
-def pin_class(w: Wire) -> str:
-    return {"+5 В": "pin-p5", "GND": "pin-gnd"}.get(w.bus, "")
+def build_panel(mirror: bool) -> BoardMap:
+    b = BoardMap(18, 24, mirror)
+    under = "" if mirror else "6,3"
 
-
-def main_board_card() -> str:
-    parts = [section("🔌 Шины основной платы (лужёный провод снизу)", "s-pwr",
-                     [(name, where, "pin-p5" if sig == "p5" else "pin-gnd", note)
-                      for name, where, note, sig in BUSES])]
-    for g in GROUPS:
-        if g.board != "main":
-            continue
-        rows = [(f"{w.pin} <span class='wn'>№{w.n}</span>", target(w), pin_class(w), w.note)
-                for w in wires_of(g.key)]
-        rows += [(pin, "—", "", note) for pin, note in UNUSED.get(g.key, [])]
-        parts.append(section(f"{g.title} · {g.length}", g.css, rows))
-    return ('  <div class="device">\n    <div class="device-header brain-hdr">'
-            '🧠 ОСНОВНАЯ ПЛАТА 5×7 см · Arduino Nano · датчики, дисплей, питание</div>\n'
-            + "\n".join(parts) + "\n  </div>")
-
-
-def panel_board_card() -> str:
-    by_end = {w.panel_to: w for w in wires_of("harness")}
-    leds = []
     for vd, color, anode, cathode, r, r_top, r_bot, label in PANEL_LEDS:
-        w = by_end[r_bot]
-        leds.append((f"{vd} «{label}» ({COLORS[color][1]})", f"{w.nano} · {w.panel}",
-                     "", f"{r} 220 Ом {r_top}–{r_bot}; анод {anode}, катод {cathode} → GND"))
-    buttons = []
-    for sa, legs, sig, gnd in PANEL_BUTTONS:
-        w = by_end[sig]
-        buttons.append((f"{sa}", f"{w.nano} · {w.panel}", "",
-                        f"ножки {', '.join(legs)}; сигнал {sig}, GND {gnd}"))
-    gnd_rows = [(name, f"{a} → {b}", "pin-gnd", note) for name, a, b, note in PANEL_GND]
-    harness = [(f"№{w.n} · {'GND' if w.bus else w.nano} ({w.hole})", f"{w.panel} → {w.panel_to}",
-                pin_class(w), f"{swatch(w.color)} · {w.note}") for w in wires_of("harness")]
-    parts = [
-        section("💡 Светодиоды × 4 (Nano → 220 Ом → LED → GND)", "s-led", leds),
-        section("🔘 Кнопки × 3 (INPUT_PULLUP → GND)", "s-btn", buttons),
-        section("⏚ Общий провод панели (лужёный провод снизу)", "s-pwr", gnd_rows),
-        section(f"{GROUP['harness'].title} · {GROUP['harness'].length}", "s-wires", harness),
-    ]
-    return ('  <div class="device">\n    <div class="device-header remote-hdr">'
-            '🎛 ПАНЕЛЬНАЯ ПЛАТА · 4 светодиода, 3 кнопки (на крышке)</div>\n'
-            + "\n".join(parts) + "\n  </div>")
+        # Этап 4 — светодиод.
+        (xa, ya), (xc, _) = b.xy(anode), b.xy(cathode)
+        if mirror:
+            b.pad(4, anode, COLORS[color][0], 5)
+            b.pad(4, cathode, COLORS[color][0], 5)
+        else:
+            b.add(4, f'<ellipse cx="{(xa + xc) / 2}" cy="{ya}" rx="15" ry="9" fill="{COLORS[color][0]}" '
+                     f'stroke="#e0e0e0" stroke-width="1"/>')
+            b.label(4, anode, f"{vd} {label}", dx=(xc - xa) / 2, dy=-2 * STEP + 3)
+        # Этап 5 — резистор и отгиб анода.
+        (xt, yt), (_, yb) = b.xy(r_top), b.xy(r_bot)
+        if mirror:
+            b.pad(5, r_top, PAD_COLOR, 5)
+            b.pad(5, r_bot, PAD_COLOR, 5)
+            b.line(5, anode, r_top, "#ff9f1c", 3)
+        else:
+            b.add(5, f'<line x1="{xt}" y1="{yt}" x2="{xt}" y2="{yb}" stroke="#c9d1d9" stroke-width="1.5"/>'
+                     f'<rect x="{xt - 6}" y="{yt + 22}" width="12" height="{yb - yt - 44}" rx="3" '
+                     f'fill="#c8b48a" stroke="#0d1117"/>')
+            b.pad(5, r_top, PAD_COLOR, 3.5)
+            b.pad(5, r_bot, PAD_COLOR, 3.5)
+            b.label(5, r_top, r, dx=14, dy=(yb - yt) / 2 + 3)
+        # Этап 7 — катод к шине ряда B.
+        b.line(7, cathode, f"B{hole_rc(cathode)[1]}", GND, 3 if mirror else 2, "" if mirror else "2,2")
+
+    for sa, legs, sig, gnd_leg in PANEL_BUTTONS:
+        # Этап 6 — кнопка.
+        if mirror:
+            for leg in legs:
+                b.pad(6, leg, PAD_COLOR, 5)
+        else:
+            b.rect(6, legs[0], legs[3], 8, 'rx="4" fill="#30363d" stroke="#6e7681"')
+            (x0, y0), (x1, y1) = b.xy(legs[0]), b.xy(legs[3])
+            b.add(6, f'<circle cx="{(x0 + x1) / 2}" cy="{(y0 + y1) / 2}" r="9" fill="#21262d" stroke="#8b949e"/>')
+            for leg in legs:
+                b.pad(6, leg, PAD_COLOR, 3.5)
+        b.label(6, legs[0], sa, dx=(b.xy(legs[1])[0] - b.xy(legs[0])[0]) / 2, dy=-12, size=9)
+        # Этап 7 — ножка N к шине ряда O.
+        b.line(7, gnd_leg, f"O{hole_rc(gnd_leg)[1]}", GND, 3 if mirror else 2, "" if mirror else "2,2")
+
+    # Этап 7 — шины GND панели.
+    for a, z in PANEL_GND:
+        b.line(7, a, z, GND, 4, under)
+
+    # Этап 8 — концы жгута.
+    for w in wires_of("harness"):
+        b.line(8, w.panel, w.panel_to, COLORS[w.color][0], 2.5, "2,2")
+        b.wire_end(8, w.panel, w)
+    return b
 
 
-def notes_box(title: str, items: list[tuple[str, str]], css: str = "s-note", kind: str = "") -> str:
-    rows = "\n".join(f'  <div class="note-item"><span class="note-icon">{i}</span>'
-                     f'<span class="note-text"><strong>{head}</strong> {text}</span></div>'
-                     for i, (head, text) in enumerate(items, 1))
-    return f'<div class="notes-box {kind}">\n  <div class="section-title {css}">{title}</div>\n{rows}\n</div>'
+VIEWS = {
+    "main": ("🧠 Основная плата 5×7 см — вид со стороны деталей", build_main(False), "brain-hdr"),
+    "main_solder": ("🧠 Основная плата — вид со стороны пайки (зеркально, столбец 1 справа!)",
+                    build_main(True), "solder-hdr"),
+    "panel": ("🎛 Панельная плата — со стороны деталей", build_panel(False), "remote-hdr"),
+    "panel_solder": ("🎛 Панельная плата — со стороны пайки (зеркально)", build_panel(True), "solder-hdr"),
+}
+
+# ─────────────────────────── HTML: этапы ───────────────────────────
 
 
-def stages_box() -> str:
-    rows = "\n".join(
-        f'    <tr><td class="num">{i}</td><td class="stage">{name}</td><td class="act">{act}</td>'
-        f'<td class="chk">✔ {chk}</td></tr>'
-        for i, (name, act, chk) in enumerate(STAGES, 1))
-    return ('<div class="wirelist">\n  <h3>🛠 ПОРЯДОК СБОРКИ — 15 ЭТАПОВ</h3>\n  <table class="stages">\n'
-            '    <tr><th>№</th><th>Этап</th><th>Что делать</th><th>Проверка</th></tr>\n'
-            f'{rows}\n  </table>\n</div>')
+def board_card(view: str, stage: int) -> str:
+    title, board, css = VIEWS[view]
+    return (f'<div class="board-card {view}">\n  <div class="device-header {css}">{title}</div>\n'
+            f'{board.svg(stage, title)}\n</div>')
+
+
+def steps_list(stage: Stage) -> str:
+    items = [f'  <div class="note-item"><span class="note-icon">{i}</span>'
+             f'<span class="note-text">{text}</span></div>' for i, text in enumerate(stage.steps, 1)]
+    if stage.check:
+        items.append(f'  <div class="note-item check"><span class="note-icon">✔</span>'
+                     f'<span class="note-text"><b>Проверка:</b> {stage.check}</span></div>')
+    head = "Правила" if stage.n == 0 else ("Чек-лист" if stage.n == len(STAGES) - 1 else "Порядок действий")
+    return (f'<div class="notes-box">\n  <div class="section-title s-wires">{head}</div>\n'
+            + "\n".join(items) + "\n</div>")
+
+
+def wires_table(group: str) -> str:
+    g = GROUP[group]
+    rows = []
+    for w in wires_of(group):
+        if group == "harness":
+            dst = f"основная {w.hole} → панель {w.panel}"
+        else:
+            dst = f"{w.hole} → {w.nano} Nano" if w.nano else f"{w.hole} (шина {w.bus})"
+        rows.append(f'    <tr><td class="num">{w.n}</td><td class="pin">{w.pin}</td>'
+                    f'<td class="dst">{dst}</td><td>{swatch(w.color)}</td></tr>')
+    for pin, text in UNUSED.get(group, []):
+        rows.append(f'    <tr><td class="num">—</td><td class="pin">{pin}</td><td class="dst">не подключать</td>'
+                    f'<td></td></tr>')
+    first = "Вывод Nano" if group == "harness" else "Вывод"
+    return (f'<div class="module-card">\n  <div class="section-title s-i2c">{g.title} · провода {g.length}</div>\n'
+            f'  <table>\n    <tr><th>№</th><th>{first}</th><th>Куда</th><th>Цвет</th></tr>\n'
+            + "\n".join(rows) + "\n  </table>\n</div>")
+
+
+def stage_nav(n: int) -> str:
+    last = len(STAGES) - 1
+    prev = f'<a href="#stage-{n - 1}">← Этап {n - 1}</a>' if n > 0 else "<span></span>"
+    nxt = f'<a href="#stage-{n + 1}">Этап {n + 1} →</a>' if n < last else '<a href="#spravka">Справочник →</a>'
+    return f'<div class="stage-nav">{prev}<a href="#top">↑ Все этапы</a>{nxt}</div>'
+
+
+def stage_block(s: Stage) -> str:
+    last = len(STAGES) - 1
+    side = [steps_list(s)]
+    if s.group:
+        side.insert(0, wires_table(s.group))
+    if s.note:
+        side.append(f'<div class="stage-note">{s.note}</div>')
+    boards = "\n".join(board_card(v, s.n) for v in s.views)
+    pair = " pair" if all(v.startswith("panel") for v in s.views) and len(s.views) == 2 else ""
+    return f"""<section class="stage" id="stage-{s.n}">
+<div class="stage-head">
+  <div><div class="stage-num">Этап {s.n} из {last}</div><h2>{s.title}</h2></div>
+  <div class="stage-where">{s.where}</div>
+</div>
+<div class="stage-body">
+<div class="stage-boards{pair}">
+{boards}
+</div>
+<div class="stage-side">
+{chr(10).join(side)}
+</div>
+</div>
+{stage_nav(s.n)}
+</section>"""
+
+
+def contents() -> str:
+    links = "\n".join(f'  <a href="#stage-{s.n}"><span>{s.n}</span>{s.title}</a>' for s in STAGES)
+    return f'<nav class="contents" aria-label="Этапы">\n{links}\n  <a href="#spravka"><span>📋</span>Справочник: ведомость и схема</a>\n</nav>'
+
+
+def legend_stage() -> str:
+    return ('<div class="legend">'
+            '<span><i class="lg cur"></i>ярко — делаем на этом этапе</span>'
+            '<span><i class="lg done"></i>бледно — сделано раньше</span>'
+            '<span><i class="lg a1"></i>угол A1 (отметьте маркером)</span>'
+            '<span><svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#888" stroke-width="3" '
+            'stroke-dasharray="6,3"/></svg>шина снизу платы (на виде сверху)</span>'
+            '<span><svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#d4c044" stroke-width="2.5" '
+            'stroke-dasharray="2,2"/></svg>конец провода отогнут снизу</span></div>')
+
+
+# ─────────────────────────── Справочник ───────────────────────────
 
 
 def wirelist() -> str:
     rows = []
     for g in GROUPS:
-        rows.append(f'    <tr class="grp"><td colspan="6">{g.title} · {g.length}</td></tr>')
+        rows.append(f'    <tr class="grp"><td colspan="6">{g.title} · этап {g.stage} · {g.length}</td></tr>')
         for w in wires_of(g.key):
             if g.key == "harness":
                 src = f"Основная {w.hole}" + (f" ({w.nano})" if w.nano else " (шина GND)")
@@ -362,44 +681,41 @@ def wirelist() -> str:
             + "\n".join(rows) + "\n  </table>\n</div>")
 
 
-# ─────────────────────────── SVG: функциональная схема ───────────────────────────
-
 ROW_H, BOX_HDR, BOX_GAP, TOP = 22, 24, 18, 90
 
 
 def functional_svg() -> str:
-    """ Nano в центре, слева модули основной платы, справа панель. """
-    left = [g for g in GROUPS if g.board == "main"]
+    """Nano в центре, слева модули основной платы, справа панель."""
     lx0, lx1, nx0, nx1, rx0, rx1 = 40, 250, 440, 600, 790, 1020
     out, nano_left, nano_right = [], [], []
-    y = TOP
 
     def pin_row(x_text: float, yy: float, text: str, anchor: str) -> str:
         return (f'<text x="{x_text}" y="{yy + 4}" text-anchor="{anchor}" fill="#c9d1d9" '
                 f'font-size="11" font-family="monospace">{text}</text>')
 
-    for g in left:
-        ws = wires_of(g.key)
-        unused = UNUSED.get(g.key, [])
+    def mid_label(x0: float, x1: float, yy: float, text: str) -> str:
+        return (f'<text x="{(x0 + x1) / 2}" y="{yy - 4}" text-anchor="middle" fill="#8b949e" '
+                f'font-size="9" font-family="monospace">{text}</text>')
+
+    def box(x0: float, x1: float, y: float, h: float, title: str, color: str) -> None:
+        out.append(f'<rect x="{x0}" y="{y}" width="{x1 - x0}" height="{h}" rx="6" fill="#161b22" stroke="#30363d"/>')
+        out.append(f'<text x="{x0 + 10}" y="{y + 16}" fill="{color}" font-size="11" font-weight="bold" '
+                   f'font-family="Arial">{title}</text>')
+
+    y = TOP
+    for g in (g for g in GROUPS if g.key != "harness"):
+        ws, unused = wires_of(g.key), UNUSED.get(g.key, [])
         h = BOX_HDR + ROW_H * (len(ws) + len(unused)) + 6
-        out.append(f'<rect x="{lx0}" y="{y}" width="{lx1 - lx0}" height="{h}" rx="6" fill="#161b22" stroke="#30363d"/>')
-        out.append(f'<text x="{lx0 + 10}" y="{y + 16}" fill="#58a6ff" font-size="11" font-weight="bold" '
-                   f'font-family="Arial">{g.module}</text>')
+        box(lx0, lx1, y, h, g.module, "#58a6ff")
         yy = y + BOX_HDR + ROW_H / 2
         for w in ws:
             out.append(pin_row(lx1 - 8, yy, w.pin, "end"))
             color = SIG[w.sig][0]
-            if w.nano:
-                out.append(f'<line x1="{lx1}" y1="{yy}" x2="{nx0}" y2="{yy}" stroke="{color}" stroke-width="2"/>')
-                out.append(f'<text x="{(lx1 + nx0) / 2}" y="{yy - 4}" text-anchor="middle" fill="#8b949e" '
-                           f'font-size="9" font-family="monospace">№{w.n} · {w.hole}</text>')
-                nano_left.append((yy, w.nano, color))
-            elif g.key == "usb":  # разъём питания — к выводам 5V/GND Nano через шины
-                nano_pin = "5V" if w.bus == "+5 В" else "GND"
-                out.append(f'<line x1="{lx1}" y1="{yy}" x2="{nx0}" y2="{yy}" stroke="{color}" '
-                           f'stroke-width="2" stroke-dasharray="5,3"/>')
-                out.append(f'<text x="{(lx1 + nx0) / 2}" y="{yy - 4}" text-anchor="middle" fill="#8b949e" '
-                           f'font-size="9" font-family="monospace">№{w.n} · шина {w.bus}</text>')
+            if w.nano or g.key == "usb":
+                nano_pin = w.nano or ("5V" if w.bus == "+5 В" else "GND")
+                dash = "" if w.nano else ' stroke-dasharray="5,3"'
+                out.append(f'<line x1="{lx1}" y1="{yy}" x2="{nx0}" y2="{yy}" stroke="{color}" stroke-width="2"{dash}/>')
+                out.append(mid_label(lx1, nx0, yy, f"№{w.n} · {w.hole}" if w.nano else f"№{w.n} · шина {w.bus}"))
                 nano_left.append((yy, nano_pin, color))
             else:
                 out.append(f'<line x1="{lx1}" y1="{yy}" x2="{lx1 + 22}" y2="{yy}" stroke="{color}" '
@@ -415,7 +731,6 @@ def functional_svg() -> str:
         y += h + BOX_GAP
     height = y + 10
 
-    # Панель справа: светодиоды и кнопки.
     harness = {w.panel_to: w for w in wires_of("harness")}
     blocks = [
         ("Светодиоды (панель)", [(f"{r} 220 Ом → {vd} «{lab}»", harness[r_bot])
@@ -426,23 +741,19 @@ def functional_svg() -> str:
     y = TOP
     for title, rows in blocks:
         h = BOX_HDR + ROW_H * len(rows) + 6
-        out.append(f'<rect x="{rx0}" y="{y}" width="{rx1 - rx0}" height="{h}" rx="6" fill="#161b22" stroke="#30363d"/>')
-        out.append(f'<text x="{rx0 + 10}" y="{y + 16}" fill="#bc8cff" font-size="11" font-weight="bold" '
-                   f'font-family="Arial">{title}</text>')
+        box(rx0, rx1, y, h, title, "#bc8cff")
         yy = y + BOX_HDR + ROW_H / 2
         for text, w in rows:
             out.append(pin_row(rx0 + 8, yy, text, "start"))
             color = SIG[w.sig][0]
             dash = ' stroke-dasharray="5,3"' if w.bus else ""
             out.append(f'<line x1="{nx1}" y1="{yy}" x2="{rx0}" y2="{yy}" stroke="{color}" stroke-width="2"{dash}/>')
-            out.append(f'<text x="{(nx1 + rx0) / 2}" y="{yy - 4}" text-anchor="middle" fill="#8b949e" '
-                       f'font-size="9" font-family="monospace">№{w.n} · {w.hole} → {w.panel}</text>')
+            out.append(mid_label(nx1, rx0, yy, f"№{w.n} · {w.hole} → {w.panel}"))
             nano_right.append((yy, w.nano or "GND", color))
             yy += ROW_H
         y += h + BOX_GAP
     height = max(height, y + 10)
 
-    # Arduino Nano.
     out.append(f'<rect x="{nx0}" y="20" width="{nx1 - nx0}" height="{height - 40}" rx="8" fill="#0c1a10" '
                f'stroke="#2ea043" stroke-width="2"/>')
     mid = (nx0 + nx1) / 2
@@ -462,330 +773,174 @@ def functional_svg() -> str:
             + "\n".join(out) + "\n</svg>")
 
 
-# ─────────────────────────── SVG: карты плат ───────────────────────────
-
-STEP, PAD = 20, 34
-
-
-class BoardMap:
-    """Карта макетной платы со стороны деталей."""
-
-    def __init__(self, cols: int, rows: int):
-        self.cols, self.rows = cols, rows
-        self.items: list[str] = []
-        self.top: list[str] = []  # поверх всего (маркеры концов проводов)
-
-    def xy(self, hole: str) -> tuple[float, float]:
-        r, c = hole_rc(hole)
-        return PAD + (c - 1) * STEP, PAD + r * STEP
-
-    def size(self) -> tuple[int, int]:
-        return PAD * 2 + (self.cols - 1) * STEP, PAD * 2 + (self.rows - 1) * STEP
-
-    def grid(self) -> list[str]:
-        w, h = self.size()
-        out = [f'<rect x="{PAD - 14}" y="{PAD - 14}" width="{w - 2 * PAD + 28}" height="{h - 2 * PAD + 28}" '
-               f'rx="6" fill="#161b22" stroke="#30363d"/>']
-        for c in range(1, self.cols + 1):
-            x = PAD + (c - 1) * STEP
-            out.append(f'<text x="{x}" y="{PAD - 18}" text-anchor="middle" fill="#6e7681" font-size="9" '
-                       f'font-family="monospace">{c}</text>')
-        for r in range(self.rows):
-            y = PAD + r * STEP
-            out.append(f'<text x="{PAD - 22}" y="{y + 3}" text-anchor="middle" fill="#6e7681" font-size="9" '
-                       f'font-family="monospace">{chr(65 + r)}</text>')
-            for c in range(1, self.cols + 1):
-                out.append(f'<circle cx="{PAD + (c - 1) * STEP}" cy="{y}" r="2.2" fill="#30363d"/>')
-        x, y = self.xy("A1")
-        out.append(f'<circle cx="{x}" cy="{y}" r="7" fill="none" stroke="#ff5577" stroke-width="2"/>')
-        return out
-
-    def line(self, a: str, b: str, color: str, width: float = 3, dash: str = "") -> None:
-        (x1, y1), (x2, y2) = self.xy(a), self.xy(b)
-        d = f' stroke-dasharray="{dash}"' if dash else ""
-        self.items.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{color}" '
-                          f'stroke-width="{width}" stroke-linecap="round"{d}/>')
-
-    def path(self, holes: list[str], color: str, width: float = 3, dash: str = "") -> None:
-        for a, b in zip(holes, holes[1:]):
-            self.line(a, b, color, width, dash)
-
-    def pad(self, hole: str, color: str = "#d4c044", r: float = 5) -> None:
-        x, y = self.xy(hole)
-        self.items.append(f'<circle cx="{x}" cy="{y}" r="{r}" fill="{color}" stroke="#0d1117"/>')
-
-    def label(self, hole: str, text: str, dx: float = 0, dy: float = 0, color: str = "#c9d1d9",
-              size: int = 8, anchor: str = "middle") -> None:
-        x, y = self.xy(hole)
-        self.items.append(f'<text x="{x + dx}" y="{y + dy}" text-anchor="{anchor}" fill="{color}" '
-                          f'font-size="{size}" font-family="monospace">{text}</text>')
-
-    def wire_end(self, hole: str, w: Wire) -> None:
-        x, y = self.xy(hole)
-        fill = COLORS[w.color][0]
-        self.top.append(f'<circle cx="{x}" cy="{y}" r="8" fill="{fill}" stroke="#e0e0e0" stroke-width="1.5"/>'
-                        f'<text x="{x}" y="{y + 3}" text-anchor="middle" fill="{text_on(fill)}" font-size="8" '
-                        f'font-weight="bold" font-family="Arial">{w.n}</text>')
-
-    def svg(self, label: str) -> str:
-        w, h = self.size()
-        return (f'<svg viewBox="0 0 {w} {h}" class="board" xmlns="http://www.w3.org/2000/svg" role="img" '
-                f'aria-label="{label}">\n' + "\n".join(self.grid() + self.items + self.top) + "\n</svg>")
-
-
-def main_board_svg() -> str:
-    b = BoardMap(24, 18)
-    p5, gnd = SIG["p5"][0], SIG["gnd"][0]
-    # Шины и перемычки (снизу — пунктир).
-    b.line("A24", "R24", p5, 4, "6,3")
-    b.path(["B13", "A13", "A24"], p5, 3, "6,3")
-    b.line("C21", "R21", gnd, 4, "6,3")
-    b.path(["H13", "I13", "I21"], gnd, 3, "6,3")
-    # Arduino Nano.
-    x0, y0 = b.xy("B2")
-    x1, y1 = b.xy("H16")
-    b.items.append(f'<rect x="{x0 - 10}" y="{y0 - 10}" width="{x1 - x0 + 20}" height="{y1 - y0 + 20}" rx="5" '
-                   f'fill="#0c1a10" stroke="#2ea043" stroke-width="1.5" opacity="0.92"/>')
-    ux, uy = b.xy("E1")
-    b.items.append(f'<rect x="{ux - 12}" y="{uy - 9}" width="22" height="18" rx="2" fill="#30363d" stroke="#6e7681"/>'
-                   f'<text x="{ux - 1}" y="{uy + 3}" text-anchor="middle" fill="#c9d1d9" font-size="7" '
-                   f'font-family="Arial">USB</text>')
-    b.label("E9", "Arduino Nano", dy=4, color="#3fb950", size=13)
-    used = {w.nano for w in WIRES if w.nano} | {"5V", "GND"}
-    for pins, row, dy in ((NANO_TOP, "B", 14), (NANO_BOT, "H", -9)):
-        for i, pin in enumerate(pins):
-            hole = f"{row}{i + 2}"
-            b.pad(hole, "#d4c044" if pin in used else "#5a5330", 5)
-            b.label(hole, pin, dy=dy, color="#e0e0e0" if pin in used else "#6e7681", size=7)
-    # Концы проводов и отгибы к выводам Nano.
-    for w in WIRES:
-        if w.nano:
-            b.line(w.hole, NANO_HOLE[w.nano], COLORS[w.color][0], 2.5, "2,2")
-        b.wire_end(w.hole, w)
-    b.label("R24", "+5 В", dy=26, color=p5, size=10)
-    b.label("R21", "GND", dy=26, color=gnd, size=10)
-    return b.svg("Карта основной платы со стороны деталей")
-
-
-def panel_board_svg() -> str:
-    b = BoardMap(18, 24)
-    gnd = SIG["gnd"][0]
-    for _, a, z, _ in PANEL_GND:
-        b.line(a, z, gnd, 4, "6,3")
-    for vd, color, anode, cathode, r, r_top, r_bot, label in PANEL_LEDS:
-        b.line(anode, r_top, "#c9d1d9", 2, "2,2")          # анод отогнут к резистору
-        b.line(cathode, f"B{hole_rc(cathode)[1]}", gnd, 2, "2,2")  # катод — к шине ряда B
-        (xa, ya), (xc, _) = b.xy(anode), b.xy(cathode)
-        b.items.append(f'<ellipse cx="{(xa + xc) / 2}" cy="{ya}" rx="15" ry="9" fill="{COLORS[color][0]}" '
-                       f'stroke="#e0e0e0" stroke-width="1"/>')
-        b.label(anode, f"{vd} {label}", dx=STEP / 2, dy=-2 * STEP + 3, size=8)
-        (xt, yt), (_, yb) = b.xy(r_top), b.xy(r_bot)
-        b.items.append(f'<line x1="{xt}" y1="{yt}" x2="{xt}" y2="{yb}" stroke="#c9d1d9" stroke-width="1.5"/>'
-                       f'<rect x="{xt - 6}" y="{yt + 22}" width="12" height="{yb - yt - 44}" rx="3" '
-                       f'fill="#c8b48a" stroke="#0d1117"/>')
-        b.label(r_top, r, dx=10, dy=(yb - yt) / 2 + 3, size=8, anchor="start")
-        b.pad(r_top, "#d4c044", 3.5)
-        b.pad(r_bot, "#d4c044", 3.5)
-    for sa, legs, sig, gnd_leg in PANEL_BUTTONS:
-        (x0, y0), (x1, y1) = b.xy(legs[0]), b.xy(legs[3])
-        b.items.append(f'<rect x="{x0 - 8}" y="{y0 - 8}" width="{x1 - x0 + 16}" height="{y1 - y0 + 16}" rx="4" '
-                       f'fill="#30363d" stroke="#6e7681"/>'
-                       f'<circle cx="{(x0 + x1) / 2}" cy="{(y0 + y1) / 2}" r="9" fill="#21262d" stroke="#8b949e"/>'
-                       f'<text x="{(x0 + x1) / 2}" y="{y0 - 12}" text-anchor="middle" fill="#c9d1d9" font-size="9" '
-                       f'font-family="Arial">{sa}</text>')
-        for leg in legs:
-            b.pad(leg, "#d4c044", 3.5)
-        b.line(gnd_leg, f"O{hole_rc(gnd_leg)[1]}", gnd, 2, "2,2")
-    for w in wires_of("harness"):
-        b.line(w.panel, w.panel_to, COLORS[w.color][0], 2.5, "2,2")
-        b.wire_end(w.panel, w)
-    return b.svg("Карта панельной платы со стороны деталей")
-
-
-def legend() -> str:
+def legend_sig() -> str:
     items = []
     for key, (color, name) in SIG.items():
         dash = ' stroke-dasharray="4,2"' if key in ("p5", "gnd") else ""
-        items.append(f'  <span><svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="{color}" '
+        items.append(f'<span><svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="{color}" '
                      f'stroke-width="3"{dash}/></svg>{name}</span>')
-    return '<div class="legend">\n' + "\n".join(items) + "\n</div>"
+    return '<div class="legend">' + "".join(items) + "</div>"
 
 
 # ─────────────────────────── Страница ───────────────────────────
 
+DEFS = f"""<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <pattern id="holes" x="{PAD - STEP / 2}" y="{PAD - STEP / 2}" width="{STEP}" height="{STEP}"
+             patternUnits="userSpaceOnUse"><circle cx="{STEP / 2}" cy="{STEP / 2}" r="2.2" fill="#30363d"/></pattern>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="0" stdDeviation="2.2" flood-color="#ffb347" flood-opacity="0.95"/>
+    </filter>
+  </defs>
+</svg>"""
+
 CSS = """
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
   body { background: #0d1117; color: #e0e0e0; font-family: Arial, sans-serif;
          padding: 20px; font-size: 13px; }
   h1 { text-align: center; color: #58a6ff; font-size: 1.5em; margin-bottom: 4px; }
-  .subtitle { text-align: center; color: #666; margin-bottom: 20px; font-size: 0.85em; }
+  .subtitle { text-align: center; color: #666; margin-bottom: 18px; font-size: 0.85em; }
+  a { color: #58a6ff; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  a:focus-visible { outline: 2px solid #58a6ff; outline-offset: 2px; border-radius: 4px; }
 
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  .contents { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 6px;
+              max-width: 1300px; margin: 0 auto 14px; }
+  .contents a { display: flex; gap: 10px; align-items: center; padding: 7px 12px; color: #c9d1d9;
+                background: #161b22; border: 1px solid #30363d; border-radius: 8px; font-size: 12px; }
+  .contents a:hover { border-color: #58a6ff; text-decoration: none; }
+  .contents span { min-width: 26px; height: 26px; border-radius: 50%; background: #1f6feb; color: #fff;
+                   font-weight: bold; display: flex; align-items: center; justify-content: center; }
 
-  .device { border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
-  .device-header { padding: 12px 16px; font-weight: bold; font-size: 1.1em;
-                   text-align: center; letter-spacing: 1px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin: 4px 0 18px;
+            color: #8b949e; font-size: 11px; }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .lg { display: inline-block; width: 14px; height: 14px; border-radius: 50%; }
+  .lg.cur { background: #d4c044; box-shadow: 0 0 6px 2px #ffb347; }
+  .lg.done { background: #d4c044; opacity: .3; }
+  .lg.a1 { border: 2px solid #ff5577; }
+
+  .stage { max-width: 1300px; margin: 0 auto 26px; border: 1px solid #30363d; border-radius: 10px;
+           overflow: hidden; scroll-margin-top: 10px; }
+  .stage-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px;
+                padding: 12px 18px; background: #0c2033; border-bottom: 1px solid #1c4a7a; }
+  .stage-num { color: #f0a000; font-weight: bold; font-size: 12px; letter-spacing: 1px; }
+  .stage-head h2 { color: #58a6ff; font-size: 1.3em; margin-top: 2px; }
+  .stage-where { color: #8b949e; font-size: 12px; text-align: right; }
+  .stage-body { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; padding: 16px; }
+  .stage-boards { display: grid; gap: 16px; align-content: start; }
+  .stage-boards.pair { grid-template-columns: 1fr 1fr; }
+  .stage-side { display: grid; gap: 14px; align-content: start; }
+  .stage-note { color: #f0a000; font-size: 12px; padding: 8px 12px; border: 1px dashed #4a3a00;
+                border-radius: 8px; background: #1a1500; }
+  .stage-nav { display: flex; justify-content: space-between; padding: 8px 18px; border-top: 1px solid #21262d;
+               background: #0f1620; font-size: 12px; }
+
+  .board-card { border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
+  .stage-boards:not(.pair) .board-card.panel { max-width: 470px; }
+  .device-header { padding: 8px 14px; font-weight: bold; font-size: 0.9em; text-align: center; letter-spacing: .5px; }
   .brain-hdr  { background: #0c2033; color: #58a6ff; border-bottom: 1px solid #1c4a7a; }
   .remote-hdr { background: #1a0c2e; color: #bc8cff; border-bottom: 1px solid #4a1c7a; }
+  .solder-hdr { background: #1a1500; color: #e8c84a; border-bottom: 1px solid #4a3a00; }
+  .board { width: 100%; display: block; background: #0d1117; }
+  .board .done { opacity: .3; }
+  .board .cur { filter: url(#glow); }
 
-  .section-title { padding: 5px 12px; font-weight: bold; font-size: 0.75em;
+  .section-title { padding: 6px 12px; font-weight: bold; font-size: 0.75em;
                    letter-spacing: 1px; text-transform: uppercase; }
-  .s-nrf    { background: #1a1a00; color: #e8c84a; }
-  .s-relay  { background: #200a0a; color: #ff6b6b; }
-  .s-i2c    { background: #0a0a20; color: #79b8ff; }
-  .s-adc    { background: #0a1a0a; color: #56d364; }
-  .s-btn    { background: #1a0e00; color: #f0a000; }
-  .s-led    { background: #1a001a; color: #d85cff; }
-  .s-pwr    { background: #0a1a10; color: #3fb950; }
-  .s-note   { background: #200000; color: #ff8888; }
-  .s-ok     { background: #07251a; color: #56d364; }
-  .s-wires  { background: #002030; color: #58a6ff; }
+  .s-i2c   { background: #0a0a20; color: #79b8ff; }
+  .s-wires { background: #002030; color: #58a6ff; }
+
+  .notes-box, .module-card { border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
+  .note-item { padding: 7px 14px; border-bottom: 1px solid #21262d; font-size: 12.5px; line-height: 1.45;
+               display: flex; gap: 10px; }
+  .note-item:last-child { border-bottom: none; }
+  .note-icon { min-width: 22px; height: 22px; border-radius: 50%; background: #f0a000; color: #111;
+               font-weight: bold; font-size: 11px; display: flex; align-items: center; justify-content: center; }
+  .note-text { color: #c9d1d9; }
+  .note-text b { color: #fff; }
+  .note-item.check { background: #07251a; }
+  .note-item.check .note-icon { background: #2ea043; color: #fff; }
+  .note-item.check .note-text b { color: #56d364; }
 
   table { width: 100%; border-collapse: collapse; }
-  td { padding: 4px 12px; border-bottom: 1px solid #21262d; vertical-align: middle; }
-  td:first-child { color: #8b949e; width: 34%; }
-  td:nth-child(2){ font-weight: bold; color: #e0e0e0; width: 26%; font-family: monospace; font-size: 12px; }
-  td:last-child  { color: #8b949e; font-size: 11px; }
+  th { background: #161b22; color: #8b949e; padding: 6px 10px; font-size: 11px; text-align: left;
+       border-bottom: 1px solid #30363d; }
+  td { padding: 5px 10px; border-bottom: 1px solid #21262d; font-size: 12px; color: #c9d1d9; }
   tr:last-child td { border-bottom: none; }
-  .wn { color: #6e7681; font-size: 10px; font-family: monospace; }
+  td.num { width: 34px; color: #58a6ff; font-weight: bold; font-family: monospace; }
+  td.pin, td.dst { font-family: monospace; color: #e0e0e0; }
+  .color-swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px;
+                  vertical-align: middle; margin-right: 6px; border: 1px solid #666; }
 
-  .pin-p5  { color: #ff6666 !important; }
-  .pin-gnd { color: #a0a0a0 !important; }
-
-  .notes-box { margin-top: 20px; border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
-  .notes-box .section-title { font-size: 0.8em; }
-  .note-item { padding: 6px 16px; border-bottom: 1px solid #21262d;
-               font-size: 12px; display: flex; gap: 8px; }
-  .note-item:last-child { border-bottom: none; }
-  .note-icon { min-width: 20px; color: #f0a000; font-weight: bold; }
-  .note-text { color: #c9d1d9; }
-  .note-text strong { color: #ff8888; }
-  .notes-box.ok .note-text strong { color: #56d364; }
-
-  .bus-link { margin-top: 16px; text-align: center; padding: 10px;
-              border: 1px dashed #1c4a2a; border-radius: 8px; color: #3fb950; font-size: 12px; }
-  .bus-link span { font-weight: bold; }
-  .bus-link .p5 { color: #ff6666; }
-  .bus-link .gnd { color: #a0a0a0; }
-
-  .wirelist { margin-top: 20px; border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
+  .spravka { max-width: 1300px; margin: 30px auto 0; }
+  .spravka > h1 { margin-top: 10px; }
+  .wirelist { margin-top: 10px; border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
   .wirelist h3 { padding: 10px 16px; background: #002030; color: #58a6ff; font-size: 0.9em;
                  letter-spacing: 2px; font-weight: bold; }
-  .wirelist th { background: #161b22; color: #8b949e; padding: 7px 10px;
-                 font-size: 11px; text-align: left; border-bottom: 1px solid #30363d; }
-  .wirelist td { padding: 5px 10px; font-size: 12px; border-bottom: 1px solid #21262d;
-                 width: auto; font-weight: normal; }
-  .wirelist td.num { width: 34px; color: #58a6ff; font-weight: bold; font-family: monospace; }
   .wirelist td.from, .wirelist td.to { font-family: monospace; color: #e0e0e0; }
-  .wirelist td.color { width: 15%; color: #c9d1d9; font-family: Arial, sans-serif; }
-  .wirelist td.len { width: 60px; color: #8b949e; font-family: Arial, sans-serif; }
+  .wirelist td.color { width: 15%; }
+  .wirelist td.len { width: 60px; color: #8b949e; }
   .wirelist td.note { color: #8b949e; font-size: 11px; }
   .wirelist tr.grp td { background: #0f1620; color: #79b8ff; font-size: 11px; font-weight: bold;
                         letter-spacing: 1px; text-transform: uppercase; }
-  .stages td.stage { color: #e0e0e0; font-weight: bold; width: 21%; font-family: Arial, sans-serif; }
-  .stages td.act { color: #c9d1d9; font-size: 12px; font-family: Arial, sans-serif; }
-  .stages td.chk { color: #56d364; font-size: 11px; width: 26%; }
-
-  .color-swatch { display: inline-block; width: 14px; height: 14px;
-                  border-radius: 3px; vertical-align: middle; margin-right: 6px;
-                  border: 1px solid #666; }
-
-  .page { page-break-before: always; padding-top: 20px; }
-  .page h1 { font-size: 1.4em; }
-  .legend { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-bottom: 18px; }
-  .legend span { display: flex; align-items: center; gap: 5px; font-size: 11px; }
   .scheme { width: 100%; max-width: 1060px; display: block; margin: 0 auto; background: #0d1117;
             border-radius: 10px; border: 1px solid #21262d; }
-  .boards { display: grid; grid-template-columns: 1.35fr 1fr; gap: 20px; margin-top: 22px; align-items: start; }
-  .board-card { border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
-  .board-card .device-header { font-size: 0.95em; }
-  .board { width: 100%; display: block; background: #0d1117; }
-  .board-note { padding: 8px 14px; color: #8b949e; font-size: 11px; border-top: 1px solid #21262d; }
-  .footer { text-align: center; color: #444; font-size: 11px; margin-top: 14px; }
+  .footer { text-align: center; color: #444; font-size: 11px; margin: 14px 0; }
 
   @media (max-width: 900px) {
-    .grid, .boards { grid-template-columns: 1fr; }
+    body { padding: 12px; }
+    .stage-body, .stage-boards.pair { grid-template-columns: 1fr; padding: 10px; }
+    .stage-head { flex-direction: column; align-items: flex-start; }
+    .stage-where { text-align: left; }
     .wirelist { overflow-x: auto; }
   }
   @media print {
-    body { background: white; color: #111; padding: 10px; font-size: 11px; }
-    .device, .notes-box, .wirelist, .board-card { border: 1px solid #888; }
-    .device-header, .section-title, .wirelist h3, .wirelist th, .wirelist tr.grp td {
-      color: #000 !important; background: #ddd !important; }
-    td:first-child, td:last-child { color: #555; }
-    td:nth-child(2), .wirelist td.from, .wirelist td.to, .stages td.stage, .note-text { color: #000 !important; }
-    .note-text strong { color: #c00 !important; }
+    body { padding: 0; }
+    .contents, .stage-nav { display: none; }
+    .stage { page-break-before: always; border: none; margin: 0; }
+    .spravka { page-break-before: always; }
   }
 """
 
 
 def build() -> str:
-    assert len(WIRES) == 26 and [w.n for w in WIRES] == list(range(1, 27))
+    assert [w.n for w in WIRES] == list(range(1, 27)), "нумерация проводов 1–26"
     holes = [w.hole for w in WIRES]
     assert len(holes) == len(set(holes)), "два провода в одном отверстии основной платы"
+    assert [s.n for s in STAGES] == list(range(len(STAGES))), "нумерация этапов"
 
+    stages = "\n\n".join(stage_block(s) for s in STAGES)
     return f"""<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Устройство контроля ГСМ — Схема подключения и монтаж</title>
+<title>Устройство контроля ГСМ — Пайка по этапам</title>
 <style>{CSS}</style>
 </head>
 <body>
-
-<h1>⚡ Устройство контроля ГСМ — Схема подключения и монтажная ведомость</h1>
+{DEFS}
+<h1 id="top">⚡ Устройство контроля ГСМ — паяльная схема по этапам</h1>
 <div class="subtitle">Arduino Nano · LCD-2004 I²C · MQ-2 · DHT11 · HC-SR04 · 4 светодиода · 3 кнопки ·
-зуммер SFM-27 · питание USB Type-C 5 В · 26 проводов</div>
+зуммер SFM-27 · питание USB Type-C 5 В · {len(STAGES) - 1} этапов · 26 проводов</div>
+{contents()}
+{legend_stage()}
 
-<div class="grid">
-{main_board_card()}
-{panel_board_card()}
-</div><!-- /grid -->
+{stages}
 
-<div class="bus-link">
-  ⏚ Шины основной платы: <span class="p5">+5 В — столбец 24</span> · <span class="gnd">GND — столбец 21</span> ·
-  угол <span>A1</span> отмечен маркером · все координаты — <span>со стороны деталей</span>
-</div>
-
-{notes_box("⚠ Важные замечания перед сборкой", NOTES)}
-
-<!-- ═══════════════ СТРАНИЦА 2 — ПОРЯДОК СБОРКИ И ВЕДОМОСТЬ ═══════════════ -->
-<div class="page">
-{stages_box()}
-
+<section class="spravka" id="spravka">
+<h1>📋 Справочник</h1>
+<div class="subtitle">Все провода одной таблицей и общая функциональная схема — для прозвонки на этапе 15</div>
 {wirelist()}
-
-<div class="footer">Соедините всё по этой ведомости — и схема заработает с первого раза.
-Сверяйте каждый провод после пайки тестером (звонок).</div>
-</div>
-
-<!-- ═══════════════ СТРАНИЦА 3 — ГРАФИЧЕСКИЕ СХЕМЫ ═══════════════ -->
-<div class="page">
-<h1>Графические схемы подключения</h1>
-<div class="subtitle">Устройство контроля ГСМ · Arduino Nano · номера на линиях — номера проводов из ведомости</div>
-{legend()}
+<div class="footer">Сверяйте каждый провод после пайки тестером (звонок).</div>
+{legend_sig()}
 <div style="overflow-x:auto;">
 {functional_svg()}
 </div>
-
-<div class="boards">
-  <div class="board-card">
-    <div class="device-header brain-hdr">🧠 Основная плата 5×7 см — вид со стороны деталей</div>
-{main_board_svg()}
-    <div class="board-note">Кружок с номером — конец провода из ведомости. Точечная линия — конец отогнут снизу
-    к выводу Nano. Пунктир — шины +5 В и GND (лужёный провод снизу). Красное кольцо — угол A1.</div>
-  </div>
-  <div class="board-card">
-    <div class="device-header remote-hdr">🎛 Панельная плата — вид со стороны деталей</div>
-{panel_board_svg()}
-    <div class="board-note">Провода жгута 1–8 входят сверху и снизу отгибаются: J → I (к резистору), K → L (к кнопке),
-    P9 → O9 (к шине). Пунктир — общий провод GND.</div>
-  </div>
-</div>
-
-{notes_box("✅ Перед первым включением", CHECKLIST, "s-ok", "ok")}
-</div>
+<div class="footer"><a href="#top">↑ К списку этапов</a></div>
+</section>
 
 </body>
 </html>
@@ -794,4 +949,4 @@ def build() -> str:
 
 if __name__ == "__main__":
     OUT.write_text(build(), encoding="utf-8")
-    print(f"Готово: {OUT}")
+    print(f"Готово: {OUT} ({OUT.stat().st_size // 1024} КБ)")
