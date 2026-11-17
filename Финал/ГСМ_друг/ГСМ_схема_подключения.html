@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Устройство контроля ГСМ — Подключение по этапам</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: #0d1117; color: #e0e0e0; font-family: Arial, sans-serif; padding: 20px; font-size: 13px; }
+  h1 { text-align: center; color: #58a6ff; font-size: 1.5em; margin-bottom: 4px; }
+  .subtitle { text-align: center; color: #666; margin-bottom: 18px; font-size: 0.85em; }
+  a { color: #58a6ff; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  a:focus-visible { outline: 2px solid #58a6ff; outline-offset: 2px; border-radius: 4px; }
+  .muted { color: #8b949e; }
+
+  .contents { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px;
+              max-width: 1300px; margin: 0 auto 20px; }
+  .contents a { display: flex; gap: 10px; align-items: center; padding: 7px 12px; color: #c9d1d9;
+                background: #161b22; border: 1px solid #30363d; border-radius: 8px; font-size: 12px; }
+  .contents a:hover { border-color: #58a6ff; text-decoration: none; }
+  .contents span { min-width: 26px; height: 26px; border-radius: 50%; background: #1f6feb; color: #fff;
+                   font-weight: bold; display: flex; align-items: center; justify-content: center; }
+
+  .stage { max-width: 1300px; margin: 0 auto 26px; border: 1px solid #30363d; border-radius: 10px;
+           overflow: hidden; scroll-margin-top: 10px; }
+  .stage-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px;
+                padding: 12px 18px; background: #0c2033; border-bottom: 1px solid #1c4a7a; }
+  .stage-num { color: #f0a000; font-weight: bold; font-size: 12px; letter-spacing: 1px; }
+  .stage-head h2 { color: #58a6ff; font-size: 1.3em; margin-top: 2px; }
+  .stage-where { color: #8b949e; font-size: 12px; }
+  .stage-body { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 18px; padding: 16px; }
+  .stage-left, .stage-side { display: grid; gap: 14px; align-content: start; }
+  .stage-note { color: #f0a000; font-size: 12px; padding: 8px 12px; border: 1px dashed #4a3a00;
+                border-radius: 8px; background: #1a1500; }
+  .stage-nav { display: flex; justify-content: space-between; padding: 8px 18px; border-top: 1px solid #21262d;
+               background: #0f1620; font-size: 12px; }
+
+  .scheme { width: 100%; display: block; background: #0d1117; border-radius: 10px; border: 1px solid #21262d; }
+  .pinout { width: 100%; display: block; }
+
+  .section-title { padding: 6px 12px; font-weight: bold; font-size: 0.75em; letter-spacing: 1px;
+                   text-transform: uppercase; background: #002030; color: #58a6ff; }
+  .notes-box { border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
+  .note-item { padding: 8px 14px; border-bottom: 1px solid #21262d; font-size: 13px; line-height: 1.5;
+               display: flex; gap: 10px; align-items: flex-start; }
+  .note-item:last-child { border-bottom: none; }
+  .note-icon { min-width: 22px; height: 22px; border-radius: 50%; background: #f0a000; color: #111;
+               font-weight: bold; font-size: 11px; display: flex; align-items: center; justify-content: center; }
+  .note-text { color: #c9d1d9; }
+  .note-text b { color: #fff; }
+  .note-text b.pin { font-family: monospace; font-size: 14px; }
+  .wn { display: inline-block; min-width: 20px; padding: 0 5px; border-radius: 10px; font-size: 11px;
+        font-weight: bold; text-align: center; border: 1px solid #e0e0e0; }
+  .note-item.check { background: #07251a; }
+  .note-item.check .note-icon { background: #2ea043; color: #fff; }
+  .note-item.check .note-text b { color: #56d364; }
+
+  .wirelist { border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
+  .wirelist h3 { padding: 10px 16px; background: #002030; color: #58a6ff; font-size: 0.9em;
+                 letter-spacing: 2px; font-weight: bold; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #161b22; color: #8b949e; padding: 6px 10px; font-size: 11px; text-align: left;
+       border-bottom: 1px solid #30363d; }
+  td { padding: 6px 10px; border-bottom: 1px solid #21262d; font-size: 12px; color: #c9d1d9; }
+  tr:last-child td { border-bottom: none; }
+  td.num { width: 34px; color: #58a6ff; font-weight: bold; font-family: monospace; }
+  td.from { font-family: monospace; color: #e0e0e0; }
+  td.to { font-family: monospace; font-weight: bold; font-size: 14px; }
+  td.arrow { color: #6e7681; width: 20px; }
+  td.via { font-family: monospace; color: #c8b48a; }
+  td.note { color: #8b949e; font-size: 11px; }
+  td.note2 { color: #c9d1d9; }
+  tr.grp td { background: #0f1620; color: #79b8ff; font-size: 11px; font-weight: bold;
+              letter-spacing: 1px; text-transform: uppercase; }
+  .color-swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px;
+                  vertical-align: middle; margin-right: 6px; border: 1px solid #666; }
+
+  .spravka { max-width: 1300px; margin: 30px auto 0; display: grid; gap: 18px; }
+  .footer { text-align: center; color: #444; font-size: 11px; margin: 14px 0; }
+
+  @media (max-width: 900px) {
+    body { padding: 12px; }
+    .stage-body { grid-template-columns: 1fr; padding: 10px; }
+    .stage-head { flex-direction: column; align-items: flex-start; }
+    .wirelist { overflow-x: auto; }
+  }
+  @media print {
+    .contents, .stage-nav { display: none; }
+    .stage, .spravka { page-break-before: always; }
+  }
+</style>
+</head>
+<body>
+<h1 id="top">⚡ Устройство контроля ГСМ — какой вывод куда вести</h1>
+<div class="subtitle">Arduino Nano · LCD-2004 I²C · MQ-2 · DHT11 · HC-SR04 · 4 светодиода · 3 кнопки ·
+зуммер SFM-27 · питание USB Type-C 5 В · 9 этапов · 27 проводов</div>
+<nav class="contents" aria-label="Этапы">
+  <a href="#stage-0"><span>0</span>Как читать · распиновка Nano</a>
+  <a href="#stage-1"><span>1</span>Питание: разъём USB Type-C (XP1)</a>
+  <a href="#stage-2"><span>2</span>Светодиоды VD1–VD4 (панель)</a>
+  <a href="#stage-3"><span>3</span>Кнопки SA1–SA3 (панель)</a>
+  <a href="#stage-4"><span>4</span>Дисплей LCD-2004B-IIC (DA1)</a>
+  <a href="#stage-5"><span>5</span>Датчик газа MQ-2 (DD1)</a>
+  <a href="#stage-6"><span>6</span>Датчик температуры DHT11 (DD2)</a>
+  <a href="#stage-7"><span>7</span>Датчик расстояния HC-SR04 (DD3)</a>
+  <a href="#stage-8"><span>8</span>Зуммер SFM-27 (BQ1)</a>
+  <a href="#stage-9"><span>9</span>Проверка перед включением</a>
+  <a href="#spravka"><span>📋</span>Все соединения одной таблицей</a>
+</nav>
+
+<section class="stage" id="stage-0">
+<div class="stage-head">
+  <div><div class="stage-num">Этап 0 из 9</div><h2>Как читать · распиновка Arduino Nano</h2></div>
+  <div class="stage-where">сначала прочитайте этот этап</div>
+</div>
+<div class="stage-body">
+<div class="stage-left">
+<div class="notes-box"><div class="section-title">Какие выводы Nano заняты</div>
+<svg viewBox="0 -50 770 340" class="pinout" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Распиновка Arduino Nano с подключёнными выводами">
+<rect x="42" y="70" width="700" height="120" rx="8" fill="#0c1a10" stroke="#2ea043" stroke-width="2"/>
+<rect x="8" y="112" width="34" height="36" rx="3" fill="#30363d" stroke="#6e7681"/>
+<text x="25" y="134" text-anchor="middle" fill="#c9d1d9" font-size="9" font-family="Arial">USB</text>
+<text x="392" y="136" text-anchor="middle" fill="#3fb950" font-size="15" font-weight="bold" font-family="monospace">ARDUINO NANO</text>
+<circle cx="70" cy="88" r="7" fill="#4a4630" stroke="#0d1117"/>
+<text x="70" y="108" text-anchor="middle" fill="#6e7681" font-size="10" font-weight="normal" font-family="monospace">D13</text>
+<circle cx="116" cy="88" r="7" fill="#4a4630" stroke="#0d1117"/>
+<text x="116" y="108" text-anchor="middle" fill="#6e7681" font-size="10" font-weight="normal" font-family="monospace">3V3</text>
+<circle cx="162" cy="88" r="7" fill="#4a4630" stroke="#0d1117"/>
+<text x="162" y="108" text-anchor="middle" fill="#6e7681" font-size="10" font-weight="normal" font-family="monospace">REF</text>
+<circle cx="208" cy="88" r="7" fill="#d4c044" stroke="#0d1117"/>
+<text x="208" y="108" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="monospace">A0</text>
+<text x="208" y="58" fill="#e8c84a" font-size="11" font-family="Arial" transform="rotate(-45 208 58)">AO MQ-2</text>
+<circle cx="254" cy="88" r="7" fill="#4a4630" stroke="#0d1117"/>
+<text x="254" y="108" text-anchor="middle" fill="#6e7681" font-size="10" font-weight="normal" font-family="monospace">A1</text>
+<circle cx="300" cy="88" r="7" fill="#4a4630" stroke="#0d1117"/>
+<text x="300" y="108" text-anchor="middle" fill="#6e7681" font-size="10" font-weight="normal" font-family="monospace">A2</text>
+<circle cx="346" cy="88" r="7" fill="#4a4630" stroke="#0d1117"/>
+<text x="346" y="108" text-anchor="middle" fill="#6e7681" font-size="10" font-weight="normal" font-family="monospace">A3</text>
+<circle cx="392" cy="88" r="7" fill="#d4c044" stroke="#0d1117"/>
+<text x="392" y="108" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="monospace">A4</text>
+<text x="392" y="58" fill="#e8c84a" font-size="11" font-family="Arial" transform="rotate(-45 392 58)">SDA LCD</text>
+<circle cx="438" cy="88" r="7" fill="#d4c044" stroke="#0d1117"/>
+<text x="438" y="108" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="monospace">A5</text>
+<text x="438" y="58" fill="#e8c84a" font-size="11" font-family="Arial" transform="rotate(-45 438 58)">SCL LCD</text>
+<circle cx="484" cy="88" r="7" fill="#4a4630" stroke="#0d1117"/>
+<text x="484" y="108" text-anchor="middle" fill="#6e7681" font-size="10" font-weight="normal" font-family="monospace">A6</text>
+<circle cx="530" cy="88" r="7" fill="#4a4630" stroke="#0d1117"/>
+<text x="530" y="108" text-anchor="middle" fill="#6e7681" font-size="10" font-weight="normal" font-family="monospace">A7</text>
+<circle cx="576" cy="88" r="7" fill="#d4c044" stroke="#0d1117"/>
+<text x="576" y="108" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="monospace">5V</text>
+<text x="576" y="58" text-anchor="middle" fill="#ff6666" font-size="10" font-weight="bold" font-family="Arial">общая</text>
+<circle cx="622" cy="88" r="7" fill="#4a4630" stroke="#0d1117"/>
+<text x="622" y="108" text-anchor="middle" fill="#6e7681" font-size="10" font-weight="normal" font-family="monospace">RST</text>
+<circle cx="668" cy="88" r="7" fill="#d4c044" stroke="#0d1117"/>
+<text x="668" y="108" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="monospace">GND</text>
+<text x="668" y="58" text-anchor="middle" fill="#a0a0a0" font-size="10" font-weight="bold" font-family="Arial">общая</text>
+<circle cx="714" cy="88" r="7" fill="#4a4630" stroke="#0d1117"/>
+<text x="714" y="108" text-anchor="middle" fill="#6e7681" font-size="10" font-weight="normal" font-family="monospace">VIN</text>
+<circle cx="70" cy="172" r="7" fill="#d4c044" stroke="#0d1117"/>
+<text x="70" y="160" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="monospace">D12</text>
+<text x="70" y="204" fill="#e8c84a" font-size="11" font-family="Arial" transform="rotate(45 70 204)">VD4 «TEMP» красный</text>
+<circle cx="116" cy="172" r="7" fill="#d4c044" stroke="#0d1117"/>
+<text x="116" y="160" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="monospace">D11</text>
+<text x="116" y="204" fill="#e8c84a" font-size="11" font-family="Arial" transform="rotate(45 116 204)">+ зуммер</text>
+<circle cx="162" cy="172" r="7" fill="#d4c044" stroke="#0d1117"/>
+<text x="162" y="160" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="monospace">D10</text>
+<text x="162" y="204" fill="#e8c84a" font-size="11" font-family="Arial" transform="rotate(45 162 204)">VD2 «LOW» жёлтый</text>
+<circle cx="208" cy="172" r="7" fill="#d4c044" stroke="#0d1117"/>
+<text x="208" y="160" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="monospace">D9</text>
+<text x="208" y="204" fill="#e8c84a" font-size="11" font-family="Arial" transform="rotate(45 208 204)">VD3 «GAS» красный</text>
+<circle cx="254" cy="172" r="7" fill="#d4c044" stroke="#0d1117"/>
+<text x="254" y="160" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="monospace">D8</text>
+<text x="254" y="204" fill="#e8c84a" font-size="11" font-family="Arial" transform="rotate(45 254 204)">VD1 «OK» зелёный</text>
+<circle cx="300" cy="172" r="7" fill="#d4c044" stroke="#0d1117"/>
+<text x="300" y="160" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="monospace">D7</text>
+<text x="300" y="204" fill="#e8c84a" font-size="11" font-family="Arial" transform="rotate(45 300 204)">SA1</text>
+<circle cx="346" cy="172" r="7" fill="#d4c044" stroke="#0d1117"/>
+<text x="346" y="160" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="monospace">D6</text>
+<text x="346" y="204" fill="#e8c84a" font-size="11" font-family="Arial" transform="rotate(45 346 204)">SA3</text>
+<circle cx="392" cy="172" r="7" fill="#d4c044" stroke="#0d1117"/>
+<text x="392" y="160" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="monospace">D5</text>
+<text x="392" y="204" fill="#e8c84a" font-size="11" font-family="Arial" transform="rotate(45 392 204)">SA2</text>
+<circle cx="438" cy="172" r="7" fill="#d4c044" stroke="#0d1117"/>
+<text x="438" y="160" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="monospace">D4</text>
+<text x="438" y="204" fill="#e8c84a" font-size="11" font-family="Arial" transform="rotate(45 438 204)">Echo HC-SR04</text>
+<circle cx="484" cy="172" r="7" fill="#d4c044" stroke="#0d1117"/>
+<text x="484" y="160" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="monospace">D3</text>
+<text x="484" y="204" fill="#e8c84a" font-size="11" font-family="Arial" transform="rotate(45 484 204)">Trig HC-SR04</text>
+<circle cx="530" cy="172" r="7" fill="#d4c044" stroke="#0d1117"/>
+<text x="530" y="160" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="monospace">D2</text>
+<text x="530" y="204" fill="#e8c84a" font-size="11" font-family="Arial" transform="rotate(45 530 204)">DATA DHT11</text>
+<circle cx="576" cy="172" r="7" fill="#d4c044" stroke="#0d1117"/>
+<text x="576" y="160" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="monospace">GND</text>
+<text x="576" y="204" text-anchor="middle" fill="#a0a0a0" font-size="10" font-weight="bold" font-family="Arial">общая</text>
+<circle cx="622" cy="172" r="7" fill="#4a4630" stroke="#0d1117"/>
+<text x="622" y="160" text-anchor="middle" fill="#6e7681" font-size="10" font-weight="normal" font-family="monospace">RST</text>
+<circle cx="668" cy="172" r="7" fill="#4a4630" stroke="#0d1117"/>
+<text x="668" y="160" text-anchor="middle" fill="#6e7681" font-size="10" font-weight="normal" font-family="monospace">RX0</text>
+<circle cx="714" cy="172" r="7" fill="#4a4630" stroke="#0d1117"/>
+<text x="714" y="160" text-anchor="middle" fill="#6e7681" font-size="10" font-weight="normal" font-family="monospace">TX1</text>
+</svg>
+</div>
+</div>
+<div class="stage-side">
+<div class="notes-box">
+  <div class="section-title">Правила</div>
+  <div class="note-item"><span class="note-icon">1</span><span class="note-text">Сначала впаяйте Arduino Nano в плату: две крайние точки по диагонали, выровнять, затем остальные выводы.</span></div>
+  <div class="note-item"><span class="note-icon">2</span><span class="note-text">Каждый этап — один модуль. Слева вывод модуля, справа — вывод Arduino Nano, к которому его вести.</span></div>
+  <div class="note-item"><span class="note-icon">3</span><span class="note-text">Цвет линии на схеме = цвет провода. Номер провода в кружке совпадает с таблицей этапа.</span></div>
+  <div class="note-item"><span class="note-icon">4</span><span class="note-text">«5V» и «GND» — общие линии: к ним сходятся провода питания всех модулей.</span></div>
+  <div class="note-item"><span class="note-icon">5</span><span class="note-text">Внешний провод: зачистить и залудить 3–4 мм, пропаять, на пайку — термоусадка.</span></div>
+  <div class="note-item"><span class="note-icon">6</span><span class="note-text">Паяльник 25–40 Вт, 1–2 секунды на точку, припой должен лечь блестящим конусом.</span></div>
+  <div class="note-item"><span class="note-icon">7</span><span class="note-text">После каждого этапа — проверка из последнего пункта. Ошибка, пропущенная рано, дорого стоит потом.</span></div>
+</div>
+</div>
+</div>
+<div class="stage-nav"><span></span><a href="#top">↑ Все этапы</a><a href="#stage-1">Этап 1 →</a></div>
+</section>
+
+<section class="stage" id="stage-1">
+<div class="stage-head">
+  <div><div class="stage-num">Этап 1 из 9</div><h2>🔋 Питание: разъём USB Type-C (XP1)</h2></div>
+  <div class="stage-where">2 провода</div>
+</div>
+<div class="stage-body">
+<div class="stage-left">
+<svg viewBox="0 0 740 136" class="scheme" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Схема подключения к Arduino Nano">
+<rect x="20" y="20" width="280" height="96" rx="7" fill="#161b22" stroke="#30363d"/>
+<text x="32" y="38" fill="#58a6ff" font-size="12" font-weight="bold" font-family="Arial">🔋 Питание: разъём USB Type-C (XP1)</text>
+<text x="290" y="67.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">VBUS (+5 В)</text>
+<circle cx="300" cy="63.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="63.0" x2="600" y2="63.0" stroke="#d04444" stroke-width="3"/>
+<circle cx="334" cy="63.0" r="10" fill="#d04444" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="67.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">1</text>
+<text x="470.0" y="57.0" text-anchor="middle" fill="#8b949e" font-size="10" font-family="Arial">линия +5 В</text>
+<text x="290" y="97.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">GND</text>
+<circle cx="300" cy="93.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="93.0" x2="600" y2="93.0" stroke="#6e7681" stroke-width="3"/>
+<circle cx="334" cy="93.0" r="10" fill="#1a1a1a" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="97.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">2</text>
+<text x="470.0" y="87.0" text-anchor="middle" fill="#8b949e" font-size="10" font-family="Arial">общий провод</text>
+<rect x="600" y="8" width="120" height="120" rx="8" fill="#0c1a10" stroke="#2ea043" stroke-width="2"/>
+<text x="690.0" y="68.0" text-anchor="middle" fill="#2ea043" font-size="12" font-weight="bold" font-family="monospace" opacity="0.6" transform="rotate(-90 690.0 68.0)">ARDUINO NANO</text>
+<circle cx="600" cy="63.0" r="4" fill="#d4c044"/><text x="610" y="68.0" fill="#ff6666" font-size="14" font-weight="bold" font-family="monospace">5V</text>
+<circle cx="600" cy="93.0" r="4" fill="#d4c044"/><text x="610" y="98.0" fill="#a0a0a0" font-size="14" font-weight="bold" font-family="monospace">GND</text>
+</svg>
+<div class="wirelist">
+  <table>
+    <tr><th>№</th><th>Вывод модуля</th><th></th><th>Вывод Nano</th><th>Через</th><th>Цвет провода</th><th>Заметка</th></tr>
+    <tr><td class="num">1</td><td class="from">VBUS (+5 В)</td><td class="arrow">→</td><td class="to" style="color:#ff6666">5V</td><td class="via">—</td><td><span class="color-swatch" style="background:#d04444"></span>красный</td><td class="note">линия +5 В</td></tr>
+    <tr><td class="num">2</td><td class="from">GND</td><td class="arrow">→</td><td class="to" style="color:#a0a0a0">GND</td><td class="via">—</td><td><span class="color-swatch" style="background:#1a1a1a"></span>чёрный</td><td class="note">общий провод</td></tr>
+  </table>
+</div>
+</div>
+<div class="stage-side">
+<div class="notes-box">
+  <div class="section-title">Порядок действий</div>
+  <div class="note-item"><span class="note-icon">1</span><span class="note-text"><span class="wn" style="background:#d04444;color:#fff">1</span> <b>VBUS (+5 В)</b> → <b class="pin" style="color:#ff6666">5V</b> Nano <span class="muted">(красный провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">2</span><span class="note-text"><span class="wn" style="background:#1a1a1a;color:#fff">2</span> <b>GND</b> → <b class="pin" style="color:#a0a0a0">GND</b> Nano <span class="muted">(чёрный провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">3</span><span class="note-text">Все провода «+5 В» и «GND» следующих модулей соединяются с этими же линиями: удобно сделать две общие шины (лужёный провод) — +5 В и GND — и паять модули к ним.</span></div>
+  <div class="note-item check"><span class="note-icon">✔</span><span class="note-text"><b>Проверка:</b> между 5V и GND Nano НЕТ короткого замыкания (не 0 Ом).</span></div>
+</div>
+<div class="stage-note">Используются только VBUS и GND, остальные выводы переходника свободны.</div>
+</div>
+</div>
+<div class="stage-nav"><a href="#stage-0">← Этап 0</a><a href="#top">↑ Все этапы</a><a href="#stage-2">Этап 2 →</a></div>
+</section>
+
+<section class="stage" id="stage-2">
+<div class="stage-head">
+  <div><div class="stage-num">Этап 2 из 9</div><h2>💡 Светодиоды VD1–VD4 (панель)</h2></div>
+  <div class="stage-where">5 проводов</div>
+</div>
+<div class="stage-body">
+<div class="stage-left">
+<svg viewBox="0 0 740 226" class="scheme" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Схема подключения к Arduino Nano">
+<rect x="20" y="20" width="280" height="186" rx="7" fill="#161b22" stroke="#30363d"/>
+<text x="32" y="38" fill="#58a6ff" font-size="12" font-weight="bold" font-family="Arial">💡 Светодиоды VD1–VD4 (панель)</text>
+<text x="290" y="67.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">VD1 «OK» зелёный, анод +</text>
+<circle cx="300" cy="63.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="63.0" x2="600" y2="63.0" stroke="#44aa44" stroke-width="3"/>
+<circle cx="334" cy="63.0" r="10" fill="#44aa44" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="67.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">3</text>
+<rect x="444.0" y="55.0" width="52" height="16" rx="3" fill="#c8b48a" stroke="#0d1117"/><text x="470.0" y="51.0" text-anchor="middle" fill="#c9d1d9" font-size="10" font-family="monospace">R1 220 Ом</text>
+<text x="290" y="97.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">VD2 «LOW» жёлтый, анод +</text>
+<circle cx="300" cy="93.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="93.0" x2="600" y2="93.0" stroke="#d4c044" stroke-width="3"/>
+<circle cx="334" cy="93.0" r="10" fill="#d4c044" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="97.0" text-anchor="middle" fill="#111" font-size="10" font-weight="bold" font-family="Arial">4</text>
+<rect x="444.0" y="85.0" width="52" height="16" rx="3" fill="#c8b48a" stroke="#0d1117"/><text x="470.0" y="81.0" text-anchor="middle" fill="#c9d1d9" font-size="10" font-family="monospace">R2 220 Ом</text>
+<text x="290" y="127.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">VD3 «GAS» красный, анод +</text>
+<circle cx="300" cy="123.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="123.0" x2="600" y2="123.0" stroke="#d04444" stroke-width="3"/>
+<circle cx="334" cy="123.0" r="10" fill="#d04444" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="127.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">5</text>
+<rect x="444.0" y="115.0" width="52" height="16" rx="3" fill="#c8b48a" stroke="#0d1117"/><text x="470.0" y="111.0" text-anchor="middle" fill="#c9d1d9" font-size="10" font-family="monospace">R3 220 Ом</text>
+<text x="290" y="157.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">VD4 «TEMP» красный, анод +</text>
+<circle cx="300" cy="153.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="153.0" x2="600" y2="153.0" stroke="#8b1e1e" stroke-width="3"/>
+<circle cx="334" cy="153.0" r="10" fill="#8b1e1e" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="157.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">6</text>
+<rect x="444.0" y="145.0" width="52" height="16" rx="3" fill="#c8b48a" stroke="#0d1117"/><text x="470.0" y="141.0" text-anchor="middle" fill="#c9d1d9" font-size="10" font-family="monospace">R4 220 Ом</text>
+<text x="290" y="187.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">катоды − всех VD1–VD4</text>
+<circle cx="300" cy="183.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="183.0" x2="600" y2="183.0" stroke="#6e7681" stroke-width="3"/>
+<circle cx="334" cy="183.0" r="10" fill="#1a1a1a" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="187.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">7</text>
+<rect x="600" y="8" width="120" height="210" rx="8" fill="#0c1a10" stroke="#2ea043" stroke-width="2"/>
+<text x="690.0" y="113.0" text-anchor="middle" fill="#2ea043" font-size="12" font-weight="bold" font-family="monospace" opacity="0.6" transform="rotate(-90 690.0 113.0)">ARDUINO NANO</text>
+<circle cx="600" cy="63.0" r="4" fill="#d4c044"/><text x="610" y="68.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D8</text>
+<circle cx="600" cy="93.0" r="4" fill="#d4c044"/><text x="610" y="98.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D10</text>
+<circle cx="600" cy="123.0" r="4" fill="#d4c044"/><text x="610" y="128.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D9</text>
+<circle cx="600" cy="153.0" r="4" fill="#d4c044"/><text x="610" y="158.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D12</text>
+<circle cx="600" cy="183.0" r="4" fill="#d4c044"/><text x="610" y="188.0" fill="#a0a0a0" font-size="14" font-weight="bold" font-family="monospace">GND</text>
+</svg>
+<div class="wirelist">
+  <table>
+    <tr><th>№</th><th>Вывод модуля</th><th></th><th>Вывод Nano</th><th>Через</th><th>Цвет провода</th><th>Заметка</th></tr>
+    <tr><td class="num">3</td><td class="from">VD1 «OK» зелёный, анод +</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D8</td><td class="via">R1 220 Ом</td><td><span class="color-swatch" style="background:#44aa44"></span>зелёный</td><td class="note"></td></tr>
+    <tr><td class="num">4</td><td class="from">VD2 «LOW» жёлтый, анод +</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D10</td><td class="via">R2 220 Ом</td><td><span class="color-swatch" style="background:#d4c044"></span>жёлтый</td><td class="note"></td></tr>
+    <tr><td class="num">5</td><td class="from">VD3 «GAS» красный, анод +</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D9</td><td class="via">R3 220 Ом</td><td><span class="color-swatch" style="background:#d04444"></span>красный</td><td class="note"></td></tr>
+    <tr><td class="num">6</td><td class="from">VD4 «TEMP» красный, анод +</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D12</td><td class="via">R4 220 Ом</td><td><span class="color-swatch" style="background:#8b1e1e"></span>тёмно-красный</td><td class="note"></td></tr>
+    <tr><td class="num">7</td><td class="from">катоды − всех VD1–VD4</td><td class="arrow">→</td><td class="to" style="color:#a0a0a0">GND</td><td class="via">—</td><td><span class="color-swatch" style="background:#1a1a1a"></span>чёрный</td><td class="note"></td></tr>
+  </table>
+</div>
+</div>
+<div class="stage-side">
+<div class="notes-box">
+  <div class="section-title">Порядок действий</div>
+  <div class="note-item"><span class="note-icon">1</span><span class="note-text"><span class="wn" style="background:#44aa44;color:#fff">3</span> <b>VD1 «OK» зелёный, анод +</b> → <b class="pin" style="color:#e8c84a">D8</b> Nano через <b>R1 220 Ом</b> <span class="muted">(зелёный провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">2</span><span class="note-text"><span class="wn" style="background:#d4c044;color:#111">4</span> <b>VD2 «LOW» жёлтый, анод +</b> → <b class="pin" style="color:#e8c84a">D10</b> Nano через <b>R2 220 Ом</b> <span class="muted">(жёлтый провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">3</span><span class="note-text"><span class="wn" style="background:#d04444;color:#fff">5</span> <b>VD3 «GAS» красный, анод +</b> → <b class="pin" style="color:#e8c84a">D9</b> Nano через <b>R3 220 Ом</b> <span class="muted">(красный провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">4</span><span class="note-text"><span class="wn" style="background:#8b1e1e;color:#fff">6</span> <b>VD4 «TEMP» красный, анод +</b> → <b class="pin" style="color:#e8c84a">D12</b> Nano через <b>R4 220 Ом</b> <span class="muted">(тёмно-красный провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">5</span><span class="note-text"><span class="wn" style="background:#1a1a1a;color:#fff">7</span> <b>катоды − всех VD1–VD4</b> → <b class="pin" style="color:#a0a0a0">GND</b> Nano <span class="muted">(чёрный провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">6</span><span class="note-text">Анод — длинная ножка (+), катод — короткая (−).</span></div>
+  <div class="note-item"><span class="note-icon">7</span><span class="note-text">Резистор 220 Ом ставится между выводом Nano и анодом каждого светодиода.</span></div>
+  <div class="note-item"><span class="note-icon">8</span><span class="note-text">Провода от Nano к панели — МГТФ по 20 см, скрутить в жгут.</span></div>
+  <div class="note-item check"><span class="note-icon">✔</span><span class="note-text"><b>Проверка:</b> мультиметр «диод»: красный щуп на вывод Nano, чёрный на GND — светодиод слабо светится.</span></div>
+</div>
+</div>
+</div>
+<div class="stage-nav"><a href="#stage-1">← Этап 1</a><a href="#top">↑ Все этапы</a><a href="#stage-3">Этап 3 →</a></div>
+</section>
+
+<section class="stage" id="stage-3">
+<div class="stage-head">
+  <div><div class="stage-num">Этап 3 из 9</div><h2>🔘 Кнопки SA1–SA3 (панель)</h2></div>
+  <div class="stage-where">4 провода</div>
+</div>
+<div class="stage-body">
+<div class="stage-left">
+<svg viewBox="0 0 740 196" class="scheme" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Схема подключения к Arduino Nano">
+<rect x="20" y="20" width="280" height="156" rx="7" fill="#161b22" stroke="#30363d"/>
+<text x="32" y="38" fill="#58a6ff" font-size="12" font-weight="bold" font-family="Arial">🔘 Кнопки SA1–SA3 (панель)</text>
+<text x="290" y="67.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">SA1, вывод 1</text>
+<circle cx="300" cy="63.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="63.0" x2="600" y2="63.0" stroke="#3a6fd8" stroke-width="3"/>
+<circle cx="334" cy="63.0" r="10" fill="#3a6fd8" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="67.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">8</text>
+<text x="290" y="97.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">SA2, вывод 1</text>
+<circle cx="300" cy="93.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="93.0" x2="600" y2="93.0" stroke="#7fb8ff" stroke-width="3"/>
+<circle cx="334" cy="93.0" r="10" fill="#7fb8ff" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="97.0" text-anchor="middle" fill="#111" font-size="10" font-weight="bold" font-family="Arial">9</text>
+<text x="290" y="127.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">SA3, вывод 1</text>
+<circle cx="300" cy="123.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="123.0" x2="600" y2="123.0" stroke="#22c3d6" stroke-width="3"/>
+<circle cx="334" cy="123.0" r="10" fill="#22c3d6" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="127.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">10</text>
+<text x="290" y="157.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">вывод 2 всех SA1–SA3</text>
+<circle cx="300" cy="153.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="153.0" x2="600" y2="153.0" stroke="#6e7681" stroke-width="3"/>
+<circle cx="334" cy="153.0" r="10" fill="#1a1a1a" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="157.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">11</text>
+<rect x="600" y="8" width="120" height="180" rx="8" fill="#0c1a10" stroke="#2ea043" stroke-width="2"/>
+<text x="690.0" y="98.0" text-anchor="middle" fill="#2ea043" font-size="12" font-weight="bold" font-family="monospace" opacity="0.6" transform="rotate(-90 690.0 98.0)">ARDUINO NANO</text>
+<circle cx="600" cy="63.0" r="4" fill="#d4c044"/><text x="610" y="68.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D7</text>
+<circle cx="600" cy="93.0" r="4" fill="#d4c044"/><text x="610" y="98.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D5</text>
+<circle cx="600" cy="123.0" r="4" fill="#d4c044"/><text x="610" y="128.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D6</text>
+<circle cx="600" cy="153.0" r="4" fill="#d4c044"/><text x="610" y="158.0" fill="#a0a0a0" font-size="14" font-weight="bold" font-family="monospace">GND</text>
+</svg>
+<div class="wirelist">
+  <table>
+    <tr><th>№</th><th>Вывод модуля</th><th></th><th>Вывод Nano</th><th>Через</th><th>Цвет провода</th><th>Заметка</th></tr>
+    <tr><td class="num">8</td><td class="from">SA1, вывод 1</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D7</td><td class="via">—</td><td><span class="color-swatch" style="background:#3a6fd8"></span>синий</td><td class="note"></td></tr>
+    <tr><td class="num">9</td><td class="from">SA2, вывод 1</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D5</td><td class="via">—</td><td><span class="color-swatch" style="background:#7fb8ff"></span>голубой</td><td class="note"></td></tr>
+    <tr><td class="num">10</td><td class="from">SA3, вывод 1</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D6</td><td class="via">—</td><td><span class="color-swatch" style="background:#22c3d6"></span>бирюзовый</td><td class="note"></td></tr>
+    <tr><td class="num">11</td><td class="from">вывод 2 всех SA1–SA3</td><td class="arrow">→</td><td class="to" style="color:#a0a0a0">GND</td><td class="via">—</td><td><span class="color-swatch" style="background:#1a1a1a"></span>чёрный</td><td class="note"></td></tr>
+  </table>
+</div>
+</div>
+<div class="stage-side">
+<div class="notes-box">
+  <div class="section-title">Порядок действий</div>
+  <div class="note-item"><span class="note-icon">1</span><span class="note-text"><span class="wn" style="background:#3a6fd8;color:#fff">8</span> <b>SA1, вывод 1</b> → <b class="pin" style="color:#e8c84a">D7</b> Nano <span class="muted">(синий провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">2</span><span class="note-text"><span class="wn" style="background:#7fb8ff;color:#111">9</span> <b>SA2, вывод 1</b> → <b class="pin" style="color:#e8c84a">D5</b> Nano <span class="muted">(голубой провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">3</span><span class="note-text"><span class="wn" style="background:#22c3d6;color:#fff">10</span> <b>SA3, вывод 1</b> → <b class="pin" style="color:#e8c84a">D6</b> Nano <span class="muted">(бирюзовый провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">4</span><span class="note-text"><span class="wn" style="background:#1a1a1a;color:#fff">11</span> <b>вывод 2 всех SA1–SA3</b> → <b class="pin" style="color:#a0a0a0">GND</b> Nano <span class="muted">(чёрный провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">5</span><span class="note-text">Кнопка замыкает вывод Nano на GND; подтяжка внутренняя (INPUT_PULLUP), резисторы не нужны.</span></div>
+  <div class="note-item"><span class="note-icon">6</span><span class="note-text">У тактовой кнопки 4 ножки: берите две по диагонали — так работает при любом повороте.</span></div>
+  <div class="note-item check"><span class="note-icon">✔</span><span class="note-text"><b>Проверка:</b> D7–GND звонится только при нажатой SA1 (D5 — SA2, D6 — SA3).</span></div>
+</div>
+</div>
+</div>
+<div class="stage-nav"><a href="#stage-2">← Этап 2</a><a href="#top">↑ Все этапы</a><a href="#stage-4">Этап 4 →</a></div>
+</section>
+
+<section class="stage" id="stage-4">
+<div class="stage-head">
+  <div><div class="stage-num">Этап 4 из 9</div><h2>🖥 Дисплей LCD-2004B-IIC (DA1)</h2></div>
+  <div class="stage-where">4 провода</div>
+</div>
+<div class="stage-body">
+<div class="stage-left">
+<svg viewBox="0 0 740 196" class="scheme" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Схема подключения к Arduino Nano">
+<rect x="20" y="20" width="280" height="156" rx="7" fill="#161b22" stroke="#30363d"/>
+<text x="32" y="38" fill="#58a6ff" font-size="12" font-weight="bold" font-family="Arial">🖥 Дисплей LCD-2004B-IIC (DA1)</text>
+<text x="290" y="67.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">GND</text>
+<circle cx="300" cy="63.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="63.0" x2="600" y2="63.0" stroke="#6e7681" stroke-width="3"/>
+<circle cx="334" cy="63.0" r="10" fill="#1a1a1a" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="67.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">12</text>
+<text x="290" y="97.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">VCC</text>
+<circle cx="300" cy="93.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="93.0" x2="600" y2="93.0" stroke="#d04444" stroke-width="3"/>
+<circle cx="334" cy="93.0" r="10" fill="#d04444" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="97.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">13</text>
+<text x="290" y="127.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">SDA</text>
+<circle cx="300" cy="123.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="123.0" x2="600" y2="123.0" stroke="#ee99cc" stroke-width="3"/>
+<circle cx="334" cy="123.0" r="10" fill="#ee99cc" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="127.0" text-anchor="middle" fill="#111" font-size="10" font-weight="bold" font-family="Arial">14</text>
+<text x="470.0" y="117.0" text-anchor="middle" fill="#8b949e" font-size="10" font-family="Arial">шина I²C, данные</text>
+<text x="290" y="157.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">SCL</text>
+<circle cx="300" cy="153.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="153.0" x2="600" y2="153.0" stroke="#aa44aa" stroke-width="3"/>
+<circle cx="334" cy="153.0" r="10" fill="#aa44aa" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="157.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">15</text>
+<text x="470.0" y="147.0" text-anchor="middle" fill="#8b949e" font-size="10" font-family="Arial">шина I²C, такт</text>
+<rect x="600" y="8" width="120" height="180" rx="8" fill="#0c1a10" stroke="#2ea043" stroke-width="2"/>
+<text x="690.0" y="98.0" text-anchor="middle" fill="#2ea043" font-size="12" font-weight="bold" font-family="monospace" opacity="0.6" transform="rotate(-90 690.0 98.0)">ARDUINO NANO</text>
+<circle cx="600" cy="63.0" r="4" fill="#d4c044"/><text x="610" y="68.0" fill="#a0a0a0" font-size="14" font-weight="bold" font-family="monospace">GND</text>
+<circle cx="600" cy="93.0" r="4" fill="#d4c044"/><text x="610" y="98.0" fill="#ff6666" font-size="14" font-weight="bold" font-family="monospace">5V</text>
+<circle cx="600" cy="123.0" r="4" fill="#d4c044"/><text x="610" y="128.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">A4</text>
+<circle cx="600" cy="153.0" r="4" fill="#d4c044"/><text x="610" y="158.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">A5</text>
+</svg>
+<div class="wirelist">
+  <table>
+    <tr><th>№</th><th>Вывод модуля</th><th></th><th>Вывод Nano</th><th>Через</th><th>Цвет провода</th><th>Заметка</th></tr>
+    <tr><td class="num">12</td><td class="from">GND</td><td class="arrow">→</td><td class="to" style="color:#a0a0a0">GND</td><td class="via">—</td><td><span class="color-swatch" style="background:#1a1a1a"></span>чёрный</td><td class="note"></td></tr>
+    <tr><td class="num">13</td><td class="from">VCC</td><td class="arrow">→</td><td class="to" style="color:#ff6666">5V</td><td class="via">—</td><td><span class="color-swatch" style="background:#d04444"></span>красный</td><td class="note"></td></tr>
+    <tr><td class="num">14</td><td class="from">SDA</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">A4</td><td class="via">—</td><td><span class="color-swatch" style="background:#ee99cc"></span>розовый</td><td class="note">шина I²C, данные</td></tr>
+    <tr><td class="num">15</td><td class="from">SCL</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">A5</td><td class="via">—</td><td><span class="color-swatch" style="background:#aa44aa"></span>фиолетовый</td><td class="note">шина I²C, такт</td></tr>
+  </table>
+</div>
+</div>
+<div class="stage-side">
+<div class="notes-box">
+  <div class="section-title">Порядок действий</div>
+  <div class="note-item"><span class="note-icon">1</span><span class="note-text"><span class="wn" style="background:#1a1a1a;color:#fff">12</span> <b>GND</b> → <b class="pin" style="color:#a0a0a0">GND</b> Nano <span class="muted">(чёрный провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">2</span><span class="note-text"><span class="wn" style="background:#d04444;color:#fff">13</span> <b>VCC</b> → <b class="pin" style="color:#ff6666">5V</b> Nano <span class="muted">(красный провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">3</span><span class="note-text"><span class="wn" style="background:#ee99cc;color:#111">14</span> <b>SDA</b> → <b class="pin" style="color:#e8c84a">A4</b> Nano <span class="muted">(розовый провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">4</span><span class="note-text"><span class="wn" style="background:#aa44aa;color:#fff">15</span> <b>SCL</b> → <b class="pin" style="color:#e8c84a">A5</b> Nano <span class="muted">(фиолетовый провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">5</span><span class="note-text">Провода 20 см паять прямо на штырьки платы I²C, на каждую пайку — термоусадка.</span></div>
+  <div class="note-item check"><span class="note-icon">✔</span><span class="note-text"><b>Проверка:</b> SDA звонится с A4 Nano, SCL — с A5, VCC — с 5V, GND — с GND.</span></div>
+</div>
+<div class="stage-note">Разъём платы I²C — сзади дисплея. Порядок выводов проверьте по надписям на ней.</div>
+</div>
+</div>
+<div class="stage-nav"><a href="#stage-3">← Этап 3</a><a href="#top">↑ Все этапы</a><a href="#stage-5">Этап 5 →</a></div>
+</section>
+
+<section class="stage" id="stage-5">
+<div class="stage-head">
+  <div><div class="stage-num">Этап 5 из 9</div><h2>📊 Датчик газа MQ-2 (DD1)</h2></div>
+  <div class="stage-where">3 провода</div>
+</div>
+<div class="stage-body">
+<div class="stage-left">
+<svg viewBox="0 0 740 196" class="scheme" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Схема подключения к Arduino Nano">
+<rect x="20" y="20" width="280" height="156" rx="7" fill="#161b22" stroke="#30363d"/>
+<text x="32" y="38" fill="#58a6ff" font-size="12" font-weight="bold" font-family="Arial">📊 Датчик газа MQ-2 (DD1)</text>
+<text x="290" y="67.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">VCC</text>
+<circle cx="300" cy="63.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="63.0" x2="600" y2="63.0" stroke="#d04444" stroke-width="3"/>
+<circle cx="334" cy="63.0" r="10" fill="#d04444" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="67.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">16</text>
+<text x="290" y="97.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">GND</text>
+<circle cx="300" cy="93.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="93.0" x2="600" y2="93.0" stroke="#6e7681" stroke-width="3"/>
+<circle cx="334" cy="93.0" r="10" fill="#1a1a1a" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="97.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">17</text>
+<text x="290" y="127.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">AO</text>
+<circle cx="300" cy="123.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="123.0" x2="600" y2="123.0" stroke="#22c3d6" stroke-width="3"/>
+<circle cx="334" cy="123.0" r="10" fill="#22c3d6" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="127.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">18</text>
+<text x="470.0" y="117.0" text-anchor="middle" fill="#8b949e" font-size="10" font-family="Arial">аналоговый выход</text>
+<text x="290" y="157.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">DO</text>
+<circle cx="300" cy="153.0" r="4" fill="#d4c044"/>
+<text x="314" y="157.0" fill="#6e7681" font-size="11" font-family="Arial">не подключать</text>
+<rect x="600" y="8" width="120" height="180" rx="8" fill="#0c1a10" stroke="#2ea043" stroke-width="2"/>
+<text x="690.0" y="98.0" text-anchor="middle" fill="#2ea043" font-size="12" font-weight="bold" font-family="monospace" opacity="0.6" transform="rotate(-90 690.0 98.0)">ARDUINO NANO</text>
+<circle cx="600" cy="63.0" r="4" fill="#d4c044"/><text x="610" y="68.0" fill="#ff6666" font-size="14" font-weight="bold" font-family="monospace">5V</text>
+<circle cx="600" cy="93.0" r="4" fill="#d4c044"/><text x="610" y="98.0" fill="#a0a0a0" font-size="14" font-weight="bold" font-family="monospace">GND</text>
+<circle cx="600" cy="123.0" r="4" fill="#d4c044"/><text x="610" y="128.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">A0</text>
+</svg>
+<div class="wirelist">
+  <table>
+    <tr><th>№</th><th>Вывод модуля</th><th></th><th>Вывод Nano</th><th>Через</th><th>Цвет провода</th><th>Заметка</th></tr>
+    <tr><td class="num">16</td><td class="from">VCC</td><td class="arrow">→</td><td class="to" style="color:#ff6666">5V</td><td class="via">—</td><td><span class="color-swatch" style="background:#d04444"></span>красный</td><td class="note"></td></tr>
+    <tr><td class="num">17</td><td class="from">GND</td><td class="arrow">→</td><td class="to" style="color:#a0a0a0">GND</td><td class="via">—</td><td><span class="color-swatch" style="background:#1a1a1a"></span>чёрный</td><td class="note"></td></tr>
+    <tr><td class="num">18</td><td class="from">AO</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">A0</td><td class="via">—</td><td><span class="color-swatch" style="background:#22c3d6"></span>бирюзовый</td><td class="note">аналоговый выход</td></tr>
+    <tr><td class="num">—</td><td class="from">DO</td><td class="arrow"></td><td class="to muted">—</td><td class="via">—</td><td></td><td class="note">оставить свободным</td></tr>
+  </table>
+</div>
+</div>
+<div class="stage-side">
+<div class="notes-box">
+  <div class="section-title">Порядок действий</div>
+  <div class="note-item"><span class="note-icon">1</span><span class="note-text"><span class="wn" style="background:#d04444;color:#fff">16</span> <b>VCC</b> → <b class="pin" style="color:#ff6666">5V</b> Nano <span class="muted">(красный провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">2</span><span class="note-text"><span class="wn" style="background:#1a1a1a;color:#fff">17</span> <b>GND</b> → <b class="pin" style="color:#a0a0a0">GND</b> Nano <span class="muted">(чёрный провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">3</span><span class="note-text"><span class="wn" style="background:#22c3d6;color:#fff">18</span> <b>AO</b> → <b class="pin" style="color:#e8c84a">A0</b> Nano <span class="muted">(бирюзовый провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">4</span><span class="note-text"><b>DO</b> — оставить свободным.</span></div>
+  <div class="note-item check"><span class="note-icon">✔</span><span class="note-text"><b>Проверка:</b> AO звонится с A0 Nano.</span></div>
+</div>
+<div class="stage-note">DO не подключается: нужен только аналоговый выход AO. Провода 12 см.</div>
+</div>
+</div>
+<div class="stage-nav"><a href="#stage-4">← Этап 4</a><a href="#top">↑ Все этапы</a><a href="#stage-6">Этап 6 →</a></div>
+</section>
+
+<section class="stage" id="stage-6">
+<div class="stage-head">
+  <div><div class="stage-num">Этап 6 из 9</div><h2>🌡 Датчик температуры DHT11 (DD2)</h2></div>
+  <div class="stage-where">3 провода</div>
+</div>
+<div class="stage-body">
+<div class="stage-left">
+<svg viewBox="0 0 740 166" class="scheme" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Схема подключения к Arduino Nano">
+<rect x="20" y="20" width="280" height="126" rx="7" fill="#161b22" stroke="#30363d"/>
+<text x="32" y="38" fill="#58a6ff" font-size="12" font-weight="bold" font-family="Arial">🌡 Датчик температуры DHT11 (DD2)</text>
+<text x="290" y="67.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">DATA (S)</text>
+<circle cx="300" cy="63.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="63.0" x2="600" y2="63.0" stroke="#885522" stroke-width="3"/>
+<circle cx="334" cy="63.0" r="10" fill="#885522" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="67.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">19</text>
+<text x="290" y="97.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">VCC (+)</text>
+<circle cx="300" cy="93.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="93.0" x2="600" y2="93.0" stroke="#d04444" stroke-width="3"/>
+<circle cx="334" cy="93.0" r="10" fill="#d04444" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="97.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">20</text>
+<text x="290" y="127.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">GND (−)</text>
+<circle cx="300" cy="123.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="123.0" x2="600" y2="123.0" stroke="#6e7681" stroke-width="3"/>
+<circle cx="334" cy="123.0" r="10" fill="#1a1a1a" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="127.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">21</text>
+<rect x="600" y="8" width="120" height="150" rx="8" fill="#0c1a10" stroke="#2ea043" stroke-width="2"/>
+<text x="690.0" y="83.0" text-anchor="middle" fill="#2ea043" font-size="12" font-weight="bold" font-family="monospace" opacity="0.6" transform="rotate(-90 690.0 83.0)">ARDUINO NANO</text>
+<circle cx="600" cy="63.0" r="4" fill="#d4c044"/><text x="610" y="68.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D2</text>
+<circle cx="600" cy="93.0" r="4" fill="#d4c044"/><text x="610" y="98.0" fill="#ff6666" font-size="14" font-weight="bold" font-family="monospace">5V</text>
+<circle cx="600" cy="123.0" r="4" fill="#d4c044"/><text x="610" y="128.0" fill="#a0a0a0" font-size="14" font-weight="bold" font-family="monospace">GND</text>
+</svg>
+<div class="wirelist">
+  <table>
+    <tr><th>№</th><th>Вывод модуля</th><th></th><th>Вывод Nano</th><th>Через</th><th>Цвет провода</th><th>Заметка</th></tr>
+    <tr><td class="num">19</td><td class="from">DATA (S)</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D2</td><td class="via">—</td><td><span class="color-swatch" style="background:#885522"></span>коричневый</td><td class="note"></td></tr>
+    <tr><td class="num">20</td><td class="from">VCC (+)</td><td class="arrow">→</td><td class="to" style="color:#ff6666">5V</td><td class="via">—</td><td><span class="color-swatch" style="background:#d04444"></span>красный</td><td class="note"></td></tr>
+    <tr><td class="num">21</td><td class="from">GND (−)</td><td class="arrow">→</td><td class="to" style="color:#a0a0a0">GND</td><td class="via">—</td><td><span class="color-swatch" style="background:#1a1a1a"></span>чёрный</td><td class="note"></td></tr>
+  </table>
+</div>
+</div>
+<div class="stage-side">
+<div class="notes-box">
+  <div class="section-title">Порядок действий</div>
+  <div class="note-item"><span class="note-icon">1</span><span class="note-text"><span class="wn" style="background:#885522;color:#fff">19</span> <b>DATA (S)</b> → <b class="pin" style="color:#e8c84a">D2</b> Nano <span class="muted">(коричневый провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">2</span><span class="note-text"><span class="wn" style="background:#d04444;color:#fff">20</span> <b>VCC (+)</b> → <b class="pin" style="color:#ff6666">5V</b> Nano <span class="muted">(красный провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">3</span><span class="note-text"><span class="wn" style="background:#1a1a1a;color:#fff">21</span> <b>GND (−)</b> → <b class="pin" style="color:#a0a0a0">GND</b> Nano <span class="muted">(чёрный провод)</span></span></div>
+  <div class="note-item check"><span class="note-icon">✔</span><span class="note-text"><b>Проверка:</b> DATA звонится с D2 Nano и НЕ звонится с GND.</span></div>
+</div>
+<div class="stage-note">У разных модулей порядок выводов разный — смотрите надписи S / + / − на плате модуля. Провода 12 см.</div>
+</div>
+</div>
+<div class="stage-nav"><a href="#stage-5">← Этап 5</a><a href="#top">↑ Все этапы</a><a href="#stage-7">Этап 7 →</a></div>
+</section>
+
+<section class="stage" id="stage-7">
+<div class="stage-head">
+  <div><div class="stage-num">Этап 7 из 9</div><h2>📏 Датчик расстояния HC-SR04 (DD3)</h2></div>
+  <div class="stage-where">4 провода</div>
+</div>
+<div class="stage-body">
+<div class="stage-left">
+<svg viewBox="0 0 740 196" class="scheme" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Схема подключения к Arduino Nano">
+<rect x="20" y="20" width="280" height="156" rx="7" fill="#161b22" stroke="#30363d"/>
+<text x="32" y="38" fill="#58a6ff" font-size="12" font-weight="bold" font-family="Arial">📏 Датчик расстояния HC-SR04 (DD3)</text>
+<text x="290" y="67.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">VCC</text>
+<circle cx="300" cy="63.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="63.0" x2="600" y2="63.0" stroke="#d04444" stroke-width="3"/>
+<circle cx="334" cy="63.0" r="10" fill="#d04444" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="67.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">22</text>
+<text x="290" y="97.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">Trig</text>
+<circle cx="300" cy="93.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="93.0" x2="600" y2="93.0" stroke="#ff9933" stroke-width="3"/>
+<circle cx="334" cy="93.0" r="10" fill="#ff9933" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="97.0" text-anchor="middle" fill="#111" font-size="10" font-weight="bold" font-family="Arial">23</text>
+<text x="470.0" y="87.0" text-anchor="middle" fill="#8b949e" font-size="10" font-family="Arial">запуск измерения</text>
+<text x="290" y="127.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">Echo</text>
+<circle cx="300" cy="123.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="123.0" x2="600" y2="123.0" stroke="#d4c044" stroke-width="3"/>
+<circle cx="334" cy="123.0" r="10" fill="#d4c044" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="127.0" text-anchor="middle" fill="#111" font-size="10" font-weight="bold" font-family="Arial">24</text>
+<text x="470.0" y="117.0" text-anchor="middle" fill="#8b949e" font-size="10" font-family="Arial">эхо-импульс</text>
+<text x="290" y="157.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">GND</text>
+<circle cx="300" cy="153.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="153.0" x2="600" y2="153.0" stroke="#6e7681" stroke-width="3"/>
+<circle cx="334" cy="153.0" r="10" fill="#1a1a1a" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="157.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">25</text>
+<rect x="600" y="8" width="120" height="180" rx="8" fill="#0c1a10" stroke="#2ea043" stroke-width="2"/>
+<text x="690.0" y="98.0" text-anchor="middle" fill="#2ea043" font-size="12" font-weight="bold" font-family="monospace" opacity="0.6" transform="rotate(-90 690.0 98.0)">ARDUINO NANO</text>
+<circle cx="600" cy="63.0" r="4" fill="#d4c044"/><text x="610" y="68.0" fill="#ff6666" font-size="14" font-weight="bold" font-family="monospace">5V</text>
+<circle cx="600" cy="93.0" r="4" fill="#d4c044"/><text x="610" y="98.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D3</text>
+<circle cx="600" cy="123.0" r="4" fill="#d4c044"/><text x="610" y="128.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D4</text>
+<circle cx="600" cy="153.0" r="4" fill="#d4c044"/><text x="610" y="158.0" fill="#a0a0a0" font-size="14" font-weight="bold" font-family="monospace">GND</text>
+</svg>
+<div class="wirelist">
+  <table>
+    <tr><th>№</th><th>Вывод модуля</th><th></th><th>Вывод Nano</th><th>Через</th><th>Цвет провода</th><th>Заметка</th></tr>
+    <tr><td class="num">22</td><td class="from">VCC</td><td class="arrow">→</td><td class="to" style="color:#ff6666">5V</td><td class="via">—</td><td><span class="color-swatch" style="background:#d04444"></span>красный</td><td class="note"></td></tr>
+    <tr><td class="num">23</td><td class="from">Trig</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D3</td><td class="via">—</td><td><span class="color-swatch" style="background:#ff9933"></span>оранжевый</td><td class="note">запуск измерения</td></tr>
+    <tr><td class="num">24</td><td class="from">Echo</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D4</td><td class="via">—</td><td><span class="color-swatch" style="background:#d4c044"></span>жёлтый</td><td class="note">эхо-импульс</td></tr>
+    <tr><td class="num">25</td><td class="from">GND</td><td class="arrow">→</td><td class="to" style="color:#a0a0a0">GND</td><td class="via">—</td><td><span class="color-swatch" style="background:#1a1a1a"></span>чёрный</td><td class="note"></td></tr>
+  </table>
+</div>
+</div>
+<div class="stage-side">
+<div class="notes-box">
+  <div class="section-title">Порядок действий</div>
+  <div class="note-item"><span class="note-icon">1</span><span class="note-text"><span class="wn" style="background:#d04444;color:#fff">22</span> <b>VCC</b> → <b class="pin" style="color:#ff6666">5V</b> Nano <span class="muted">(красный провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">2</span><span class="note-text"><span class="wn" style="background:#ff9933;color:#111">23</span> <b>Trig</b> → <b class="pin" style="color:#e8c84a">D3</b> Nano <span class="muted">(оранжевый провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">3</span><span class="note-text"><span class="wn" style="background:#d4c044;color:#111">24</span> <b>Echo</b> → <b class="pin" style="color:#e8c84a">D4</b> Nano <span class="muted">(жёлтый провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">4</span><span class="note-text"><span class="wn" style="background:#1a1a1a;color:#fff">25</span> <b>GND</b> → <b class="pin" style="color:#a0a0a0">GND</b> Nano <span class="muted">(чёрный провод)</span></span></div>
+  <div class="note-item check"><span class="note-icon">✔</span><span class="note-text"><b>Проверка:</b> Trig звонится с D3, Echo — с D4, Trig и Echo не замкнуты между собой.</span></div>
+</div>
+<div class="stage-note">Провода 10 см.</div>
+</div>
+</div>
+<div class="stage-nav"><a href="#stage-6">← Этап 6</a><a href="#top">↑ Все этапы</a><a href="#stage-8">Этап 8 →</a></div>
+</section>
+
+<section class="stage" id="stage-8">
+<div class="stage-head">
+  <div><div class="stage-num">Этап 8 из 9</div><h2>🔊 Зуммер SFM-27 (BQ1)</h2></div>
+  <div class="stage-where">2 провода</div>
+</div>
+<div class="stage-body">
+<div class="stage-left">
+<svg viewBox="0 0 740 136" class="scheme" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Схема подключения к Arduino Nano">
+<rect x="20" y="20" width="280" height="96" rx="7" fill="#161b22" stroke="#30363d"/>
+<text x="32" y="38" fill="#58a6ff" font-size="12" font-weight="bold" font-family="Arial">🔊 Зуммер SFM-27 (BQ1)</text>
+<text x="290" y="67.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">+ (красный)</text>
+<circle cx="300" cy="63.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="63.0" x2="600" y2="63.0" stroke="#d04444" stroke-width="3"/>
+<circle cx="334" cy="63.0" r="10" fill="#d04444" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="67.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">26</text>
+<text x="290" y="97.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">− (чёрный)</text>
+<circle cx="300" cy="93.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="93.0" x2="600" y2="93.0" stroke="#6e7681" stroke-width="3"/>
+<circle cx="334" cy="93.0" r="10" fill="#1a1a1a" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="97.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">27</text>
+<rect x="600" y="8" width="120" height="120" rx="8" fill="#0c1a10" stroke="#2ea043" stroke-width="2"/>
+<text x="690.0" y="68.0" text-anchor="middle" fill="#2ea043" font-size="12" font-weight="bold" font-family="monospace" opacity="0.6" transform="rotate(-90 690.0 68.0)">ARDUINO NANO</text>
+<circle cx="600" cy="63.0" r="4" fill="#d4c044"/><text x="610" y="68.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D11</text>
+<circle cx="600" cy="93.0" r="4" fill="#d4c044"/><text x="610" y="98.0" fill="#a0a0a0" font-size="14" font-weight="bold" font-family="monospace">GND</text>
+</svg>
+<div class="wirelist">
+  <table>
+    <tr><th>№</th><th>Вывод модуля</th><th></th><th>Вывод Nano</th><th>Через</th><th>Цвет провода</th><th>Заметка</th></tr>
+    <tr><td class="num">26</td><td class="from">+ (красный)</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D11</td><td class="via">—</td><td><span class="color-swatch" style="background:#d04444"></span>красный</td><td class="note"></td></tr>
+    <tr><td class="num">27</td><td class="from">− (чёрный)</td><td class="arrow">→</td><td class="to" style="color:#a0a0a0">GND</td><td class="via">—</td><td><span class="color-swatch" style="background:#1a1a1a"></span>чёрный</td><td class="note"></td></tr>
+  </table>
+</div>
+</div>
+<div class="stage-side">
+<div class="notes-box">
+  <div class="section-title">Порядок действий</div>
+  <div class="note-item"><span class="note-icon">1</span><span class="note-text"><span class="wn" style="background:#d04444;color:#fff">26</span> <b>+ (красный)</b> → <b class="pin" style="color:#e8c84a">D11</b> Nano <span class="muted">(красный провод)</span></span></div>
+  <div class="note-item"><span class="note-icon">2</span><span class="note-text"><span class="wn" style="background:#1a1a1a;color:#fff">27</span> <b>− (чёрный)</b> → <b class="pin" style="color:#a0a0a0">GND</b> Nano <span class="muted">(чёрный провод)</span></span></div>
+  <div class="note-item check"><span class="note-icon">✔</span><span class="note-text"><b>Проверка:</b> красный провод звонится с D11 Nano.</span></div>
+</div>
+<div class="stage-note">Зуммер полярный: красный вывод — плюс. Свои провода зуммера можно нарастить, спайку изолировать.</div>
+</div>
+</div>
+<div class="stage-nav"><a href="#stage-7">← Этап 7</a><a href="#top">↑ Все этапы</a><a href="#stage-9">Этап 9 →</a></div>
+</section>
+
+<section class="stage" id="stage-9">
+<div class="stage-head">
+  <div><div class="stage-num">Этап 9 из 9</div><h2>✅ Проверка перед первым включением</h2></div>
+  <div class="stage-where">всё устройство</div>
+</div>
+<div class="stage-body">
+<div class="stage-left">
+<svg viewBox="0 0 740 1280" class="scheme" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Схема подключения к Arduino Nano">
+<rect x="20" y="20" width="280" height="96" rx="7" fill="#161b22" stroke="#30363d"/>
+<text x="32" y="38" fill="#58a6ff" font-size="12" font-weight="bold" font-family="Arial">🔋 Питание: разъём USB Type-C (XP1)</text>
+<text x="290" y="67.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">VBUS (+5 В)</text>
+<circle cx="300" cy="63.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="63.0" x2="600" y2="63.0" stroke="#d04444" stroke-width="3"/>
+<circle cx="334" cy="63.0" r="10" fill="#d04444" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="67.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">1</text>
+<text x="470.0" y="57.0" text-anchor="middle" fill="#8b949e" font-size="10" font-family="Arial">линия +5 В</text>
+<text x="290" y="97.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">GND</text>
+<circle cx="300" cy="93.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="93.0" x2="600" y2="93.0" stroke="#6e7681" stroke-width="3"/>
+<circle cx="334" cy="93.0" r="10" fill="#1a1a1a" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="97.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">2</text>
+<text x="470.0" y="87.0" text-anchor="middle" fill="#8b949e" font-size="10" font-family="Arial">общий провод</text>
+<rect x="20" y="132" width="280" height="186" rx="7" fill="#161b22" stroke="#30363d"/>
+<text x="32" y="150" fill="#58a6ff" font-size="12" font-weight="bold" font-family="Arial">💡 Светодиоды VD1–VD4 (панель)</text>
+<text x="290" y="179.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">VD1 «OK» зелёный, анод +</text>
+<circle cx="300" cy="175.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="175.0" x2="600" y2="175.0" stroke="#44aa44" stroke-width="3"/>
+<circle cx="334" cy="175.0" r="10" fill="#44aa44" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="179.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">3</text>
+<rect x="444.0" y="167.0" width="52" height="16" rx="3" fill="#c8b48a" stroke="#0d1117"/><text x="470.0" y="163.0" text-anchor="middle" fill="#c9d1d9" font-size="10" font-family="monospace">R1 220 Ом</text>
+<text x="290" y="209.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">VD2 «LOW» жёлтый, анод +</text>
+<circle cx="300" cy="205.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="205.0" x2="600" y2="205.0" stroke="#d4c044" stroke-width="3"/>
+<circle cx="334" cy="205.0" r="10" fill="#d4c044" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="209.0" text-anchor="middle" fill="#111" font-size="10" font-weight="bold" font-family="Arial">4</text>
+<rect x="444.0" y="197.0" width="52" height="16" rx="3" fill="#c8b48a" stroke="#0d1117"/><text x="470.0" y="193.0" text-anchor="middle" fill="#c9d1d9" font-size="10" font-family="monospace">R2 220 Ом</text>
+<text x="290" y="239.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">VD3 «GAS» красный, анод +</text>
+<circle cx="300" cy="235.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="235.0" x2="600" y2="235.0" stroke="#d04444" stroke-width="3"/>
+<circle cx="334" cy="235.0" r="10" fill="#d04444" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="239.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">5</text>
+<rect x="444.0" y="227.0" width="52" height="16" rx="3" fill="#c8b48a" stroke="#0d1117"/><text x="470.0" y="223.0" text-anchor="middle" fill="#c9d1d9" font-size="10" font-family="monospace">R3 220 Ом</text>
+<text x="290" y="269.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">VD4 «TEMP» красный, анод +</text>
+<circle cx="300" cy="265.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="265.0" x2="600" y2="265.0" stroke="#8b1e1e" stroke-width="3"/>
+<circle cx="334" cy="265.0" r="10" fill="#8b1e1e" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="269.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">6</text>
+<rect x="444.0" y="257.0" width="52" height="16" rx="3" fill="#c8b48a" stroke="#0d1117"/><text x="470.0" y="253.0" text-anchor="middle" fill="#c9d1d9" font-size="10" font-family="monospace">R4 220 Ом</text>
+<text x="290" y="299.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">катоды − всех VD1–VD4</text>
+<circle cx="300" cy="295.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="295.0" x2="600" y2="295.0" stroke="#6e7681" stroke-width="3"/>
+<circle cx="334" cy="295.0" r="10" fill="#1a1a1a" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="299.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">7</text>
+<rect x="20" y="334" width="280" height="156" rx="7" fill="#161b22" stroke="#30363d"/>
+<text x="32" y="352" fill="#58a6ff" font-size="12" font-weight="bold" font-family="Arial">🔘 Кнопки SA1–SA3 (панель)</text>
+<text x="290" y="381.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">SA1, вывод 1</text>
+<circle cx="300" cy="377.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="377.0" x2="600" y2="377.0" stroke="#3a6fd8" stroke-width="3"/>
+<circle cx="334" cy="377.0" r="10" fill="#3a6fd8" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="381.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">8</text>
+<text x="290" y="411.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">SA2, вывод 1</text>
+<circle cx="300" cy="407.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="407.0" x2="600" y2="407.0" stroke="#7fb8ff" stroke-width="3"/>
+<circle cx="334" cy="407.0" r="10" fill="#7fb8ff" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="411.0" text-anchor="middle" fill="#111" font-size="10" font-weight="bold" font-family="Arial">9</text>
+<text x="290" y="441.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">SA3, вывод 1</text>
+<circle cx="300" cy="437.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="437.0" x2="600" y2="437.0" stroke="#22c3d6" stroke-width="3"/>
+<circle cx="334" cy="437.0" r="10" fill="#22c3d6" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="441.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">10</text>
+<text x="290" y="471.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">вывод 2 всех SA1–SA3</text>
+<circle cx="300" cy="467.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="467.0" x2="600" y2="467.0" stroke="#6e7681" stroke-width="3"/>
+<circle cx="334" cy="467.0" r="10" fill="#1a1a1a" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="471.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">11</text>
+<rect x="20" y="506" width="280" height="156" rx="7" fill="#161b22" stroke="#30363d"/>
+<text x="32" y="524" fill="#58a6ff" font-size="12" font-weight="bold" font-family="Arial">🖥 Дисплей LCD-2004B-IIC (DA1)</text>
+<text x="290" y="553.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">GND</text>
+<circle cx="300" cy="549.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="549.0" x2="600" y2="549.0" stroke="#6e7681" stroke-width="3"/>
+<circle cx="334" cy="549.0" r="10" fill="#1a1a1a" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="553.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">12</text>
+<text x="290" y="583.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">VCC</text>
+<circle cx="300" cy="579.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="579.0" x2="600" y2="579.0" stroke="#d04444" stroke-width="3"/>
+<circle cx="334" cy="579.0" r="10" fill="#d04444" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="583.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">13</text>
+<text x="290" y="613.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">SDA</text>
+<circle cx="300" cy="609.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="609.0" x2="600" y2="609.0" stroke="#ee99cc" stroke-width="3"/>
+<circle cx="334" cy="609.0" r="10" fill="#ee99cc" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="613.0" text-anchor="middle" fill="#111" font-size="10" font-weight="bold" font-family="Arial">14</text>
+<text x="470.0" y="603.0" text-anchor="middle" fill="#8b949e" font-size="10" font-family="Arial">шина I²C, данные</text>
+<text x="290" y="643.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">SCL</text>
+<circle cx="300" cy="639.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="639.0" x2="600" y2="639.0" stroke="#aa44aa" stroke-width="3"/>
+<circle cx="334" cy="639.0" r="10" fill="#aa44aa" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="643.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">15</text>
+<text x="470.0" y="633.0" text-anchor="middle" fill="#8b949e" font-size="10" font-family="Arial">шина I²C, такт</text>
+<rect x="20" y="678" width="280" height="156" rx="7" fill="#161b22" stroke="#30363d"/>
+<text x="32" y="696" fill="#58a6ff" font-size="12" font-weight="bold" font-family="Arial">📊 Датчик газа MQ-2 (DD1)</text>
+<text x="290" y="725.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">VCC</text>
+<circle cx="300" cy="721.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="721.0" x2="600" y2="721.0" stroke="#d04444" stroke-width="3"/>
+<circle cx="334" cy="721.0" r="10" fill="#d04444" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="725.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">16</text>
+<text x="290" y="755.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">GND</text>
+<circle cx="300" cy="751.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="751.0" x2="600" y2="751.0" stroke="#6e7681" stroke-width="3"/>
+<circle cx="334" cy="751.0" r="10" fill="#1a1a1a" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="755.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">17</text>
+<text x="290" y="785.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">AO</text>
+<circle cx="300" cy="781.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="781.0" x2="600" y2="781.0" stroke="#22c3d6" stroke-width="3"/>
+<circle cx="334" cy="781.0" r="10" fill="#22c3d6" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="785.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">18</text>
+<text x="470.0" y="775.0" text-anchor="middle" fill="#8b949e" font-size="10" font-family="Arial">аналоговый выход</text>
+<text x="290" y="815.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">DO</text>
+<circle cx="300" cy="811.0" r="4" fill="#d4c044"/>
+<text x="314" y="815.0" fill="#6e7681" font-size="11" font-family="Arial">не подключать</text>
+<rect x="20" y="850" width="280" height="126" rx="7" fill="#161b22" stroke="#30363d"/>
+<text x="32" y="868" fill="#58a6ff" font-size="12" font-weight="bold" font-family="Arial">🌡 Датчик температуры DHT11 (DD2)</text>
+<text x="290" y="897.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">DATA (S)</text>
+<circle cx="300" cy="893.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="893.0" x2="600" y2="893.0" stroke="#885522" stroke-width="3"/>
+<circle cx="334" cy="893.0" r="10" fill="#885522" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="897.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">19</text>
+<text x="290" y="927.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">VCC (+)</text>
+<circle cx="300" cy="923.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="923.0" x2="600" y2="923.0" stroke="#d04444" stroke-width="3"/>
+<circle cx="334" cy="923.0" r="10" fill="#d04444" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="927.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">20</text>
+<text x="290" y="957.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">GND (−)</text>
+<circle cx="300" cy="953.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="953.0" x2="600" y2="953.0" stroke="#6e7681" stroke-width="3"/>
+<circle cx="334" cy="953.0" r="10" fill="#1a1a1a" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="957.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">21</text>
+<rect x="20" y="992" width="280" height="156" rx="7" fill="#161b22" stroke="#30363d"/>
+<text x="32" y="1010" fill="#58a6ff" font-size="12" font-weight="bold" font-family="Arial">📏 Датчик расстояния HC-SR04 (DD3)</text>
+<text x="290" y="1039.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">VCC</text>
+<circle cx="300" cy="1035.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="1035.0" x2="600" y2="1035.0" stroke="#d04444" stroke-width="3"/>
+<circle cx="334" cy="1035.0" r="10" fill="#d04444" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="1039.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">22</text>
+<text x="290" y="1069.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">Trig</text>
+<circle cx="300" cy="1065.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="1065.0" x2="600" y2="1065.0" stroke="#ff9933" stroke-width="3"/>
+<circle cx="334" cy="1065.0" r="10" fill="#ff9933" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="1069.0" text-anchor="middle" fill="#111" font-size="10" font-weight="bold" font-family="Arial">23</text>
+<text x="470.0" y="1059.0" text-anchor="middle" fill="#8b949e" font-size="10" font-family="Arial">запуск измерения</text>
+<text x="290" y="1099.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">Echo</text>
+<circle cx="300" cy="1095.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="1095.0" x2="600" y2="1095.0" stroke="#d4c044" stroke-width="3"/>
+<circle cx="334" cy="1095.0" r="10" fill="#d4c044" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="1099.0" text-anchor="middle" fill="#111" font-size="10" font-weight="bold" font-family="Arial">24</text>
+<text x="470.0" y="1089.0" text-anchor="middle" fill="#8b949e" font-size="10" font-family="Arial">эхо-импульс</text>
+<text x="290" y="1129.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">GND</text>
+<circle cx="300" cy="1125.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="1125.0" x2="600" y2="1125.0" stroke="#6e7681" stroke-width="3"/>
+<circle cx="334" cy="1125.0" r="10" fill="#1a1a1a" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="1129.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">25</text>
+<rect x="20" y="1164" width="280" height="96" rx="7" fill="#161b22" stroke="#30363d"/>
+<text x="32" y="1182" fill="#58a6ff" font-size="12" font-weight="bold" font-family="Arial">🔊 Зуммер SFM-27 (BQ1)</text>
+<text x="290" y="1211.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">+ (красный)</text>
+<circle cx="300" cy="1207.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="1207.0" x2="600" y2="1207.0" stroke="#d04444" stroke-width="3"/>
+<circle cx="334" cy="1207.0" r="10" fill="#d04444" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="1211.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">26</text>
+<text x="290" y="1241.0" text-anchor="end" fill="#e0e0e0" font-size="12" font-family="monospace">− (чёрный)</text>
+<circle cx="300" cy="1237.0" r="4" fill="#d4c044"/>
+<line x1="300" y1="1237.0" x2="600" y2="1237.0" stroke="#6e7681" stroke-width="3"/>
+<circle cx="334" cy="1237.0" r="10" fill="#1a1a1a" stroke="#e0e0e0" stroke-width="1.5"/><text x="334" y="1241.0" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="Arial">27</text>
+<rect x="600" y="8" width="120" height="1264" rx="8" fill="#0c1a10" stroke="#2ea043" stroke-width="2"/>
+<text x="690.0" y="640.0" text-anchor="middle" fill="#2ea043" font-size="12" font-weight="bold" font-family="monospace" opacity="0.6" transform="rotate(-90 690.0 640.0)">ARDUINO NANO</text>
+<circle cx="600" cy="63.0" r="4" fill="#d4c044"/><text x="610" y="68.0" fill="#ff6666" font-size="14" font-weight="bold" font-family="monospace">5V</text>
+<circle cx="600" cy="93.0" r="4" fill="#d4c044"/><text x="610" y="98.0" fill="#a0a0a0" font-size="14" font-weight="bold" font-family="monospace">GND</text>
+<circle cx="600" cy="175.0" r="4" fill="#d4c044"/><text x="610" y="180.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D8</text>
+<circle cx="600" cy="205.0" r="4" fill="#d4c044"/><text x="610" y="210.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D10</text>
+<circle cx="600" cy="235.0" r="4" fill="#d4c044"/><text x="610" y="240.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D9</text>
+<circle cx="600" cy="265.0" r="4" fill="#d4c044"/><text x="610" y="270.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D12</text>
+<circle cx="600" cy="295.0" r="4" fill="#d4c044"/><text x="610" y="300.0" fill="#a0a0a0" font-size="14" font-weight="bold" font-family="monospace">GND</text>
+<circle cx="600" cy="377.0" r="4" fill="#d4c044"/><text x="610" y="382.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D7</text>
+<circle cx="600" cy="407.0" r="4" fill="#d4c044"/><text x="610" y="412.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D5</text>
+<circle cx="600" cy="437.0" r="4" fill="#d4c044"/><text x="610" y="442.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D6</text>
+<circle cx="600" cy="467.0" r="4" fill="#d4c044"/><text x="610" y="472.0" fill="#a0a0a0" font-size="14" font-weight="bold" font-family="monospace">GND</text>
+<circle cx="600" cy="549.0" r="4" fill="#d4c044"/><text x="610" y="554.0" fill="#a0a0a0" font-size="14" font-weight="bold" font-family="monospace">GND</text>
+<circle cx="600" cy="579.0" r="4" fill="#d4c044"/><text x="610" y="584.0" fill="#ff6666" font-size="14" font-weight="bold" font-family="monospace">5V</text>
+<circle cx="600" cy="609.0" r="4" fill="#d4c044"/><text x="610" y="614.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">A4</text>
+<circle cx="600" cy="639.0" r="4" fill="#d4c044"/><text x="610" y="644.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">A5</text>
+<circle cx="600" cy="721.0" r="4" fill="#d4c044"/><text x="610" y="726.0" fill="#ff6666" font-size="14" font-weight="bold" font-family="monospace">5V</text>
+<circle cx="600" cy="751.0" r="4" fill="#d4c044"/><text x="610" y="756.0" fill="#a0a0a0" font-size="14" font-weight="bold" font-family="monospace">GND</text>
+<circle cx="600" cy="781.0" r="4" fill="#d4c044"/><text x="610" y="786.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">A0</text>
+<circle cx="600" cy="893.0" r="4" fill="#d4c044"/><text x="610" y="898.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D2</text>
+<circle cx="600" cy="923.0" r="4" fill="#d4c044"/><text x="610" y="928.0" fill="#ff6666" font-size="14" font-weight="bold" font-family="monospace">5V</text>
+<circle cx="600" cy="953.0" r="4" fill="#d4c044"/><text x="610" y="958.0" fill="#a0a0a0" font-size="14" font-weight="bold" font-family="monospace">GND</text>
+<circle cx="600" cy="1035.0" r="4" fill="#d4c044"/><text x="610" y="1040.0" fill="#ff6666" font-size="14" font-weight="bold" font-family="monospace">5V</text>
+<circle cx="600" cy="1065.0" r="4" fill="#d4c044"/><text x="610" y="1070.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D3</text>
+<circle cx="600" cy="1095.0" r="4" fill="#d4c044"/><text x="610" y="1100.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D4</text>
+<circle cx="600" cy="1125.0" r="4" fill="#d4c044"/><text x="610" y="1130.0" fill="#a0a0a0" font-size="14" font-weight="bold" font-family="monospace">GND</text>
+<circle cx="600" cy="1207.0" r="4" fill="#d4c044"/><text x="610" y="1212.0" fill="#e8c84a" font-size="14" font-weight="bold" font-family="monospace">D11</text>
+<circle cx="600" cy="1237.0" r="4" fill="#d4c044"/><text x="610" y="1242.0" fill="#a0a0a0" font-size="14" font-weight="bold" font-family="monospace">GND</text>
+</svg>
+</div>
+<div class="stage-side">
+<div class="notes-box">
+  <div class="section-title">Чек-лист</div>
+  <div class="note-item"><span class="note-icon">1</span><span class="note-text">Осмотр с лупой: нет капель припоя между соседними выводами Nano.</span></div>
+  <div class="note-item"><span class="note-icon">2</span><span class="note-text"><b>5V–GND:</b> нет короткого замыкания (не 0 Ом).</span></div>
+  <div class="note-item"><span class="note-icon">3</span><span class="note-text">Прозвонить каждый провод по общей таблице ниже: вывод модуля ↔ вывод Nano.</span></div>
+  <div class="note-item"><span class="note-icon">4</span><span class="note-text">Первое включение — от USB-C (XP1), без прошивки. Между 5V и GND должно быть <b>4,7–5,2 В</b>. Что-то греется или пахнет — сразу отключить.</span></div>
+  <div class="note-item"><span class="note-icon">5</span><span class="note-text">MQ-2 тёплый — это норма (внутри нагреватель), показания стабилизируются через 1–2 мин.</span></div>
+  <div class="note-item"><span class="note-icon">6</span><span class="note-text">Прошить gsm_control_lcd2004.ino. Пустой экран при горящей подсветке — покрутить подстроечник контраста на плате I²C; ничего — сменить адрес LCD_ADDR на 0x3F.</span></div>
+</div>
+</div>
+</div>
+<div class="stage-nav"><a href="#stage-8">← Этап 8</a><a href="#top">↑ Все этапы</a><a href="#spravka">Все соединения →</a></div>
+</section>
+
+<section class="spravka" id="spravka">
+<h1>📋 Все соединения</h1>
+<div class="wirelist">
+  <h3>🔌 ВСЕ СОЕДИНЕНИЯ — 27 ПРОВОДОВ</h3>
+  <table>
+    <tr><th>№</th><th>Вывод модуля</th><th></th><th>Вывод Nano</th><th>Цвет</th><th>Заметка</th></tr>
+    <tr class="grp"><td colspan="6">🔋 Питание: разъём USB Type-C (XP1)</td></tr>
+    <tr><td class="num">1</td><td class="from">VBUS (+5 В)</td><td class="arrow">→</td><td class="to" style="color:#ff6666">5V</td><td><span class="color-swatch" style="background:#d04444"></span>красный</td><td class="note">линия +5 В</td></tr>
+    <tr><td class="num">2</td><td class="from">GND</td><td class="arrow">→</td><td class="to" style="color:#a0a0a0">GND</td><td><span class="color-swatch" style="background:#1a1a1a"></span>чёрный</td><td class="note">общий провод</td></tr>
+    <tr class="grp"><td colspan="6">💡 Светодиоды VD1–VD4 (панель)</td></tr>
+    <tr><td class="num">3</td><td class="from">VD1 «OK» зелёный, анод +</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D8</td><td><span class="color-swatch" style="background:#44aa44"></span>зелёный</td><td class="note">R1 220 Ом</td></tr>
+    <tr><td class="num">4</td><td class="from">VD2 «LOW» жёлтый, анод +</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D10</td><td><span class="color-swatch" style="background:#d4c044"></span>жёлтый</td><td class="note">R2 220 Ом</td></tr>
+    <tr><td class="num">5</td><td class="from">VD3 «GAS» красный, анод +</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D9</td><td><span class="color-swatch" style="background:#d04444"></span>красный</td><td class="note">R3 220 Ом</td></tr>
+    <tr><td class="num">6</td><td class="from">VD4 «TEMP» красный, анод +</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D12</td><td><span class="color-swatch" style="background:#8b1e1e"></span>тёмно-красный</td><td class="note">R4 220 Ом</td></tr>
+    <tr><td class="num">7</td><td class="from">катоды − всех VD1–VD4</td><td class="arrow">→</td><td class="to" style="color:#a0a0a0">GND</td><td><span class="color-swatch" style="background:#1a1a1a"></span>чёрный</td><td class="note"></td></tr>
+    <tr class="grp"><td colspan="6">🔘 Кнопки SA1–SA3 (панель)</td></tr>
+    <tr><td class="num">8</td><td class="from">SA1, вывод 1</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D7</td><td><span class="color-swatch" style="background:#3a6fd8"></span>синий</td><td class="note"></td></tr>
+    <tr><td class="num">9</td><td class="from">SA2, вывод 1</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D5</td><td><span class="color-swatch" style="background:#7fb8ff"></span>голубой</td><td class="note"></td></tr>
+    <tr><td class="num">10</td><td class="from">SA3, вывод 1</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D6</td><td><span class="color-swatch" style="background:#22c3d6"></span>бирюзовый</td><td class="note"></td></tr>
+    <tr><td class="num">11</td><td class="from">вывод 2 всех SA1–SA3</td><td class="arrow">→</td><td class="to" style="color:#a0a0a0">GND</td><td><span class="color-swatch" style="background:#1a1a1a"></span>чёрный</td><td class="note"></td></tr>
+    <tr class="grp"><td colspan="6">🖥 Дисплей LCD-2004B-IIC (DA1)</td></tr>
+    <tr><td class="num">12</td><td class="from">GND</td><td class="arrow">→</td><td class="to" style="color:#a0a0a0">GND</td><td><span class="color-swatch" style="background:#1a1a1a"></span>чёрный</td><td class="note"></td></tr>
+    <tr><td class="num">13</td><td class="from">VCC</td><td class="arrow">→</td><td class="to" style="color:#ff6666">5V</td><td><span class="color-swatch" style="background:#d04444"></span>красный</td><td class="note"></td></tr>
+    <tr><td class="num">14</td><td class="from">SDA</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">A4</td><td><span class="color-swatch" style="background:#ee99cc"></span>розовый</td><td class="note">шина I²C, данные</td></tr>
+    <tr><td class="num">15</td><td class="from">SCL</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">A5</td><td><span class="color-swatch" style="background:#aa44aa"></span>фиолетовый</td><td class="note">шина I²C, такт</td></tr>
+    <tr class="grp"><td colspan="6">📊 Датчик газа MQ-2 (DD1)</td></tr>
+    <tr><td class="num">16</td><td class="from">VCC</td><td class="arrow">→</td><td class="to" style="color:#ff6666">5V</td><td><span class="color-swatch" style="background:#d04444"></span>красный</td><td class="note"></td></tr>
+    <tr><td class="num">17</td><td class="from">GND</td><td class="arrow">→</td><td class="to" style="color:#a0a0a0">GND</td><td><span class="color-swatch" style="background:#1a1a1a"></span>чёрный</td><td class="note"></td></tr>
+    <tr><td class="num">18</td><td class="from">AO</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">A0</td><td><span class="color-swatch" style="background:#22c3d6"></span>бирюзовый</td><td class="note">аналоговый выход</td></tr>
+    <tr class="grp"><td colspan="6">🌡 Датчик температуры DHT11 (DD2)</td></tr>
+    <tr><td class="num">19</td><td class="from">DATA (S)</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D2</td><td><span class="color-swatch" style="background:#885522"></span>коричневый</td><td class="note"></td></tr>
+    <tr><td class="num">20</td><td class="from">VCC (+)</td><td class="arrow">→</td><td class="to" style="color:#ff6666">5V</td><td><span class="color-swatch" style="background:#d04444"></span>красный</td><td class="note"></td></tr>
+    <tr><td class="num">21</td><td class="from">GND (−)</td><td class="arrow">→</td><td class="to" style="color:#a0a0a0">GND</td><td><span class="color-swatch" style="background:#1a1a1a"></span>чёрный</td><td class="note"></td></tr>
+    <tr class="grp"><td colspan="6">📏 Датчик расстояния HC-SR04 (DD3)</td></tr>
+    <tr><td class="num">22</td><td class="from">VCC</td><td class="arrow">→</td><td class="to" style="color:#ff6666">5V</td><td><span class="color-swatch" style="background:#d04444"></span>красный</td><td class="note"></td></tr>
+    <tr><td class="num">23</td><td class="from">Trig</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D3</td><td><span class="color-swatch" style="background:#ff9933"></span>оранжевый</td><td class="note">запуск измерения</td></tr>
+    <tr><td class="num">24</td><td class="from">Echo</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D4</td><td><span class="color-swatch" style="background:#d4c044"></span>жёлтый</td><td class="note">эхо-импульс</td></tr>
+    <tr><td class="num">25</td><td class="from">GND</td><td class="arrow">→</td><td class="to" style="color:#a0a0a0">GND</td><td><span class="color-swatch" style="background:#1a1a1a"></span>чёрный</td><td class="note"></td></tr>
+    <tr class="grp"><td colspan="6">🔊 Зуммер SFM-27 (BQ1)</td></tr>
+    <tr><td class="num">26</td><td class="from">+ (красный)</td><td class="arrow">→</td><td class="to" style="color:#e8c84a">D11</td><td><span class="color-swatch" style="background:#d04444"></span>красный</td><td class="note"></td></tr>
+    <tr><td class="num">27</td><td class="from">− (чёрный)</td><td class="arrow">→</td><td class="to" style="color:#a0a0a0">GND</td><td><span class="color-swatch" style="background:#1a1a1a"></span>чёрный</td><td class="note"></td></tr>
+  </table>
+</div>
+<div class="wirelist">
+  <h3>📍 ПО ВЫВОДАМ NANO — ЧТО К ЧЕМУ ПОДКЛЮЧЕНО</h3>
+  <table>
+    <tr><th>Вывод Nano</th><th>Подключено</th></tr>
+    <tr><td class="to" style="color:#e8c84a">A0</td><td class="note2">№18 Датчик газа MQ-2 · AO</td></tr>
+    <tr><td class="to" style="color:#e8c84a">A4</td><td class="note2">№14 Дисплей LCD-2004B-IIC · SDA</td></tr>
+    <tr><td class="to" style="color:#e8c84a">A5</td><td class="note2">№15 Дисплей LCD-2004B-IIC · SCL</td></tr>
+    <tr><td class="to" style="color:#e8c84a">D12</td><td class="note2">№6 Светодиоды VD1–VD4 · VD4 «TEMP» красный, анод +</td></tr>
+    <tr><td class="to" style="color:#e8c84a">D11</td><td class="note2">№26 Зуммер SFM-27 · + (красный)</td></tr>
+    <tr><td class="to" style="color:#e8c84a">D10</td><td class="note2">№4 Светодиоды VD1–VD4 · VD2 «LOW» жёлтый, анод +</td></tr>
+    <tr><td class="to" style="color:#e8c84a">D9</td><td class="note2">№5 Светодиоды VD1–VD4 · VD3 «GAS» красный, анод +</td></tr>
+    <tr><td class="to" style="color:#e8c84a">D8</td><td class="note2">№3 Светодиоды VD1–VD4 · VD1 «OK» зелёный, анод +</td></tr>
+    <tr><td class="to" style="color:#e8c84a">D7</td><td class="note2">№8 Кнопки SA1–SA3 · SA1, вывод 1</td></tr>
+    <tr><td class="to" style="color:#e8c84a">D6</td><td class="note2">№10 Кнопки SA1–SA3 · SA3, вывод 1</td></tr>
+    <tr><td class="to" style="color:#e8c84a">D5</td><td class="note2">№9 Кнопки SA1–SA3 · SA2, вывод 1</td></tr>
+    <tr><td class="to" style="color:#e8c84a">D4</td><td class="note2">№24 Датчик расстояния HC-SR04 · Echo</td></tr>
+    <tr><td class="to" style="color:#e8c84a">D3</td><td class="note2">№23 Датчик расстояния HC-SR04 · Trig</td></tr>
+    <tr><td class="to" style="color:#e8c84a">D2</td><td class="note2">№19 Датчик температуры DHT11 · DATA (S)</td></tr>
+    <tr><td class="to" style="color:#ff6666">5V</td><td class="note2">№1 Питание: разъём USB Type-C · VBUS (+5 В); №13 Дисплей LCD-2004B-IIC · VCC; №16 Датчик газа MQ-2 · VCC; №20 Датчик температуры DHT11 · VCC (+); №22 Датчик расстояния HC-SR04 · VCC</td></tr>
+    <tr><td class="to" style="color:#a0a0a0">GND</td><td class="note2">№2 Питание: разъём USB Type-C · GND; №7 Светодиоды VD1–VD4 · катоды − всех VD1–VD4; №11 Кнопки SA1–SA3 · вывод 2 всех SA1–SA3; №12 Дисплей LCD-2004B-IIC · GND; №17 Датчик газа MQ-2 · GND; №21 Датчик температуры DHT11 · GND (−); №25 Датчик расстояния HC-SR04 · GND; №27 Зуммер SFM-27 · − (чёрный)</td></tr>
+  </table>
+</div>
+<div class="footer"><a href="#top">↑ К списку этапов</a></div>
+</section>
+
+</body>
+</html>
